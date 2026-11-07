@@ -11,8 +11,8 @@ from python_sbom._errors import SbomError
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    from ._content import ContentProvider
-    from ._inputs import BuildFacts, Contributions
+    from ._content import ContentProvider, Contributions
+    from ._inputs import BuildFacts
     from ._types import Body, Component, Document, Formula, Property
 
 

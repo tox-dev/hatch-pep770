@@ -7,8 +7,7 @@ from python_sbom._errors import SbomError
 from python_sbom._model._inputs import ArchiveTree, RecordRow
 from python_sbom._model._metadata import parse_metadata
 from python_sbom._wheel._archive import member_digest, open_archive, read_member
-
-from ._source import read_bundled_wheels
+from python_sbom._wheel._bundled import read_bundled_wheels
 
 if TYPE_CHECKING:
     from collections.abc import Callable

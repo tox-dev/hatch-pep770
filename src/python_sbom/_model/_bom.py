@@ -17,8 +17,9 @@ from ._tools import tool_components
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from ._content import BundledWheelInfo, Contributions
     from ._identity import ProjectIdentity
-    from ._inputs import BuildFacts, BundledWheelInfo, Contributions, SbomRequest, Settings, SourceTree
+    from ._inputs import BuildFacts, SbomRequest, Settings, SourceTree
     from ._types import Body, Component, Document, ExternalReference, Metadata, Property
 
 
