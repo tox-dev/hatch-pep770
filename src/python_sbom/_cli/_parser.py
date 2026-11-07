@@ -116,8 +116,9 @@ def _add_validate(commands: _SubParsersAction[ArgumentParser]) -> None:
         type=_positive_int,
         default=MAX_COMPONENTS,
         metavar="N",
-        help="reject an SBOM listing more than N components, nested ones included, without checking it further, which"
-        f" bounds the work an untrusted SBOM can ask for (default: {MAX_COMPONENTS})",
+        help="reject an SBOM listing more than N components, nested ones included, or larger than 1 MiB plus 1 KiB per"
+        " component, without checking it further, which bounds the work an untrusted SBOM can ask for (default:"
+        f" {MAX_COMPONENTS})",
     )
 
 
