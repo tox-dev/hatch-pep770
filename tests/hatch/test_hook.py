@@ -52,21 +52,34 @@ def test_wheel_carries_valid_sbom(project: Path, build_wheel: BuildWheel) -> Non
     assert validate(build_wheel(project), frozenset({"MIT"})) == []
 
 
-def test_sbom_describes_the_built_wheel(project: Path, build_wheel: BuildWheel) -> None:
+@pytest.fixture
+def retagged_wheel(project: Path, build_wheel: BuildWheel) -> Path:
     (project / "hatch_build.py").write_text(_RETAG, encoding="utf-8")
     configure(project, "[tool.hatch.build.hooks.custom]\n")
-    document = sbom_of(wheel := build_wheel(project))
-    references = {
-        reference["type"]: reference["url"] for reference in document["metadata"]["component"]["externalReferences"]
-    }
-    assert [component["name"] for component in document["components"]] == ["packaging", "late-dependency"]
-    assert references["attestation"] == f"https://pypi.org/integrity/Example/1.0/{wheel.name}/provenance"
-    assert wheel.name == "example-1.0-py3-none-manylinux_2_17_x86_64.whl"
+    return build_wheel(project)
 
 
 def configure(root: Path, tables: str) -> None:
     pyproject = root / "pyproject.toml"
     pyproject.write_text(f"{pyproject.read_text(encoding='utf-8')}{tables}", encoding="utf-8")
+
+
+def test_sbom_lists_dependencies_a_later_hook_adds(retagged_wheel: Path) -> None:
+    assert [component["name"] for component in sbom_of(retagged_wheel)["components"]] == [
+        "packaging",
+        "late-dependency",
+    ]
+
+
+def test_sbom_names_the_retagged_wheel(retagged_wheel: Path) -> None:
+    references = sbom_of(retagged_wheel)["metadata"]["component"]["externalReferences"]
+    assert {reference["type"]: reference["url"] for reference in references}["attestation"] == (
+        f"https://pypi.org/integrity/Example/1.0/{retagged_wheel.name}/provenance"
+    )
+
+
+def test_later_hook_retags_the_wheel(retagged_wheel: Path) -> None:
+    assert retagged_wheel.name == "example-1.0-py3-none-manylinux_2_17_x86_64.whl"
 
 
 def test_project_table_options(project: Path, build_wheel: BuildWheel) -> None:

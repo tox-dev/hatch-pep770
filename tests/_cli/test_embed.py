@@ -17,20 +17,34 @@ if TYPE_CHECKING:
 _SBOM: Final[str] = "native-1.0.dist-info/sboms/native.cdx.json"
 
 
-def test_embed(
+_COMMIT: Final[str] = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
+
+
+@pytest.fixture
+def embed_output(
     project: Path, wheel: Path, tmp_path: Path, install: Install, capsys: pytest.CaptureFixture[str]
-) -> None:
-    commit = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
+) -> str:
     install(site := tmp_path / "site", "Name: meson-python\nVersion: 0.18\n", {})
-    main(["embed", str(wheel), "--root", str(project), "--commit", commit, "--build-env", str(site)])
-    document = embedded(wheel)
-    assert capsys.readouterr().out == f"wrote {_SBOM} into {wheel.name}\n"
-    assert {"name": "native:vcs-commit", "value": commit} in document["metadata"]["component"]["properties"]
-    assert [tool["name"] for tool in document["metadata"]["tools"]["components"][1:]] == ["meson-python"]
+    main(["embed", str(wheel), "--root", str(project), "--commit", _COMMIT, "--build-env", str(site)])
+    return capsys.readouterr().out
+
+
+def test_embed_reports_the_sbom(embed_output: str, wheel: Path) -> None:
+    assert embed_output == f"wrote {_SBOM} into {wheel.name}\n"
+
+
+@pytest.mark.usefixtures("embed_output")
+def test_embed_records_the_commit(wheel: Path) -> None:
+    assert {"name": "native:vcs-commit", "value": _COMMIT} in embedded(wheel)["metadata"]["component"]["properties"]
 
 
 def embedded(wheel: Path) -> Document:
     return json.loads(zipfile.ZipFile(wheel).read(_SBOM))
+
+
+@pytest.mark.usefixtures("embed_output")
+def test_embed_lists_the_build_environment(wheel: Path) -> None:
+    assert [tool["name"] for tool in embedded(wheel)["metadata"]["tools"]["components"][1:]] == ["meson-python"]
 
 
 def test_embed_defaults_to_current_directory(project: Path, wheel: Path, monkeypatch: pytest.MonkeyPatch) -> None:

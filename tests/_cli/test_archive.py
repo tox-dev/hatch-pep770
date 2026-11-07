@@ -68,7 +68,20 @@ def test_archive_embeds_sbom(project: Path, zipapp: Path, tmp_path: Path) -> Non
         pytest.param(0b110, 1, id="super-fast"),
     ],
 )
-def test_archive_embeds_sbom_compressed_as_its_members(project: Path, tmp_path: Path, flags: int, level: int) -> None:
+def test_archive_embeds_sbom_compressed_as_its_members(project: Path, flagged_app: Path, level: int) -> None:
+    main(["archive", str(flagged_app), "--root", str(project), "--build-env", str(project), "--embed"])
+    with zipfile.ZipFile(flagged_app) as handle:
+        entry = handle.getinfo("app.pyz.cdx.json")
+        content = handle.read(entry)
+    data = flagged_app.read_bytes()
+    name_length, extra_length = struct.unpack("<HH", data[entry.header_offset + 26 : entry.header_offset + 30])
+    start = entry.header_offset + 30 + name_length + extra_length
+    compressor = zlib.compressobj(level, zlib.DEFLATED, -zlib.MAX_WBITS)
+    assert data[start : start + entry.compress_size] == compressor.compress(content) + compressor.flush()
+
+
+@pytest.fixture
+def flagged_app(tmp_path: Path, flags: int) -> Path:
     with zipfile.ZipFile(app := tmp_path / "app.pyz", "w", zipfile.ZIP_DEFLATED) as handle:
         handle.writestr("__main__.py", "import app\n")
         handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\n")
@@ -77,15 +90,7 @@ def test_archive_embeds_sbom_compressed_as_its_members(project: Path, tmp_path: 
     for at in (index for index in range(len(data)) if data[index : index + 4] == b"PK\x01\x02"):
         struct.pack_into("<H", data, at + 8, struct.unpack_from("<H", data, at + 8)[0] | flags)
     app.write_bytes(data)
-    main(["archive", str(app), "--root", str(project), "--build-env", str(project), "--embed"])
-    with zipfile.ZipFile(app) as handle:
-        entry = handle.getinfo("app.pyz.cdx.json")
-        content = handle.read(entry)
-    data = app.read_bytes()
-    name_length, extra_length = struct.unpack("<HH", data[entry.header_offset + 26 : entry.header_offset + 30])
-    start = entry.header_offset + 30 + name_length + extra_length
-    compressor = zlib.compressobj(level, zlib.DEFLATED, -zlib.MAX_WBITS)
-    assert data[start : start + entry.compress_size] == compressor.compress(content) + compressor.flush()
+    return app
 
 
 def test_archive_refuses_second_embed(project: Path, zipapp: Path, capsys: pytest.CaptureFixture[str]) -> None:
