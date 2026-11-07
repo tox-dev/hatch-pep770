@@ -8,7 +8,7 @@ pieces the hook uses.
 Add properties to bundled wheels
 --------------------------------
 
-:class:`~hatch_pep770.Pep770BuildHook` calls :meth:`~hatch_pep770.Pep770BuildHook.bundled_wheel_properties` once per
+:class:`~python_sbom.SbomBuildHook` calls :meth:`~python_sbom.SbomBuildHook.bundled_wheel_properties` once per
 bundled wheel. Override it in a hatchling `custom build hook <https://hatch.pypa.io/latest/plugins/build-hook/custom/>`_
 to add properties. They follow ``<project>:bundled-wheel`` and come before those taken from the wheel's metadata. The
 options then live in the custom hook's table, and the SBOM lists the script among the build tools, hashed, because the
@@ -25,7 +25,7 @@ Python versions receive each wheel. Its ``pyproject.toml`` names the supplier an
 
     [build-system]
     build-backend = 'hatchling.build'
-    requires = ['hatch-pep770>=0.1; python_version>='3.11'', 'hatch-vcs>=0.5', 'hatchling>=1.28']
+    requires = ['hatch-vcs>=0.5', 'hatchling>=1.28', 'python-sbom>=0.1']
 
     [tool.hatch.build.hooks.custom]
     path = 'hatch_build.py'
@@ -42,13 +42,13 @@ Python versions receive each wheel. Its ``pyproject.toml`` names the supplier an
     from pathlib import Path
     from typing import TYPE_CHECKING
 
-    from hatch_pep770 import Pep770BuildHook
+    from python_sbom import SbomBuildHook
 
     if TYPE_CHECKING:
-        from hatch_pep770 import Property
+        from python_sbom import Property
 
 
-    class SbomBuildHook(Pep770BuildHook):
+    class VirtualenvSbomHook(SbomBuildHook):
         def bundled_wheel_properties(self, wheel: Path) -> list[Property]:
             embed = Path(self.root) / 'src' / 'virtualenv' / 'seed' / 'wheels' / 'embed' / '__init__.py'
             tree = ast.parse(embed.read_text(encoding='utf-8'))
@@ -62,8 +62,8 @@ Python versions receive each wheel. Its ``pyproject.toml`` names the supplier an
             ]
 
 
-    def get_build_hook() -> type[SbomBuildHook]:
-        return SbomBuildHook
+    def get_build_hook() -> type[VirtualenvSbomHook]:
+        return VirtualenvSbomHook
 
 The ``get_build_hook`` function tells hatchling which class to load, since the module also sees the base class it
 imports. The pip component of the wheel's SBOM then carries these properties, in this order:
@@ -82,16 +82,17 @@ imports. The pip component of the wheel's SBOM then carries these properties, in
     * - ``python:requires-python``
       - ``>=3.10``
 
-A project that still builds on a Python older than hatch-pep770 supports keeps the requirement's environment marker
-and makes the script fall back to hatchling's plain hook there, so those builds produce a wheel without an SBOM:
+A project that still builds on a Python older than python-sbom supports, as virtualenv does on 3.9 and 3.10, puts an
+environment marker on the requirement, ``python-sbom>=0.1; python_version >= '3.11'``. Its script then falls back to
+hatchling's plain hook there, so those builds produce a wheel without an SBOM:
 
 .. code-block:: python
 
     import sys
 
     if sys.version_info >= (3, 11):
-        from hatch_pep770 import Pep770BuildHook as BaseHook
-    else:  # hatch-pep770 needs Python 3.11; older builds get no SBOM
+        from python_sbom import SbomBuildHook as BaseHook
+    else:  # python-sbom needs Python 3.11; older builds get no SBOM
         from hatchling.builders.hooks.plugin.interface import BuildHookInterface as BaseHook
 
 Describe another artifact
@@ -100,18 +101,18 @@ Describe another artifact
 virtualenv also publishes a zipapp. Its SBOM describes what the archive holds and records the same build toolchain as
 the wheel's. The functions the hook uses are public for that:
 
-- :func:`~hatch_pep770.component_from_metadata` turns a distribution's ``METADATA`` into a component, with licenses,
+- :func:`~python_sbom.component_from_metadata` turns a distribution's ``METADATA`` into a component, with licenses,
   project URLs and metadata properties.
-- :func:`~hatch_pep770.build_tools` records the interpreter and every distribution of the running environment, with
+- :func:`~python_sbom.build_tools` records the interpreter and every distribution of the running environment, with
   the files of the pure-Python ones and the dependencies between them.
-- :func:`~hatch_pep770.timestamp` gives the time from ``SOURCE_DATE_EPOCH``.
-- :func:`~hatch_pep770.document` adds the CycloneDX header, with a serial number derived from the content.
+- :func:`~python_sbom.timestamp` gives the time from ``SOURCE_DATE_EPOCH``.
+- :func:`~python_sbom.document` adds the CycloneDX header, with a serial number derived from the content.
 
 .. code-block:: python
 
     import uuid
 
-    from hatch_pep770 import Body, Component, build_tools, document, timestamp
+    from python_sbom import Body, Component, build_tools, document, timestamp
 
     tools, tool_dependencies = build_tools()
     zipapp: Component = {'type': 'application', 'bom-ref': 'pkg:generic/virtualenv.pyz@21.0', 'name': 'virtualenv.pyz'}
@@ -128,20 +129,20 @@ the wheel's. The functions the hook uses are public for that:
     }
     sbom = document(body, uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/pypa/virtualenv/sboms'))
 
-:func:`~hatch_pep770.validate` checks the result the way ``hatch-pep770 validate`` checks a wheel's SBOM.
+:func:`~python_sbom.validate` checks the result the way ``python-sbom validate`` checks a wheel's SBOM.
 
 Use it as a library
 -------------------
 
-:class:`~hatch_pep770.Project` holds the options and writes the SBOM of a wheel from its ``METADATA``, and
-:func:`~hatch_pep770.embed` rewrites a built wheel with it. Pass ``bundled_wheel_properties`` to add properties to
+:class:`~python_sbom.Project` holds the options and writes the SBOM of a wheel from its ``METADATA``, and
+:func:`~python_sbom.embed` rewrites a built wheel with it. Pass ``bundled_wheel_properties`` to add properties to
 bundled wheels without a hatchling hook:
 
 .. code-block:: python
 
     from pathlib import Path
 
-    from hatch_pep770 import Project, embed
+    from python_sbom import Project, embed
 
     project = Project.from_table(
         {'bundled-wheels': ['src/project/wheels/*.whl']},

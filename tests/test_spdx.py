@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Final
 import pytest
 from conftest import BUNDLED, HOOK
 
-from hatch_pep770 import __version__, to_spdx
+from python_sbom import __version__, to_spdx
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from conftest import BuildSbom, BundleWheel
 
-    from hatch_pep770 import Document
+    from python_sbom import Document
 
 _SUPPLIED: Final[str] = f'{HOOK}{BUNDLED}supplier = {{ name = "Example Org" }}\n'
 
@@ -163,7 +163,7 @@ def test_spdx_creation_info(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
     (root / "build.py").write_text(
-        "from hatch_pep770 import Pep770BuildHook\n\n\ndef get_build_hook():\n    return Pep770BuildHook\n",
+        "from python_sbom import SbomBuildHook\n\n\ndef get_build_hook():\n    return SbomBuildHook\n",
         encoding="utf-8",
     )
     cyclonedx: Final[Document] = build_sbom(hook=hook)
@@ -171,7 +171,7 @@ def test_spdx_creation_info(
     namespace, creators = expected
     assert (spdx["documentNamespace"], spdx["creationInfo"], spdx["comment"]) == (
         f"{namespace}{cyclonedx['serialNumber'].removeprefix('urn:uuid:')}",
-        {"created": "2023-11-14T22:13:20Z", "creators": [*creators, f"Tool: hatch-pep770-{__version__}"]},
+        {"created": "2023-11-14T22:13:20Z", "creators": [*creators, f"Tool: python-sbom-{__version__}"]},
         (
             f"Rendered from the CycloneDX SBOM {cyclonedx['serialNumber']} (example.cdx.json), which also carries"
             " per-file hashes and the build formulation."

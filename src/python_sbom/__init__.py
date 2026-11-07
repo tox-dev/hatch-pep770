@@ -1,4 +1,4 @@
-"""Write PEP 770 CycloneDX SBOMs into wheels, from a hatchling build hook or the command line."""
+"""SBOMs for Python distributions: write PEP 770 CycloneDX SBOMs into wheels."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from ._cyclonedx import (
     timestamp,
 )
 from ._embed import embed
-from ._hook import Pep770BuildHook
+from ._hook import SbomBuildHook
 from ._project import BundledWheelProperties, Project, Toml
 from ._spdx import Spdx, to_spdx
 from ._validate import validate, validate_wheel
@@ -30,9 +30,9 @@ __all__ = [
     "Document",
     "Options",
     "OrganizationalEntity",
-    "Pep770BuildHook",
     "Project",
     "Property",
+    "SbomBuildHook",
     "Spdx",
     "Toml",
     "__version__",

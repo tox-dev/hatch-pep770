@@ -39,7 +39,7 @@ Limitations
   depends on the environment the wheel is installed into.
 - The links to the PyPI release and attestation assume the project publishes to PyPI with attestations.
 - A build from an sdist has no git checkout, so its SBOM names no commit.
-- ``hatch-pep770 embed`` records the environment it runs in. Unless the wheel was built without isolation in that
+- ``python-sbom embed`` records the environment it runs in. Unless the wheel was built without isolation in that
   environment, the build tool record does not match the real build.
 - The SPDX rendering leaves out per-file hashes and the build record, which SPDX 2.3 cannot hold.
 - A hook that changes the wheel tag after this one runs leaves the attestation link pointing at the wrong file name.

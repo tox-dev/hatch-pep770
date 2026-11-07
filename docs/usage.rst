@@ -23,7 +23,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.pep770]
+        [tool.hatch.build.hooks.python-sbom]
         supplier = { name = 'Python Packaging Authority', url = ['https://www.pypa.io'] }
 
 ``repository``
@@ -32,7 +32,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.pep770]
+        [tool.hatch.build.hooks.python-sbom]
         repository = 'https://gitlab.com/example/project'
 
 ``default-branch``
@@ -40,7 +40,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.pep770]
+        [tool.hatch.build.hooks.python-sbom]
         default-branch = 'trunk'
 
 ``bundled-wheels``
@@ -49,7 +49,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.pep770]
+        [tool.hatch.build.hooks.python-sbom]
         bundled-wheels = ['src/project/wheels/*.whl']
 
 A bundled wheel whose project URLs point to the same forge account as ``repository`` gets the same ``supplier``. Its
@@ -60,12 +60,12 @@ With another build backend
 --------------------------
 
 A backend other than hatchling, such as `meson-python <https://mesonpy.readthedocs.io/>`_, cannot run the hook.
-``hatch-pep770 embed`` writes the same document into a wheel that backend built, adds the ``RECORD`` row, and keeps
-every other entry of the archive as it was. It reads the options above from a ``[tool.hatch-pep770]`` table:
+``python-sbom embed`` writes the same document into a wheel that backend built, adds the ``RECORD`` row, and keeps
+every other entry of the archive as it was. It reads the options above from a ``[tool.python-sbom]`` table:
 
 .. code-block:: toml
 
-    [tool.hatch-pep770]
+    [tool.python-sbom]
     supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
 Build, then embed, from the project root:
@@ -73,7 +73,7 @@ Build, then embed, from the project root:
 .. code-block:: console
 
     $ python -m build --wheel
-    $ hatch-pep770 embed dist/*.whl
+    $ python-sbom embed dist/*.whl
     wrote turbohtml-1.0.dist-info/sboms/turbohtml.cdx.json into turbohtml-1.0-cp314-cp314-linux_x86_64.whl
 
 The build tool record describes the environment ``embed`` runs in, not the isolated environment the backend built in.
@@ -81,20 +81,20 @@ To record the build toolchain, build without isolation in the same locked enviro
 
 .. code-block:: console
 
-    $ python -m pip install hatch-pep770 meson-python meson ninja
+    $ python -m pip install python-sbom meson-python meson ninja
     $ python -m build --wheel --no-isolation
-    $ hatch-pep770 embed dist/*.whl
+    $ python-sbom embed dist/*.whl
 
 Render it as SPDX
 -----------------
 
-Some tools read only `SPDX <https://spdx.dev/>`_. ``hatch-pep770 spdx`` renders the CycloneDX document as SPDX 2.3
+Some tools read only `SPDX <https://spdx.dev/>`_. ``python-sbom spdx`` renders the CycloneDX document as SPDX 2.3
 JSON:
 
 .. code-block:: console
 
     $ unzip -p dist/project-1.0-py3-none-any.whl '*/sboms/project.cdx.json' > project.cdx.json
-    $ hatch-pep770 spdx project.cdx.json project.spdx.json
+    $ python-sbom spdx project.cdx.json project.spdx.json
 
 The SPDX document keeps the packages, their hashes, licenses and purls, and the containment, dependency and build tool
 relationships. It leaves out the per-file hashes, because SPDX 2.3 wants a SHA-1 for every file and wheel ``RECORD``
@@ -104,14 +104,14 @@ number, so both documents name the same build.
 Check it in CI
 --------------
 
-``hatch-pep770 validate`` needs the ``validate`` extra. It checks each wheel's SBOM against the CycloneDX 1.6 schema,
+``python-sbom validate`` needs the ``validate`` extra. It checks each wheel's SBOM against the CycloneDX 1.6 schema,
 requires the ``urn:uuid`` serial number ``actions/attest`` needs to recognize the format, checks that every reference
 resolves, and validates the SPDX rendering:
 
 .. code-block:: console
 
-    $ python -m pip install 'hatch-pep770[validate]'
-    $ hatch-pep770 validate dist/ --allow-license MIT --allow-license Apache-2.0
+    $ python -m pip install 'python-sbom[validate]'
+    $ python-sbom validate dist/ --allow-license MIT --allow-license Apache-2.0
 
 Each ``--allow-license`` adds an SPDX id that bundled wheels may use. With any given, a bundled wheel whose license the
 ids do not allow fails the check, and so does one that declares a license only by name.

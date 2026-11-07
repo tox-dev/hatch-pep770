@@ -1,19 +1,19 @@
 # Threat model
 
-This model says what hatch-pep770 trusts, where untrusted input enters, and which guarantees hold at each boundary, so a
+This model says what python-sbom trusts, where untrusted input enters, and which guarantees hold at each boundary, so a
 report can be classified as a vulnerability or a bug. [SECURITY.md](SECURITY.md) covers reporting; if the two disagree,
 SECURITY.md wins and we fix this file.
 
-## How hatch-pep770 works
+## How python-sbom works
 
 The build hook runs inside a hatchling wheel build. It reads the wheel's core metadata, the project's license files, the
 wheels the project bundles and the installed distributions of the build environment, and writes a CycloneDX document
-that hatchling adds to the wheel. `hatch-pep770 embed` does the same for a wheel another backend built and rewrites that
-wheel. `hatch-pep770 spdx` and `validate` read a CycloneDX document and write or check its SPDX form.
+that hatchling adds to the wheel. `python-sbom embed` does the same for a wheel another backend built and rewrites that
+wheel. `python-sbom spdx` and `validate` read a CycloneDX document and write or check its SPDX form.
 
 ```mermaid
 flowchart LR
-    project[("Project source, pyproject.toml<br/>(trusted)")] --> hook["hatch-pep770"]
+    project[("Project source, pyproject.toml<br/>(trusted)")] --> hook["python-sbom"]
     env[("Build environment<br/>(trusted)")] --> hook
     bundled[("Bundled wheels<br/>(third-party content)")] -->|"metadata, RECORD, vendor list"| hook
     sbom[("SBOM files given to spdx, validate")] -->|"untrusted JSON"| hook
@@ -26,15 +26,15 @@ flowchart LR
 
 ## Trusted
 
-An attacker who controls any of these already has what hatch-pep770 could give them:
+An attacker who controls any of these already has what python-sbom could give them:
 
 - The project source, its `pyproject.toml` and the build hook script.
 - The build environment and the build backend.
-- The wheel handed to `hatch-pep770 embed`, which the project's own build produced.
+- The wheel handed to `python-sbom embed`, which the project's own build produced.
 
 ## Untrusted inputs
 
-| Input                                   | Comes from                | What hatch-pep770 guarantees                                                              |
+| Input                                   | Comes from                | What python-sbom guarantees                                                               |
 | --------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------- |
 | Metadata and `RECORD` of bundled wheels | Upstream projects         | Read as text, copied into the document as JSON strings; nothing is extracted or executed. |
 | `_vendor/vendor.txt` of bundled wheels  | Upstream projects         | Each line must pin one exact version, or the build fails.                                 |
@@ -58,7 +58,7 @@ Every workflow pins third-party actions to a commit SHA.
 
 ## Severity
 
-- **High:** a bundled wheel or SBOM file that makes hatch-pep770 run code or write outside its output.
+- **High:** a bundled wheel or SBOM file that makes python-sbom run code or write outside its output.
 - **Medium:** an SBOM that misstates a hash, a license or the contents of a wheel.
 - **Low:** a crash on a malformed bundled wheel or SBOM file instead of a clean error.
 
@@ -68,5 +68,5 @@ Every workflow pins third-party actions to a commit SHA.
 
 ## Keeping this current
 
-Revisit this model when hatch-pep770 gains a new input, a new way to run code, or a new place it writes to, and whenever
+Revisit this model when python-sbom gains a new input, a new way to run code, or a new place it writes to, and whenever
 an advisory is published.

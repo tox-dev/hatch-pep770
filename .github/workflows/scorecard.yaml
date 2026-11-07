@@ -13,7 +13,7 @@ permissions: {}
 jobs:
   analysis:
     name: 🛡️ Scorecard analysis
-    if: github.repository == 'tox-dev/hatch-pep770'
+    if: github.repository == 'tox-dev/python-sbom'
     permissions:
       actions: read # read workflow runs for the Packaging check
       checks: read # read check runs for the CI-Tests and SAST checks

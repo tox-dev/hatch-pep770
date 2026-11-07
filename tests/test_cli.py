@@ -6,19 +6,19 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from hatch_pep770 import main, to_spdx
+from python_sbom import main, to_spdx
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from conftest import BuildSbom, MakeWheel
 
-    from hatch_pep770 import Document
+    from python_sbom import Document
 
 
 def test_cli_embed(make_wheel: MakeWheel, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     wheel: Final[Path] = make_wheel("")
-    (tmp_path / "pyproject.toml").write_text('[tool.hatch-pep770]\nsupplier = { name = "Org" }\n', encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text('[tool.python-sbom]\nsupplier = { name = "Org" }\n', encoding="utf-8")
     main(["embed", str(wheel), "--root", str(tmp_path)])
     with zipfile.ZipFile(wheel) as archive:
         document: Final[Document] = json.loads(archive.read("native-1.0.dist-info/sboms/native.cdx.json"))

@@ -17,7 +17,7 @@ commands = [
     { replace = "posargs", default = [
       "--no-cov-on-fail",
       "--cov",
-      "hatch_pep770",
+      "python_sbom",
       "--cov",
       "{tox_root}{/}tests",
       "--cov-config",

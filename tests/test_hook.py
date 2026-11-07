@@ -11,12 +11,12 @@ from conftest import BUNDLED, HOOK, build_hook_sbom
 from hatchling.builders.sdist import SdistBuilder
 from hatchling.builders.wheel import WheelBuilder
 
-from hatch_pep770 import validate_wheel
+from python_sbom import validate_wheel
 
 if TYPE_CHECKING:
     from conftest import BundleWheel, WriteProject
 
-    from hatch_pep770 import Document
+    from python_sbom import Document
 
 
 def test_wheel_embeds_sbom(write_project: WriteProject, tmp_path: Path) -> None:
@@ -99,8 +99,8 @@ def test_custom_build_script_recorded(
     root: Path, write_project: WriteProject, urls: str, references: dict[str, list[dict[str, str]]]
 ) -> None:
     (script := root / "build.py").write_text(
-        "from __future__ import annotations\n\nfrom hatch_pep770 import Pep770BuildHook\n\n\n"
-        "def get_build_hook() -> type[Pep770BuildHook]:\n    return Pep770BuildHook\n",
+        "from __future__ import annotations\n\nfrom python_sbom import SbomBuildHook\n\n\n"
+        "def get_build_hook() -> type[SbomBuildHook]:\n    return SbomBuildHook\n",
         encoding="utf-8",
     )
     project = f'[project]\nname = "example"\nversion = "1.0"\n{urls}\n'

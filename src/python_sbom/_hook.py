@@ -17,16 +17,16 @@ if TYPE_CHECKING:
     from ._cyclonedx import Property
 
 
-class Pep770BuildHook(BuildHookInterface):
+class SbomBuildHook(BuildHookInterface):
     """
     Hatchling build hook that writes a PEP 770 CycloneDX SBOM into the wheel's ``.dist-info/sboms/``.
 
-    Enable it with a ``[tool.hatch.build.hooks.pep770]`` table, or subclass it in a hatchling custom build hook to add
-    project-specific detail through :meth:`bundled_wheel_properties`.
+    Enable it with a ``[tool.hatch.build.hooks.python-sbom]`` table, or subclass it in a hatchling custom build hook to
+    add project-specific detail through :meth:`bundled_wheel_properties`.
 
     """
 
-    PLUGIN_NAME = "pep770"
+    PLUGIN_NAME = "python-sbom"
     _sbom_directory: Path | None = None
 
     def initialize(
@@ -62,7 +62,7 @@ class Pep770BuildHook(BuildHookInterface):
         content = json.dumps(project.describe(metadata, f"{builder.artifact_project_id}-{tag}.whl"), indent=2)
         # written outside self.directory, which is also the wheel's output directory, so no stray copy lands next to
         # the built artifacts
-        self._sbom_directory = Path(tempfile.mkdtemp(prefix="hatch-pep770-"))
+        self._sbom_directory = Path(tempfile.mkdtemp(prefix="python-sbom-"))
         # bytes, so the line endings do not depend on the build machine's OS
         (sbom := self._sbom_directory / sbom_file_name(metadata)).write_bytes(f"{content}\n".encode())
         build_data["sbom_files"].append(str(sbom))
@@ -103,5 +103,5 @@ class Pep770BuildHook(BuildHookInterface):
 
 
 __all__ = [
-    "Pep770BuildHook",
+    "SbomBuildHook",
 ]

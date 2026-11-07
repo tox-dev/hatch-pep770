@@ -7,9 +7,9 @@ requires = [
 ]
 
 [project]
-name = "hatch-pep770"
-import-names = [ "hatch_pep770" ]
-description = "Write PEP 770 CycloneDX SBOMs into wheels, from a hatchling build hook or the command line."
+name = "python-sbom"
+import-names = [ "python_sbom" ]
+description = "SBOMs for Python distributions: write PEP 770 CycloneDX SBOMs into wheels."
 keywords = [
   "cyclonedx",
   "hatch",
@@ -52,13 +52,13 @@ optional-dependencies.validate = [
   "cyclonedx-python-lib[json-validation]>=11.12",
   "spdx-tools>=0.8.5",
 ]
-urls.Changelog = "https://hatch-pep770.readthedocs.io/en/latest/changelog.html"
-urls.Documentation = "https://hatch-pep770.readthedocs.io"
-urls.Homepage = "https://github.com/tox-dev/hatch-pep770"
-urls.Source = "https://github.com/tox-dev/hatch-pep770"
-urls.Tracker = "https://github.com/tox-dev/hatch-pep770/issues"
-scripts.hatch-pep770 = "hatch_pep770.__main__:main"
-entry-points.hatch.pep770 = "hatch_pep770.hooks"
+urls.Changelog = "https://python-sbom.readthedocs.io/en/latest/changelog.html"
+urls.Documentation = "https://python-sbom.readthedocs.io"
+urls.Homepage = "https://github.com/tox-dev/python-sbom"
+urls.Source = "https://github.com/tox-dev/python-sbom"
+urls.Tracker = "https://github.com/tox-dev/python-sbom/issues"
+scripts.python-sbom = "python_sbom.__main__:main"
+entry-points.hatch.python-sbom = "python_sbom.hooks"
 
 [dependency-groups]
 dev = [
@@ -111,7 +111,7 @@ release-prepare = [
 version.source = "vcs"
 metadata.hooks.fancy-pypi-readme.content-type = "text/markdown"
 metadata.hooks.fancy-pypi-readme.fragments = [ { path = "README.md" } ]
-build.hooks.vcs.version-file = "src/hatch_pep770/version.py"
+build.hooks.vcs.version-file = "src/python_sbom/version.py"
 
 [tool.uv]
 dependency-groups.release-news = { requires-python = ">=3.15" }
@@ -149,7 +149,7 @@ lint.per-file-ignores."tests/**/*.py" = [
   "too-many-positional-arguments",        # Test inputs favor explicit parameters over setup objects
 ]
 lint.isort = { known-first-party = [
-  "hatch_pep770",
+  "python_sbom",
 ], required-imports = [
   "from __future__ import annotations",
 ] }
@@ -192,7 +192,7 @@ html.show_contexts = true
 html.skip_covered = false
 
 [tool.towncrier]
-name = "hatch-pep770"
+name = "python-sbom"
 directory = "docs/changelog.d"
 filename = "docs/changelog.rst"
 template = "release_creator.fragments:template.rst.jinja2"

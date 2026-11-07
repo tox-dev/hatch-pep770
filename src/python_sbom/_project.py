@@ -104,7 +104,7 @@ class Project:
 
         :param table: the ``supplier``, ``repository``, ``default-branch`` and ``bundled-wheels`` settings
         :param root: the project directory
-        :param where: where the table lives, for error messages, such as ``[tool.hatch-pep770]``
+        :param where: where the table lives, for error messages, such as ``[tool.python-sbom]``
         :param build_script: path, relative to ``root``, of a build script to list among the build tools
         :param bundled_wheel_properties: extra properties for each bundled wheel
         :returns: the project

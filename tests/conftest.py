@@ -13,10 +13,10 @@ from typing import TYPE_CHECKING, Final, Protocol
 import pytest
 from hatchling.builders.wheel import WheelBuilder
 
-from hatch_pep770 import Project
+from python_sbom import Project
 
 if TYPE_CHECKING:
-    from hatch_pep770 import Document
+    from python_sbom import Document
 
 _PROJECT: Final[str] = """\
 [project]
@@ -34,7 +34,7 @@ optional-dependencies.cli = ["click>=8"]
 urls.Changelog = "https://example.com/changelog"
 urls.Source = "https://github.com/example/example"
 """
-HOOK: Final[str] = "[tool.hatch.build.hooks.pep770]\n"
+HOOK: Final[str] = "[tool.hatch.build.hooks.python-sbom]\n"
 BUNDLED: Final[str] = 'bundled-wheels = ["src/example/wheels/*.whl"]\n'
 _SEEDER: Final[Path] = Path(__file__).parent / "seeder"
 
@@ -189,4 +189,4 @@ def install_tool() -> InstallTool:
 
 @pytest.fixture
 def plain_project(tmp_path: Path) -> Project:
-    return Project.from_table({}, root=tmp_path, where="[tool.hatch-pep770]")
+    return Project.from_table({}, root=tmp_path, where="[tool.python-sbom]")

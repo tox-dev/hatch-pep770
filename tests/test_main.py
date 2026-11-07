@@ -10,12 +10,12 @@ if TYPE_CHECKING:
 
 
 def test_main(capfd: pytest.CaptureFixture[str]) -> None:
-    subprocess.check_call([sys.executable, "-m", "hatch_pep770", "-h"])
+    subprocess.check_call([sys.executable, "-m", "python_sbom", "-h"])
     out, _err = capfd.readouterr()
-    assert out.startswith("usage: hatch-pep770 ")
+    assert out.startswith("usage: python-sbom ")
 
 
 def test_script(capfd: pytest.CaptureFixture[str]) -> None:
-    subprocess.check_call([Path(sys.executable).parent / "hatch-pep770", "-h"])
+    subprocess.check_call([Path(sys.executable).parent / "python-sbom", "-h"])
     out, _err = capfd.readouterr()
-    assert out.startswith("usage: hatch-pep770 ")
+    assert out.startswith("usage: python-sbom ")

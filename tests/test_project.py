@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from conftest import BuildSbom, BundleWheel, InstallTool, WriteProject
     from pytest_mock import MockerFixture
 
-    from hatch_pep770 import Component, Document
+    from python_sbom import Component, Document
 
 from conftest import BUNDLED, HOOK, build_hook_sbom
 
@@ -534,11 +534,15 @@ def test_serial_number_per_project(build_sbom: BuildSbom) -> None:
 @pytest.mark.parametrize(
     ("hook", "message"),
     [
-        pytest.param(f'{HOOK}supplier = "Org"\n', "`supplier` in build hook `pep770` must be a table", id="supplier"),
+        pytest.param(
+            f'{HOOK}supplier = "Org"\n', "`supplier` in build hook `python-sbom` must be a table", id="supplier"
+        ),
         pytest.param(f'{HOOK}supplier = {{ name = "Org", email = "x" }}\n', "`supplier`", id="supplier-unknown-key"),
-        pytest.param(f"{HOOK}repository = 1\n", "`repository` in build hook `pep770` must be a string", id="repo"),
-        pytest.param(f"{HOOK}default-branch = 1\n", "`default-branch` in build hook `pep770` must be", id="branch"),
-        pytest.param(f'{HOOK}bundled-wheels = "*.whl"\n', "`bundled-wheels` in build hook `pep770`", id="bundled"),
+        pytest.param(f"{HOOK}repository = 1\n", "`repository` in build hook `python-sbom` must be a string", id="repo"),
+        pytest.param(
+            f"{HOOK}default-branch = 1\n", "`default-branch` in build hook `python-sbom` must be", id="branch"
+        ),
+        pytest.param(f'{HOOK}bundled-wheels = "*.whl"\n', "`bundled-wheels` in build hook `python-sbom`", id="bundled"),
     ],
 )
 def test_invalid_option(build_sbom: BuildSbom, hook: str, message: str) -> None:

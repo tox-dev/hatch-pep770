@@ -25,8 +25,8 @@ def main(args: Sequence[str] | None = None) -> None:
 
 def _build_parser() -> ArgumentParser:
     parser = ArgumentParser(
-        prog="hatch-pep770",
-        description="Write, convert and check PEP 770 CycloneDX SBOMs of wheels.",
+        prog="python-sbom",
+        description="SBOMs for Python distributions: write, convert and check the PEP 770 CycloneDX SBOMs of wheels.",
         formatter_class=RawDescriptionHelpFormatter,
         epilog=f"running {version} at {Path(__file__).parent}",
     )
@@ -35,7 +35,7 @@ def _build_parser() -> ArgumentParser:
         "embed",
         help="write the SBOM into wheels another build backend built",
         description="Write the SBOM the hatchling hook would write into wheels another build backend built, such as"
-        " meson-python. Settings come from the [tool.hatch-pep770] table of the project's pyproject.toml.",
+        " meson-python. Settings come from the [tool.python-sbom] table of the project's pyproject.toml.",
     )
     embed.add_argument("wheels", type=Path, nargs="+", metavar="wheel", help="wheel to rewrite in place")
     embed.add_argument(
@@ -48,7 +48,7 @@ def _build_parser() -> ArgumentParser:
     spdx.add_argument("source", type=Path, help="CycloneDX JSON file to read")
     spdx.add_argument("target", type=Path, help="SPDX JSON file to write")
     validate = commands.add_parser(
-        "validate", help="validate the SBOMs in wheels", description="Needs the validate extra: hatch-pep770[validate]."
+        "validate", help="validate the SBOMs in wheels", description="Needs the validate extra: python-sbom[validate]."
     )
     validate.add_argument("paths", type=Path, nargs="+", metavar="path", help="wheel, or directory holding wheels")
     validate.add_argument(

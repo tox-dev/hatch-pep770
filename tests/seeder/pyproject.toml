@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = [ "hatch-pep770", "hatchling>=1.28" ]
+requires = [ "hatchling>=1.28", "python-sbom" ]
 
 [project]
 name = "seeder"

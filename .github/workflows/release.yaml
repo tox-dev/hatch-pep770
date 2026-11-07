@@ -21,14 +21,14 @@ jobs:
     with:
       tag: ${{ github.ref_name }}
       changelog: docs/changelog.rst
-      artifact-url: https://pypi.org/project/hatch-pep770/${{ github.ref_name }}/
+      artifact-url: https://pypi.org/project/python-sbom/${{ github.ref_name }}/
   publish:
     name: 🚀 Publish to PyPI
     needs: [build, notes]
     runs-on: ubuntu-26.04
     environment:
       name: release
-      url: https://pypi.org/project/hatch-pep770/${{ github.ref_name }}
+      url: https://pypi.org/project/python-sbom/${{ github.ref_name }}
     permissions:
       id-token: write
     steps:
@@ -49,7 +49,7 @@ jobs:
     permissions:
       contents: write
     with:
-      project: hatch-pep770
+      project: python-sbom
       version: ${{ github.ref_name }}
       tag: ${{ github.ref_name }}
       artifact-pattern: python-package-distributions

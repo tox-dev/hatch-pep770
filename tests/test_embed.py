@@ -12,12 +12,12 @@ from installer import install
 from installer.destinations import SchemeDictionaryDestination
 from installer.sources import WheelFile
 
-from hatch_pep770 import Project, embed, validate_wheel
+from python_sbom import Project, embed, validate_wheel
 
 if TYPE_CHECKING:
     from conftest import MakeWheel
 
-    from hatch_pep770 import Document
+    from python_sbom import Document
 
 _METADATA: Final[str] = "License-Expression: MIT\nProject-URL: Source, https://github.com/example/native\n"
 
@@ -103,7 +103,7 @@ def test_embed_survives_install(make_wheel: MakeWheel, plain_project: Project, t
 def test_embed_uses_project_settings(make_wheel: MakeWheel, tmp_path: Path) -> None:
     wheel: Final[Path] = make_wheel(_METADATA)
     project: Final[Project] = Project.from_table(
-        {"supplier": {"name": "Org"}}, root=tmp_path, where="[tool.hatch-pep770]"
+        {"supplier": {"name": "Org"}}, root=tmp_path, where="[tool.python-sbom]"
     )
     name: Final[str] = embed(wheel, project)
     with zipfile.ZipFile(wheel) as archive:
@@ -116,7 +116,7 @@ def test_embed_bundled_wheel(make_wheel: MakeWheel, tmp_path: Path) -> None:
     seed: Final[Path] = Path(__file__).parent / "seeder" / "src" / "seeder" / "embed" / "pip-1.0-py3-none-any.whl"
     shutil.copyfile(seed, tmp_path / seed.name)
     project: Final[Project] = Project.from_table(
-        {"bundled-wheels": ["*.whl"]}, root=tmp_path, where="[tool.hatch-pep770]"
+        {"bundled-wheels": ["*.whl"]}, root=tmp_path, where="[tool.python-sbom]"
     )
     name: Final[str] = embed(wheel, project)
     with zipfile.ZipFile(wheel) as archive:

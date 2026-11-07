@@ -7,8 +7,8 @@ from pathlib import Path
 from tomllib import loads
 from typing import TYPE_CHECKING, Final
 
-import hatch_pep770
-from hatch_pep770 import __version__
+import python_sbom
+from python_sbom import __version__
 
 if TYPE_CHECKING:
     from docutils.nodes import Element, reference
@@ -19,14 +19,14 @@ if TYPE_CHECKING:
 
 def _inheritance_aliases() -> dict[str, str]:
     aliases: dict[str, str] = {}
-    for entry in hatch_pep770.__all__:
-        to_module = getattr(getattr(hatch_pep770, entry), "__module__", "")
+    for entry in python_sbom.__all__:
+        to_module = getattr(getattr(python_sbom, entry), "__module__", "")
         # first instance wins
-        aliases.setdefault(f"{to_module}{'.' if to_module else ''}{entry}", f"{hatch_pep770.__name__}.{entry}")
+        aliases.setdefault(f"{to_module}{'.' if to_module else ''}{entry}", f"{python_sbom.__name__}.{entry}")
     return aliases
 
 
-project: Final[str] = "hatch-pep770"
+project: Final[str] = "python-sbom"
 _NOW: Final[datetime] = datetime.now(tz=UTC)
 globals()["copyright"] = f"2026-{_NOW.year}"
 version: Final[str] = __version__
@@ -48,7 +48,7 @@ exclude_patterns: Final[list[str]] = ["changelog.d/*"]
 autosectionlabel_maxdepth: Final[int] = 2
 
 html_theme: Final[str] = "furo"
-html_title: Final[str] = "hatch-pep770"
+html_title: Final[str] = "python-sbom"
 html_last_updated_fmt: Final[str] = _NOW.isoformat()
 html_static_path: Final[list[str]] = ["_static"]
 html_css_files: Final[list[str]] = ["changelog-toc.css"]
@@ -67,7 +67,7 @@ autodoc_default_options: Final[dict[str, bool | str]] = {
 
 intersphinx_mapping: Final[dict[str, tuple[str, None]]] = {"python": ("https://docs.python.org/3.11", None)}
 extlinks: Final[dict[str, tuple[str, str]]] = {
-    "pr": ("https://github.com/tox-dev/hatch-pep770/pull/%s", "#%s"),
+    "pr": ("https://github.com/tox-dev/python-sbom/pull/%s", "#%s"),
     "user": ("https://github.com/%s", "@%s"),
 }
 nitpicky: Final[bool] = True

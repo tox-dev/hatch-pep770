@@ -10,5 +10,5 @@ __pycache__
 **.pyc
 /build
 dist
-src/hatch_pep770/version.py
+src/python_sbom/version.py
 /uv.lock

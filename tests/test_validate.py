@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from hatch_pep770 import validate, validate_wheel
+from python_sbom import validate, validate_wheel
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from conftest import BuildSbom
     from pytest_mock import MockerFixture
 
-    from hatch_pep770 import Component, Document
-    from hatch_pep770._cyclonedx import License
+    from python_sbom import Component, Document
+    from python_sbom._cyclonedx import License
 
 _ALLOWED: Final[frozenset[str]] = frozenset({"Apache-2.0", "BSD-3-Clause", "MIT"})
 
@@ -39,7 +39,7 @@ def _denied(expression: str, bom_ref: str = "pkg:pypi/bundled@1.0") -> str:
 @pytest.fixture
 def sbom_document(build_sbom: BuildSbom, mocker: MockerFixture) -> Document:
     # schema validation time grows with the document, and the test environment's packages are irrelevant here
-    mocker.patch("hatch_pep770._cyclonedx.distributions", autospec=True, return_value=[])
+    mocker.patch("python_sbom._cyclonedx.distributions", autospec=True, return_value=[])
     return build_sbom()
 
 

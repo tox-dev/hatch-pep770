@@ -4,10 +4,10 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from hatch_pep770 import Pep770BuildHook
+from python_sbom import SbomBuildHook
 
 if TYPE_CHECKING:
-    from hatch_pep770 import Property
+    from python_sbom import Property
 
 
 def get_build_hook() -> type[SeederBuildHook]:
@@ -15,7 +15,7 @@ def get_build_hook() -> type[SeederBuildHook]:
     return SeederBuildHook
 
 
-class SeederBuildHook(Pep770BuildHook):
+class SeederBuildHook(SbomBuildHook):
     def bundled_wheel_properties(self, wheel: Path) -> list[Property]:
         # the table that decides which Python versions receive each wheel, read without importing the package
         tree = ast.parse((Path(self.root) / "src" / "seeder" / "embed" / "bundle.py").read_text(encoding="utf-8"))

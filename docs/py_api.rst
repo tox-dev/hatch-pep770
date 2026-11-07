@@ -1,80 +1,80 @@
 Python API
 ==========
 
-Everything below is importable from ``hatch_pep770``.
+Everything below is importable from ``python_sbom``.
 
-.. autodata:: hatch_pep770.__version__
+.. autodata:: python_sbom.__version__
 
 Build hook
 ----------
 
-.. autoclass:: hatch_pep770.Pep770BuildHook
+.. autoclass:: python_sbom.SbomBuildHook
    :members: bundled_wheel_properties
 
 Wheels from any build backend
 -----------------------------
 
-.. autoclass:: hatch_pep770.Project
+.. autoclass:: python_sbom.Project
    :members: from_table, describe
    :exclude-members: root, supplier, repository, default_branch, bundled_wheels, build_script, bundled_wheel_properties
 
-.. autoclass:: hatch_pep770.BundledWheelProperties
+.. autoclass:: python_sbom.BundledWheelProperties
    :members: __call__
 
-.. autofunction:: hatch_pep770.embed
+.. autofunction:: python_sbom.embed
 
 Building blocks
 ---------------
 
-.. autofunction:: hatch_pep770.component_from_metadata
+.. autofunction:: python_sbom.component_from_metadata
 
-.. autofunction:: hatch_pep770.build_tools
+.. autofunction:: python_sbom.build_tools
 
-.. autofunction:: hatch_pep770.timestamp
+.. autofunction:: python_sbom.timestamp
 
-.. autofunction:: hatch_pep770.document
+.. autofunction:: python_sbom.document
 
 SPDX and validation
 -------------------
 
-.. autofunction:: hatch_pep770.to_spdx
+.. autofunction:: python_sbom.to_spdx
 
-.. autofunction:: hatch_pep770.validate
+.. autofunction:: python_sbom.validate
 
-.. autofunction:: hatch_pep770.validate_wheel
+.. autofunction:: python_sbom.validate_wheel
 
 Types
 -----
 
 These are :class:`~typing.TypedDict` types of the JSON documents, for type checking code that builds or reads them.
 
-.. autoclass:: hatch_pep770.Document
+.. autoclass:: python_sbom.Document
    :no-members:
 
-.. autoclass:: hatch_pep770.Body
+.. autoclass:: python_sbom.Body
    :no-members:
 
-.. autoclass:: hatch_pep770.Component
+.. autoclass:: python_sbom.Component
    :no-members:
 
-.. autoclass:: hatch_pep770.Dependency
+.. autoclass:: python_sbom.Dependency
    :no-members:
 
-.. autoclass:: hatch_pep770.OrganizationalEntity
+.. autoclass:: python_sbom.OrganizationalEntity
    :no-members:
 
-.. autoclass:: hatch_pep770.Property
+.. autoclass:: python_sbom.Property
    :no-members:
 
-.. autoclass:: hatch_pep770.Spdx
+.. autoclass:: python_sbom.Spdx
    :no-members:
 
-.. autodata:: hatch_pep770.Toml
+.. autodata:: python_sbom.Toml
 
 Command line
 ------------
 
-.. autofunction:: hatch_pep770.main
+.. autofunction:: python_sbom.main
 
-.. autoclass:: hatch_pep770.Options
+.. autoclass:: python_sbom.Options
    :members:

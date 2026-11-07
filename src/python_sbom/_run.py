@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 def run(options: Options) -> bool:
     if options.command == "embed":
         pyproject = options.root / "pyproject.toml"
-        table = tomllib.loads(pyproject.read_text(encoding="utf-8")).get("tool", {}).get("hatch-pep770", {})
-        project = Project.from_table(table, root=options.root, where=f"[tool.hatch-pep770] of {pyproject}")
+        table = tomllib.loads(pyproject.read_text(encoding="utf-8")).get("tool", {}).get("python-sbom", {})
+        project = Project.from_table(table, root=options.root, where=f"[tool.python-sbom] of {pyproject}")
         for wheel in options.wheels:
             sys.stdout.write(f"wrote {embed(wheel, project)} into {wheel.name}\n")
         return True

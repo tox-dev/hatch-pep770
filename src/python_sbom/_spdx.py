@@ -111,7 +111,7 @@ def to_spdx(bom: Document) -> Spdx:
             "creators": [
                 *supplier,
                 *(f"Tool: {tool['name']}-{tool['version']}" for tool in tools if tool["type"] == "application"),
-                f"Tool: hatch-pep770-{version}",
+                f"Tool: python-sbom-{version}",
             ],
         },
         "packages": [_package(component, f"{namespace}:") for component in components],
