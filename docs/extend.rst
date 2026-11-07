@@ -57,16 +57,34 @@ and the wheels:
     [tool.python-sbom]
     supplier = { name = 'Python Packaging Authority', url = ['https://www.pypa.io'] }
     bundled-wheels = ['src/virtualenv/seed/wheels/embed/*.whl']
+    content-provider = 'tasks.sbom_content:VirtualenvContent'
 
-virtualenv still builds on Python versions python-sbom does not support, so its ``hatch_build.py`` loads the hook
-only where the requirement's marker installs it, and hands over a provider that reads the table by name, without
-importing the package. The test suite builds a project with virtualenv's layout from this script:
+virtualenv still builds on Python versions python-sbom does not support, so its ``hatch_build.py`` loads the hook only
+where the requirement's marker installs it, and falls back to hatchling's plain hook elsewhere:
+
+.. code-block:: python
+
+    import sys
+
+    if sys.version_info >= (3, 11):
+        from python_sbom.hatch import SbomBuildHook
+    else:  # python-sbom needs Python 3.11, so builds on older interpreters carry no SBOM
+        from hatchling.builders.hooks.plugin.interface import BuildHookInterface as SbomBuildHook
+
+
+    def get_build_hook():
+        return SbomBuildHook
+
+The ``get_build_hook`` function tells hatchling which class to load. The SBOM lists the script among the build tools,
+hashed. The provider reads the table next to each wheel through the context, by name, without importing the package,
+and names the project's supplier as the wheels' supplier, since virtualenv bundles only PyPA's own projects. The test
+suite builds a project with virtualenv's layout with the same provider, handed over from a hook subclass:
 
 .. literalinclude:: ../tests/_seeder/hatch_build.py
     :language: python
+    :pyobject: BundleSupport
 
-The ``get_build_hook`` function tells hatchling which class to load, since the module also sees the base class it
-imports. The SBOM lists the script among the build tools, hashed. The pip component then carries these properties,
+The pip component then carries these properties,
 in this order:
 
 .. list-table::
@@ -101,5 +119,7 @@ hears of every bundled wheel, and its context reads the archive's files:
     wrote virtualenv.pyz.cdx.json
     wrote virtualenv.pyz.cdx.json into virtualenv.pyz
 
-The document takes its options, source revision, build time and toolchain the way the wheel's does, so both name the
-project alike. ``--embed`` adds it to the archive's top level, where ``python-sbom validate virtualenv.pyz`` finds it.
+The document takes its options, source revision and toolchain the way the wheel's does, so both name the project
+alike. Its build time comes from ``SOURCE_DATE_EPOCH``, or the current time without it; set ``SOURCE_DATE_EPOCH`` for
+both builds to give them one time. ``--embed`` adds the document to the archive's top level, where ``python-sbom
+validate virtualenv.pyz`` finds it.

@@ -49,13 +49,13 @@ points at what a package imports, and a dashed arrow at what it imports only for
         class hook,cli,collect,api edge;
         class generate,validate,formats,wheel,model core;
 
-The model imports nothing else of the package but its errors, and only the hook imports hatchling, so the provider API
-and the command line work without it. Every package raises subclasses of :class:`~python_sbom.SbomError`, which the command
-line reports without a traceback.
+The model imports nothing else of the package but its errors, and only the hook imports hatchling, so the provider
+API and the command line work without it. Every package raises subclasses of :class:`~python_sbom.SbomError`, which the
+command line reports without a traceback.
 
 The one extension point is the :class:`~python_sbom.ContentProvider`, which every entry point loads from the
-``content-provider`` option. A hatchling custom hook can override :meth:`~python_sbom.hatch.SbomBuildHook.content_provider` to build the provider
-itself.
+``content-provider`` option. A hatchling custom hook can override
+:meth:`~python_sbom.hatch.SbomBuildHook.content_provider` to build the provider itself.
 
 What the SBOM records
 ---------------------
