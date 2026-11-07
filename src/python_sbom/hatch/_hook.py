@@ -11,6 +11,7 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.builders.utils import get_reproducible_timestamp
 from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 
+from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._revision import REVISION_FILE, default_revision
 from python_sbom._collect._settings import settings_from_table
 from python_sbom._errors import SettingsError
@@ -79,7 +80,9 @@ class SbomBuildHook(BuildHookInterface):
     def finalize(
         self,
         version: str,
-        build_data: dict[str, Any],  # ruff: ignore[unused-method-argument] # simplint: ignore[SMP602] # hatchling's signature
+        build_data: (  # ruff: ignore[unused-method-argument] # hatchling's signature
+            dict[str, Any]  # simplint: ignore[SMP602] # see above
+        ),
         artifact_path: str,
     ) -> None:
         """
@@ -95,7 +98,6 @@ class SbomBuildHook(BuildHookInterface):
         if self.target_name != "wheel" or version == "editable":
             return
         # what a wheel needs loads only when one is built, so an sdist build stays light
-        from python_sbom._collect._content import resolve_provider  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._collect._source import wheel_request  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._generate._embed import embed_into  # ruff: ignore[import-outside-top-level] # see above
@@ -126,8 +128,6 @@ class SbomBuildHook(BuildHookInterface):
         :returns: the ``content-provider`` option's provider, or one that adds nothing
 
         """
-        from python_sbom._collect._content import resolve_provider  # ruff: ignore[import-outside-top-level] # see finalize
-
         return resolve_provider(None, self._settings, Path(self.root))[0]
 
     @cached_property
