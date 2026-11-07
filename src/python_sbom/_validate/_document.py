@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Final, TypeAlias
 
 from python_sbom._errors import MissingExtraError
 from python_sbom._formats._spdx import render_spdx
+from python_sbom._model._document import walk_components
 from python_sbom._model._names import SBOM_FILE
-from python_sbom.version import __version__
 
 if TYPE_CHECKING:
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated
@@ -108,7 +108,7 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
     if not _SERIAL.fullmatch(serial := loaded.get("serialNumber", "")):
         return [f"serialNumber must be a urn:uuid: RFC 4122 UUID, got {serial!r}"]
     # the SPDX rendering of a document whose references are broken only repeats those problems
-    problems: Final[list[str]] = _reference_problems(loaded) or spdx_problems(render_spdx(loaded, __version__))
+    problems: Final[list[str]] = _reference_problems(loaded) or spdx_problems(render_spdx(loaded))
     if allowed_licenses is not None:
         problems.extend(license_problems(loaded["components"], allowed_licenses))
     return problems
@@ -163,7 +163,7 @@ def is_document(value: object) -> TypeIs[Document]:
 def _reference_problems(document: Document) -> list[str]:
     root: Final[Component] = document["metadata"]["component"]
     tools: Final[list[Component]] = document["metadata"]["tools"]["components"]
-    components: Final[list[Component]] = _walk([root, *document["components"], *tools])
+    components: Final[list[Component]] = list(walk_components([root, *document["components"], *tools]))
     if nameless := sorted(component["name"] for component in components if "bom-ref" not in component):
         return [f"components lack a bom-ref: {nameless}"]
     problems: Final[list[str]] = []
@@ -188,17 +188,6 @@ def _reference_problems(document: Document) -> list[str]:
             if unknown := referenced - tool_refs:
                 problems.append(f"workflow {workflow['uid']} references unknown tools: {sorted(unknown)}")
     return problems
-
-
-def _walk(components: list[Component]) -> list[Component]:
-    # iterative, so a deeply nested hostile document cannot exhaust the stack
-    found: Final[list[Component]] = []
-    pending: Final[list[Component]] = list(components)
-    while pending:
-        component = pending.pop()
-        found.append(component)
-        pending.extend(component.get("components", []))
-    return found
 
 
 __all__ = [

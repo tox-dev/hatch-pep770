@@ -87,9 +87,9 @@ def add_archive(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 def _archive(options: Options) -> bool:
     from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._collect._revision import revision_reader  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._formats._json import dumps  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._generate._archive import describe_archive  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
-    from python_sbom._generate._embed import revision_reader  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._wheel._archive import append_member  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
 
     root = Path.cwd() if options.root is None else options.root

@@ -42,7 +42,8 @@ fails the build with a pointer to ``[tool.python-sbom]``.
         repository = 'https://gitlab.com/example/project'
 
 ``default-branch``
-    The branch in links to files of the repository, ``main`` by default.
+    The branch in links to files of the repository when the build's commit is unknown or the checkout has
+    uncommitted changes, ``main`` by default; otherwise the links name the commit.
 
     .. code-block:: toml
 

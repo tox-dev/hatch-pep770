@@ -192,7 +192,7 @@ def _declare(spdx: Spdx, expression: str, text: str | None = None) -> None:
 )
 def test_spdx_problems_match_spdx_tools(describe: Describe, mutate: Callable[[Spdx], None], valid: bool) -> None:
     # the full validation of spdx-tools, whose time grows with the square of the elements, is the reference
-    spdx = render_spdx(describe("Requires-Dist: click\n"), "1")
+    spdx = render_spdx(describe("Requires-Dist: click\n"))
     mutate(spdx)
     reference = validate_full_spdx_document(JsonLikeDictParser().parse(dict(spdx)))
     assert spdx_problems(spdx) == [f"SPDX rendering invalid: {message.validation_message}" for message in reference]
@@ -207,4 +207,4 @@ def test_many_packages_pass(describe: Describe) -> None:
     ]
     document["components"].extend(libraries)
     document["dependencies"][0].setdefault("dependsOn", []).extend(f"r{index}" for index in range(20_000))
-    assert spdx_problems(render_spdx(document, "1")) == []
+    assert spdx_problems(render_spdx(document)) == []
