@@ -35,9 +35,9 @@ def load_content_provider(spec: str | None, root: Path) -> ContentProvider:
 
 
 def provider_script(provider: ContentProvider, root: Path) -> PurePosixPath | None:
-    # a provider defined in the project shapes the document, so the SBOM lists its module among the build tools
-    # a method's code names the file even for a module hatchling loaded outside the import system, such as a custom
-    # hook script
+    # a provider defined in the project shapes the document, so the SBOM lists its module among the build tools a
+    # method's code names the file even for a module hatchling loaded outside the import system, such as a custom hook
+    # script
     cls = type(provider)
     methods = (
         function.__code__.co_filename

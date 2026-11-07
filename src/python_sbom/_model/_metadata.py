@@ -54,8 +54,8 @@ class CoreMetadata:
         return next(iter(self.values(field)), None)
 
     def values(self, field: Field) -> list[str]:
-        # packaging keeps a field it cannot take as declared, such as a single-use field given twice, out of raw and
-        # its values as written in unparsed, from where they are still described
+        # packaging keeps a field it cannot take as declared, such as a single-use field given twice, out of raw and its
+        # values as written in unparsed, from where they are still described
         match self.raw.get(field):
             case str() as value:
                 return [value]

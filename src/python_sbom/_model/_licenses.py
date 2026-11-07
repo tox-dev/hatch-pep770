@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 
 
 def licenses(metadata: CoreMetadata) -> list[License]:
-    # a License-Expression is taken as declared; otherwise each License field and License classifier name is
-    # declared, and the SPDX ids they map to are added as concluded
+    # a License-Expression is taken as declared; otherwise each License field and License classifier name is declared,
+    # and the SPDX ids they map to are added as concluded
     if expression := metadata.first("license_expression"):
         try:
             return [{"expression": canonicalize_license_expression(expression), "acknowledgement": "declared"}]

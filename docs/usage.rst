@@ -5,22 +5,22 @@ With hatchling
 --------------
 
 Add the hook to ``build-system.requires`` and enable it with an empty table, as the quick start on the :doc:`index`
-shows. The ``hatch`` extra brings hatchling; the command line needs none. The hook writes the SBOM into wheels only:
-an editable wheel carries none, and an sdist carries the source revision instead, so a wheel built from it still names
-its commit.
+shows. The ``hatch`` extra brings hatchling; the command line needs none. The hook writes the SBOM into wheels only: an
+editable wheel carries none, and an sdist carries the source revision instead, so a wheel built from it still names its
+commit.
 
 The hook writes the SBOM once hatchling has written the wheel, so the document describes the final file name and
 metadata, whatever dependencies or tag other hooks changed. Hatchling runs the hooks in the order of their tables; see
-its `build hook documentation <https://hatch.pypa.io/latest/config/build/#build-hooks>`_. The order does not matter
-for this hook.
+its `build hook documentation <https://hatch.pypa.io/latest/config/build/#build-hooks>`_. The order does not matter for
+this hook.
 
 Options
 ~~~~~~~
 
 The options live in a ``[tool.python-sbom]`` table, the one place the hook, ``python-sbom embed`` and ``python-sbom
-archive`` all read, so every SBOM of a project names it alike. Each option is optional; an unknown key fails the
-build, so a typo cannot pass silently. The hook's own table holds only hatchling's options, and a python-sbom option
-there fails the build with a pointer to ``[tool.python-sbom]``.
+archive`` all read, so every SBOM of a project names it alike. Each option is optional; an unknown key fails the build,
+so a typo cannot pass silently. The hook's own table holds only hatchling's options, and a python-sbom option there
+fails the build with a pointer to ``[tool.python-sbom]``.
 
 ``supplier``
     The organization that supplies the project: a table with a ``name`` string and an optional ``url`` string array. It
@@ -85,8 +85,8 @@ The SBOM names the commit the wheel was built from. It takes the first source th
    the sdist, as ``python -m build`` and ``uv build`` do by default, keeps the commit;
 #. the ``node`` line of an expanded ``.git_archival.txt``, for a ``git archive``.
 
-A commit must be a full hash of 40 or 64 hex characters. A checkout with changes, including untracked files that are
-not ignored, gets a ``<project>:vcs-dirty`` property, and the link to the revision says so. When git cannot read the
+A commit must be a full hash of 40 or 64 hex characters. A checkout with changes, including untracked files that are not
+ignored, gets a ``<project>:vcs-dirty`` property, and the link to the revision says so. When git cannot read the
 checkout, the build warns and moves on to the next source. git runs with ``core.fsmonitor`` off, so a repository's
 configuration runs no command.
 
@@ -94,8 +94,8 @@ With another build backend
 --------------------------
 
 A backend other than hatchling, such as `meson-python <https://mesonbuild.com/meson-python/>`_, cannot run the hook.
-``python-sbom embed`` writes the same document into a wheel that backend built, adds the ``RECORD`` row, and keeps
-every other entry of the archive as it was. It reads the options from ``[tool.python-sbom]``:
+``python-sbom embed`` writes the same document into a wheel that backend built, adds the ``RECORD`` row, and keeps every
+other entry of the archive as it was. It reads the options from ``[tool.python-sbom]``:
 
 .. code-block:: toml
 
@@ -124,9 +124,9 @@ there:
     $ python -m build --wheel --no-isolation
     $ python-sbom embed dist/*.whl
 
-``auditwheel repair`` renames a Linux wheel to its ``manylinux`` tag, so the attestation link in an SBOM written
-before the repair names the old file. Run ``embed`` on the repaired wheel, after ``auditwheel``, to describe the file
-you publish; auditwheel's own SBOM in the same directory stays untouched.
+``auditwheel repair`` renames a Linux wheel to its ``manylinux`` tag, so the attestation link in an SBOM written before
+the repair names the old file. Run ``embed`` on the repaired wheel, after ``auditwheel``, to describe the file you
+publish; auditwheel's own SBOM in the same directory stays untouched.
 
 Render it as SPDX
 -----------------
@@ -146,10 +146,10 @@ number, so both documents name the same build.
 Check it in CI
 --------------
 
-``python-sbom validate`` needs the ``validate`` extra, and says so when it is missing. It checks every CycloneDX SBOM
-in each wheel's ``.dist-info/sboms`` against the CycloneDX 1.6 schema. For the SBOM python-sbom wrote, it also requires
-the ``urn:uuid`` serial number ``actions/attest`` needs to recognize the format, checks that every reference resolves,
-and validates the SPDX rendering; an SBOM another tool wrote, such as auditwheel's, gets the schema check alone:
+``python-sbom validate`` needs the ``validate`` extra, and says so when it is missing. It checks every CycloneDX SBOM in
+each wheel's ``.dist-info/sboms`` against the CycloneDX 1.6 schema. For the SBOM python-sbom wrote, it also requires the
+``urn:uuid`` serial number ``actions/attest`` needs to recognize the format, checks that every reference resolves, and
+validates the SPDX rendering; an SBOM another tool wrote, such as auditwheel's, gets the schema check alone:
 
 .. code-block:: console
 
@@ -160,8 +160,8 @@ Each ``--allow-license`` adds an SPDX id that bundled wheels may use. With any g
 ids do not allow fails the check, and so does one that declares a license only by name.
 
 Before anything else, ``validate`` counts the components an SBOM lists, nested ones included, and fails an SBOM that
-lists more than 100,000 without checking it further. Every check takes time in proportion to the count, about a tenth
-of a second for 100,000 components, so the cap bounds what an untrusted SBOM can ask of a CI job while staying far above
+lists more than 100,000 without checking it further. Every check takes time in proportion to the count, about a tenth of
+a second for 100,000 components, so the cap bounds what an untrusted SBOM can ask of a CI job while staying far above
 real SBOMs: every file of the wheel, of each bundled wheel and of each build tool counts, and virtualenv's wheel lists
 about 5,200. Raise the cap for an SBOM you expect to be larger, or lower it to refuse more:
 

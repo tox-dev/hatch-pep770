@@ -245,8 +245,8 @@ def _output(command: list[str]) -> str:
 
 
 def _snapshot(source: Path, target: Path) -> Path:
-    # a clone of the checkout plus its uncommitted changes, so builds write their version files there and never into
-    # the checkout itself; --shared borrows its objects, so even a detached HEAD resolves
+    # a clone of the checkout plus its uncommitted changes, so builds write their version files there and never into the
+    # checkout itself; --shared borrows its objects, so even a detached HEAD resolves
     shutil.rmtree(target, ignore_errors=True)
     _run(["git", "clone", "--quiet", "--shared", "--no-checkout", str(source), str(target)])
     head = _output(["git", "-C", str(source), "rev-parse", "HEAD"]).strip()

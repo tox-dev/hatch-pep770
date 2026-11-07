@@ -2,14 +2,14 @@
 CLI entry point: ``python -m bench <command>``, run from the project root or with the root on ``PYTHONPATH``.
 
 ``prepare`` builds the fixtures into the work directory, the only command that needs the network. ``run`` times each
-case in its own pyperf process tree, one JSON file per case under ``<out>/<python>/``; options after ``--`` reach
-pyperf and override the case's defaults (e.g. ``--rigorous``).
+case in its own pyperf process tree, one JSON file per case under ``<out>/<python>/``; options after ``--`` reach pyperf
+and override the case's defaults (e.g. ``--rigorous``).
 
 ``profile`` runs each case once under cProfile after an untimed warm-up, and under py-spy with ``--py-spy``. ``report``
 renders pyperf JSON as a Markdown table, ``compare`` two result directories side by side, and ``list`` prints the cases.
 
-The timed process imports whichever python-sbom the running interpreter has installed, so comparing two revisions
-means running the same harness from two environments.
+The timed process imports whichever python-sbom the running interpreter has installed, so comparing two revisions means
+running the same harness from two environments.
 """
 
 from __future__ import annotations

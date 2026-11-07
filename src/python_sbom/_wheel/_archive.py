@@ -89,8 +89,8 @@ def open_archive(file: Path | IO[bytes], where: str) -> Generator[zipfile.ZipFil
 
 
 def _wheel_source(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, str]:
-    # installer refuses a wheel whose file name does not parse, or that holds other than one top-level .dist-info,
-    # since a second one is a decoy that could decide whose metadata counts
+    # installer refuses a wheel whose file name does not parse, or that holds other than one top-level .dist-info, since
+    # a second one is a decoy that could decide whose metadata counts
     try:
         wheel = WheelFile(archive)
         dist_info = wheel.dist_info_dir

@@ -81,8 +81,8 @@ def _recorded_files(distribution: Distribution) -> list[RecordRow]:
         distribution
     ):
         return []
-    # RECORD read once and as written: Distribution.files would stat every row to drop files missing on disk, and
-    # build a path object for each, while the SBOM lists what the install recorded
+    # RECORD read once and as written: Distribution.files would stat every row to drop files missing on disk, and build
+    # a path object for each, while the SBOM lists what the install recorded
     try:
         entries: Final[list[RecordEntry]] = list(
             starmap(RecordEntry.from_elements, parse_record_file((distribution.read_text("RECORD") or "").splitlines()))

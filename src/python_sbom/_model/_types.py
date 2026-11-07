@@ -145,9 +145,9 @@ class Evidence(TypedDict):
     identity: list[Identity]
 
 
-#: A CycloneDX 1.6 component: a distribution, an application, the interpreter or a file, as a dictionary with the
-#: keys the CycloneDX component object defines, of which python-sbom uses ``type``, ``bom-ref``, ``name``,
-#: ``version``, ``purl``, ``supplier``, ``authors``, ``description``, ``licenses``, ``copyright``, ``hashes``,
+#: A CycloneDX 1.6 component: a distribution, an application, the interpreter or a file, as a dictionary with the keys
+#: the CycloneDX component object defines, of which python-sbom uses ``type``, ``bom-ref``, ``name``, ``version``,
+#: ``purl``, ``supplier``, ``authors``, ``description``, ``licenses``, ``copyright``, ``hashes``,
 #: ``externalReferences``, ``properties``, ``evidence`` and the nested ``components``.
 Component = TypedDict(
     "Component",

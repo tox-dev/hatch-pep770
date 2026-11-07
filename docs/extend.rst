@@ -16,10 +16,10 @@ it adds.
 - :meth:`~python_sbom.ContentProvider.bundled_wheel` returns the properties and the supplier of one bundled wheel. The
   properties follow ``<prefix>:bundled-wheel`` and come before those from the wheel's metadata. A wheel's supplier comes
   only from here, never from the wheel's own metadata.
-- :meth:`~python_sbom.ContentProvider.contributions` returns extra top-level components, the dependencies between
-  them, root properties and build tools, such as the C libraries a native wheel links. They join the document before
-  the root's dependencies and the serial number derive from it. The build fails when a ``bom-ref`` repeats, a
-  dependency names one that no component has, or a root property uses the project's own prefix.
+- :meth:`~python_sbom.ContentProvider.contributions` returns extra top-level components, the dependencies between them,
+  root properties and build tools, such as the C libraries a native wheel links. They join the document before the
+  root's dependencies and the serial number derive from it. The build fails when a ``bom-ref`` repeats, a dependency
+  names one that no component has, or a root property uses the project's own prefix.
 
 Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and the
 hook, ``python-sbom embed`` and ``python-sbom archive`` all load it. When the provider's class lives in the project, the
@@ -74,9 +74,9 @@ where the requirement's marker installs it, and falls back to hatchling's plain 
         return SbomBuildHook
 
 The ``get_build_hook`` function tells hatchling which class to load. The SBOM lists the script among the build tools,
-hashed. The provider reads the table next to each wheel through the context, by name, without importing the package,
-and names the project's supplier as the wheels' supplier, since virtualenv bundles only PyPA's own projects. The test
-suite builds a project with virtualenv's layout with the same provider, handed over from a hook subclass:
+hashed. The provider reads the table next to each wheel through the context, by name, without importing the package, and
+names the project's supplier as the wheels' supplier, since virtualenv bundles only PyPA's own projects. The test suite
+builds a project with virtualenv's layout with the same provider, handed over from a hook subclass:
 
 .. literalinclude:: ../tests/_seeder/hatch_build.py
     :language: python
@@ -104,11 +104,11 @@ A bundled wheel is named by its path inside the artifact, so the wheel's SBOM an
 Describe another archive
 ------------------------
 
-virtualenv also publishes a zipapp, ``virtualenv.pyz``, that holds virtualenv's own ``.dist-info`` at its top level,
-the wheels it seeds, and its dependencies unpacked under ``__virtualenv__/``. ``python-sbom archive`` describes such an
-archive the way the hook describes a wheel: the archive's own files, the project's distribution, each wheel it
-bundles as a ``.whl`` member, and each one unpacked into a directory with a ``.dist-info``. The content provider
-hears of every bundled wheel, and its context reads the archive's files:
+virtualenv also publishes a zipapp, ``virtualenv.pyz``, that holds virtualenv's own ``.dist-info`` at its top level, the
+wheels it seeds, and its dependencies unpacked under ``__virtualenv__/``. ``python-sbom archive`` describes such an
+archive the way the hook describes a wheel: the archive's own files, the project's distribution, each wheel it bundles
+as a ``.whl`` member, and each one unpacked into a directory with a ``.dist-info``. The content provider hears of every
+bundled wheel, and its context reads the archive's files:
 
 .. code-block:: console
 

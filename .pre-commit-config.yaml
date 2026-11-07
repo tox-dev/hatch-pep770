@@ -1,5 +1,5 @@
-# prek runs lower priorities first and equal ones concurrently, so hooks sharing a priority never write the same
-# file; pre-commit ignores the key and runs hooks in file order.
+# prek runs lower priorities first and equal ones concurrently, so hooks sharing a priority never write the same file;
+# pre-commit ignores the key and runs hooks in file order.
 ci:
   autoupdate_schedule: quarterly
 default_language_version:

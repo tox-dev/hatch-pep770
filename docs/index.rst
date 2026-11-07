@@ -1,8 +1,8 @@
 python-sbom
 ===========
 
-SBOMs for Python distributions. python-sbom writes a `CycloneDX <https://cyclonedx.org/>`_ 1.6 SBOM into every wheel
-you build, at ``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where `PEP 770
+SBOMs for Python distributions. python-sbom writes a `CycloneDX <https://cyclonedx.org/>`_ 1.6 SBOM into every wheel you
+build, at ``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where `PEP 770
 <https://peps.python.org/pep-0770/>`_ tells installers to keep SBOMs, so they land in the environment next to the
 installed package, where scanners look for them.
 
@@ -17,8 +17,8 @@ and packages of the build environment. A third party can use that record to rebu
 Quick start
 -----------
 
-For a project built with `hatchling <https://hatch.pypa.io/latest/>`_, add the hook to the build requirements and
-enable it in ``pyproject.toml``:
+For a project built with `hatchling <https://hatch.pypa.io/latest/>`_, add the hook to the build requirements and enable
+it in ``pyproject.toml``:
 
 .. code-block:: toml
 

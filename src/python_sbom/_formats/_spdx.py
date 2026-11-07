@@ -152,8 +152,8 @@ def render_spdx(bom: Document, tool_version: str) -> Spdx:
 
 
 def _tools(metadata: Metadata) -> tuple[list[Component], list[str]]:
-    # CycloneDX 1.5 lists the tools as components; earlier versions as a bare array, whose entries carry no bom-ref,
-    # so they become creators alone
+    # CycloneDX 1.5 lists the tools as components; earlier versions as a bare array, whose entries carry no bom-ref, so
+    # they become creators alone
     tools: Final[Tools | list[_LegacyTool] | None] = metadata.get("tools")
     if isinstance(tools, list):
         return [], [_creator(name, tool.get("version")) for tool in tools if (name := tool.get("name"))]

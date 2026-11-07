@@ -64,8 +64,8 @@ def validate_document(
 
 def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
     # every document must conform to the CycloneDX 1.6 schema; one python-sbom wrote must also carry the urn:uuid serial
-    # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy
-    # a missing extra fails every document alike, while importing it, half a second, waits until the cheap census passes
+    # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy a
+    # missing extra fails every document alike, while importing it, half a second, waits until the cheap census passes
     if any(find_spec(name) is None for name in _EXTRA):
         msg = "validation needs the validate extra: pip install 'python-sbom[validate]'"
         raise MissingExtraError(msg)
