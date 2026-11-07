@@ -80,17 +80,17 @@ class SbomBuildHook(BuildHookInterface):
         if self.target_name != "wheel" or version == "editable":
             return
         # what a wheel needs loads only when one is built, so an sdist build stays light
-        from python_sbom._collect._content import provider_script  # ruff: ignore[import-outside-top-level] # see above
+        from python_sbom._collect._content import resolve_provider  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._collect._source import wheel_request  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._generate._embed import embed_into  # ruff: ignore[import-outside-top-level] # see above
 
         root = Path(self.root)
-        content = self.content_provider()
+        content, provider_scripts = resolve_provider(self.content_provider(), self._settings, root)
         # a custom hook script shapes the document, as a provider defined in the project does, so the SBOM lists both
         # among the build tools
         own = [PurePosixPath(self.config.get("path", DEFAULT_BUILD_SCRIPT))] if self.PLUGIN_NAME == "custom" else []
-        scripts = tuple(dict.fromkeys([*own, *filter(None, [provider_script(content, root)])]))
+        scripts = tuple(dict.fromkeys([*own, *provider_scripts]))
         # hatchling's own fixed time for a reproducible build when SOURCE_DATE_EPOCH is unset, so the SBOM agrees with
         # the zip entries hatchling wrote
         facts = collect_facts(
@@ -111,9 +111,9 @@ class SbomBuildHook(BuildHookInterface):
         :returns: the ``content-provider`` option's provider, or one that adds nothing
 
         """
-        from python_sbom._collect._content import load_content_provider  # ruff: ignore[import-outside-top-level] # see finalize
+        from python_sbom._collect._content import resolve_provider  # ruff: ignore[import-outside-top-level] # see finalize
 
-        return load_content_provider(self._settings.content_provider, Path(self.root))
+        return resolve_provider(None, self._settings, Path(self.root))[0]
 
     @cached_property
     def _settings(self) -> Settings:

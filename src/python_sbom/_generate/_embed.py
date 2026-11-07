@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
-from python_sbom._collect._content import load_content_provider, provider_script
+from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._facts import collect_facts
 from python_sbom._collect._revision import commit_revision, default_revision
 from python_sbom._collect._settings import settings_from_pyproject
@@ -27,13 +27,12 @@ def embed_sbom(
     wheel: Path,
     root: Path,
     *,
-    content: ContentProvider | None,
-    commit: str | None = None,
+    provider: ContentProvider | str | None,
+    commit: str | None,
     build_env: Sequence[str] | None,
 ) -> str:
     settings = settings_from_pyproject(root, {})
-    content = content or load_content_provider(settings.content_provider, root)
-    scripts = tuple(filter(None, [provider_script(content, root)]))
+    content, scripts = resolve_provider(provider, settings, root)
     return embed_into(
         wheel,
         wheel_request(wheel, root, settings, scripts),

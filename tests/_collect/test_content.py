@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING
 
 import pytest
 
+import python_sbom
 from python_sbom import ContentProvider
-from python_sbom._collect._content import load_content_provider, provider_script
+from python_sbom._collect._content import resolve_provider
 from python_sbom._errors import SettingsError
+
+if TYPE_CHECKING:
+    from python_sbom import Settings
 
 
 @pytest.fixture
@@ -40,24 +46,55 @@ class Holder:
         pytest.param("Holder.nested", id="dotted-attribute"),
     ],
 )
-def test_load_from_project(tmp_path: Path, module: str, attribute: str) -> None:
-    provider = load_content_provider(f"{module}:{attribute}", tmp_path)
-    assert (type(provider).__name__, provider_script(provider, tmp_path)) == (
-        "Content",
-        PurePosixPath(f"tools/{tmp_path.name}.py"),
+def test_load_from_project(tmp_path: Path, module: str, attribute: str, settings: Settings) -> None:
+    provider, scripts = resolve_provider(f"{module}:{attribute}", settings, tmp_path)
+    assert (type(provider).__name__, scripts) == ("Content", (PurePosixPath(f"tools/{tmp_path.name}.py"),))
+
+
+def test_option_names_the_provider(tmp_path: Path, module: str, settings: Settings) -> None:
+    configured = dataclasses.replace(settings, content_provider=f"{module}:Content")
+    assert type(resolve_provider(None, configured, tmp_path)[0]).__name__ == "Content"
+
+
+def test_given_name_wins_over_option(tmp_path: Path, module: str, settings: Settings) -> None:
+    configured = dataclasses.replace(settings, content_provider="not_a_module_anywhere:Content")
+    assert type(resolve_provider(f"{module}:Content", configured, tmp_path)[0]).__name__ == "Content"
+
+
+def test_given_instance_wins_over_option(tmp_path: Path, settings: Settings) -> None:
+    # even one that is falsy, as a provider defining __len__ may be
+    class Empty(ContentProvider):
+        def __len__(self) -> int:
+            return 0
+
+    given = Empty()
+    configured = dataclasses.replace(settings, content_provider="not_a_module_anywhere:Content")
+    assert resolve_provider(given, configured, tmp_path) == (given, ())
+
+
+def test_no_provider_adds_nothing_and_is_no_tool(settings: Settings) -> None:
+    # python-sbom's own no-op provider is no build tool, not even when python-sbom builds itself
+    provider, scripts = resolve_provider(None, settings, Path(python_sbom.__file__).parents[2])
+    assert (type(provider), scripts) == (ContentProvider, ())
+
+
+def test_project_base_classes_are_tools(tmp_path: Path, settings: Settings) -> None:
+    # a base class in the project shapes the document as much as the provider class itself
+    (package := tmp_path / f"bases_{tmp_path.name}").mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "base.py").write_text(
+        "from python_sbom import ContentProvider\n\n\nclass Base(ContentProvider):\n    pass\n", encoding="utf-8"
     )
+    (package / "leaf.py").write_text("from .base import Base\n\n\nclass Leaf(Base):\n    pass\n", encoding="utf-8")
+    _, scripts = resolve_provider(f"{package.name}.leaf:Leaf", settings, tmp_path)
+    assert scripts == (PurePosixPath(f"{package.name}/leaf.py"), PurePosixPath(f"{package.name}/base.py"))
 
 
-def test_provider_outside_project_is_no_tool(tmp_path: Path) -> None:
-    provider = load_content_provider("python_sbom:ContentProvider", tmp_path)
-    assert (type(provider), provider_script(provider, tmp_path)) == (ContentProvider, None)
-
-
-def test_provider_class_outside_project_is_no_tool(tmp_path: Path) -> None:
+def test_provider_class_outside_project_is_no_tool(tmp_path: Path, settings: Settings) -> None:
     class Local(ContentProvider):
         pass
 
-    assert provider_script(Local(), tmp_path) is None
+    assert resolve_provider(Local(), settings, tmp_path)[1] == ()
 
 
 @pytest.mark.parametrize(
@@ -71,11 +108,11 @@ def test_provider_class_outside_project_is_no_tool(tmp_path: Path) -> None:
         pytest.param("MODULE:missing", "does not load from .*: .* has no attribute 'missing'", id="missing-attribute"),
     ],
 )
-def test_load_refuses(tmp_path: Path, module: str, spec: str, message: str) -> None:
+def test_load_refuses(tmp_path: Path, module: str, spec: str, message: str, settings: Settings) -> None:
     with pytest.raises(SettingsError, match=message):
-        load_content_provider(spec.replace("MODULE", module), tmp_path)
+        resolve_provider(spec.replace("MODULE", module), settings, tmp_path)
 
 
-def test_provider_without_source_is_no_tool(tmp_path: Path) -> None:
+def test_provider_without_source_is_no_tool(tmp_path: Path, settings: Settings) -> None:
     provider = type("Generated", (ContentProvider,), {"__module__": "not_a_loaded_module"})()
-    assert provider_script(provider, tmp_path) is None
+    assert resolve_provider(provider, settings, tmp_path)[1] == ()

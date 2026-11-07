@@ -34,13 +34,13 @@ def add_embed(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _embed(options: Options) -> bool:
-    from python_sbom._collect._content import load_content_provider  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._generate._embed import embed_sbom  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
 
     root = Path.cwd() if options.root is None else options.root
-    content = None if options.content_provider is None else load_content_provider(options.content_provider, root)
     for wheel in options.wheels:
-        written = embed_sbom(wheel, root, content=content, commit=options.commit, build_env=options.build_env)
+        written = embed_sbom(
+            wheel, root, provider=options.content_provider, commit=options.commit, build_env=options.build_env
+        )
         sys.stdout.write(f"wrote {written} into {wheel.name}\n")
     return True
 
@@ -93,7 +93,6 @@ def add_archive(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _archive(options: Options) -> bool:
-    from python_sbom._collect._content import load_content_provider  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._formats._json import dumps  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._generate._archive import describe_archive  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
@@ -105,7 +104,7 @@ def _archive(options: Options) -> bool:
         root,
         options.archive,
         facts=facts,
-        content=None if options.content_provider is None else load_content_provider(options.content_provider, root),
+        provider=options.content_provider,
         build_scripts=tuple(PurePosixPath(script) for script in options.build_scripts or []),
     )
     name = f"{options.archive.name}.cdx.json"

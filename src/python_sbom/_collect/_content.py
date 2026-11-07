@@ -4,14 +4,30 @@ import inspect
 import pkgutil
 import sys
 from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING, Final
 
 from python_sbom._errors import SettingsError
 from python_sbom._model._content import ContentProvider
 
+if TYPE_CHECKING:
+    from python_sbom._model._inputs import Settings
 
-def load_content_provider(spec: str | None, root: Path) -> ContentProvider:
-    if spec is None:
-        return ContentProvider()
+
+def resolve_provider(
+    given: ContentProvider | str | None, settings: Settings, root: Path
+) -> tuple[ContentProvider, tuple[PurePosixPath, ...]]:
+    # an instance wins, as a hook subclass builds one; a module:attribute string overrides the option, as the CLI's flag
+    # does; otherwise the content-provider option, or the provider that adds nothing
+    if isinstance(given, ContentProvider):
+        provider = given
+    elif (spec := settings.content_provider if given is None else given) is None:
+        provider = ContentProvider()
+    else:
+        provider = _load(spec, root)
+    return provider, _provider_scripts(provider, root)
+
+
+def _load(spec: str, root: Path) -> ContentProvider:
     # resolve_name also takes a bare module, which is no provider
     module_name, _, attribute = spec.partition(":")
     if not (module_name and attribute):
@@ -34,23 +50,32 @@ def load_content_provider(spec: str | None, root: Path) -> ContentProvider:
     return provider
 
 
-def provider_script(provider: ContentProvider, root: Path) -> PurePosixPath | None:
-    # a provider defined in the project shapes the document, so the SBOM lists its module among the build tools a
-    # method's code names the file even for a module hatchling loaded outside the import system, such as a custom hook
-    # script
-    cls = type(provider)
+def _provider_scripts(provider: ContentProvider, root: Path) -> tuple[PurePosixPath, ...]:
+    # each class of the provider defined in the project shapes the document, a base class or mixin as much as the class
+    # itself, so the SBOM lists their modules among the build tools; python-sbom's own ContentProvider adds nothing
+    found: Final[dict[PurePosixPath, None]] = {}
+    for cls in type(provider).__mro__:
+        if cls in {ContentProvider, object}:
+            continue
+        if (source := _source(cls)) is None:
+            continue
+        resolved, base = Path(source).resolve(), root.resolve()
+        if resolved.is_relative_to(base):
+            found[PurePosixPath(resolved.relative_to(base).as_posix())] = None
+    return tuple(found)
+
+
+def _source(cls: type) -> str | None:
+    # a method's code names the file even for a module hatchling loaded outside the import system, such as a custom
+    # hook script
     methods = (
         function.__code__.co_filename
         for _, function in inspect.getmembers(cls, inspect.isfunction)
         if function.__qualname__.startswith(f"{cls.__qualname__}.")
     )
-    if (source := next(methods, getattr(sys.modules.get(cls.__module__), "__file__", None))) is None:
-        return None
-    resolved, base = Path(source).resolve(), root.resolve()
-    return PurePosixPath(resolved.relative_to(base).as_posix()) if resolved.is_relative_to(base) else None
+    return next(methods, getattr(sys.modules.get(cls.__module__), "__file__", None))
 
 
 __all__ = [
-    "load_content_provider",
-    "provider_script",
+    "resolve_provider",
 ]

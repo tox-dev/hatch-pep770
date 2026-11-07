@@ -34,7 +34,7 @@ def test_bundled_wheel_named_by_its_path_inside_the_wheel(tmp_path: Path, write_
             "pkg-1.0.dist-info/METADATA": b"Name: pkg\nVersion: 1.0\n",
         },
     )
-    written = embed_sbom(wheel, root, content=Table("table.txt"), build_env=[str(root)])
+    written = embed_sbom(wheel, root, provider=Table("table.txt"), commit=None, build_env=[str(root)])
     (pip,) = json.loads(zipfile.ZipFile(wheel).read(written))["components"]
     assert (pip["bom-ref"], pip["properties"][:2]) == (
         "bundled:pkg/wheels/pip-1.0-py3-none-any.whl",
@@ -112,7 +112,7 @@ Provides-Extra: cli
         },
         compression=0,
     )
-    written = embed_sbom(wheel, root, content=None, commit="a" * 40, build_env=[str(site)])
+    written = embed_sbom(wheel, root, provider=None, commit="a" * 40, build_env=[str(site)])
     with zipfile.ZipFile(wheel) as archive:
         sbom = archive.read(written)
         members = [

@@ -64,7 +64,7 @@ def archive(tmp_path: Path, write_wheel: WriteWheel) -> Path:
 def document(project: Path, archive: Path) -> Document:
     facts = collect_facts(project, revision_reader(_COMMIT))
     return describe_archive(
-        project, archive, facts=facts, content=Bundles("loaded.json"), build_scripts=(PurePosixPath("build_app.py"),)
+        project, archive, facts=facts, provider=Bundles("loaded.json"), build_scripts=(PurePosixPath("build_app.py"),)
     )
 
 
@@ -128,7 +128,7 @@ def test_archive_of_dirty_checkout(project: Path, archive: Path) -> None:
     facts = dataclasses.replace(
         collect_facts(project, revision_reader(_COMMIT)), revision=Revision(commit=_COMMIT, dirty=True)
     )
-    root = describe_archive(project, archive, facts=facts)["metadata"]["component"]
+    root = describe_archive(project, archive, facts=facts, provider=None, build_scripts=())["metadata"]["component"]
     assert (root.get("properties", [])[-1], root.get("externalReferences", [])[-1]["comment"]) == (
         {"name": "app:vcs-dirty", "value": "true"},
         "source revision, with uncommitted changes",
@@ -201,7 +201,9 @@ def test_archive_contributions(document: Document) -> None:
 
 def test_archive_defaults(tmp_path: Path, archive: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'app'\n", encoding="utf-8")
-    document = describe_archive(tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)))
+    document = describe_archive(
+        tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)), provider=None, build_scripts=()
+    )
     assert ("supplier" in document["metadata"], document["metadata"]["component"].get("properties")) == (False, [])
 
 
@@ -212,9 +214,9 @@ def test_archive_content_provider_option(tmp_path: Path, archive: Path) -> None:
     (tmp_path / f"{tmp_path.name}.py").write_text(
         "from python_sbom import ContentProvider\n\n\nclass Provider(ContentProvider):\n    pass\n", encoding="utf-8"
     )
-    tools = describe_archive(tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)))["metadata"][
-        "tools"
-    ]["components"]
+    tools = describe_archive(
+        tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)), provider=None, build_scripts=()
+    )["metadata"]["tools"]["components"]
     assert tools[0]["name"] == f"{tmp_path.name}.py"
 
 
@@ -227,4 +229,6 @@ def test_archive_without_project_distribution(tmp_path: Path) -> None:
     with pytest.raises(
         WheelError, match=r"bare\.pyz holds 0 top-level \.dist-info/METADATA, not the one naming the project"
     ):
-        describe_archive(tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)))
+        describe_archive(
+            tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)), provider=None, build_scripts=()
+        )

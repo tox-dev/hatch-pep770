@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Final
 
 from packageurl import PackageURL
 
-from python_sbom._collect._content import load_content_provider, provider_script
+from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._settings import settings_from_pyproject
 from python_sbom._collect._source import copyright_notice, read_bundled_wheels
 from python_sbom._errors import WheelError
@@ -41,14 +41,14 @@ def describe_archive(
     archive: Path,
     *,
     facts: BuildFacts,
-    content: ContentProvider | None = None,
-    build_scripts: Sequence[PurePosixPath] = (),
+    provider: ContentProvider | str | None,
+    build_scripts: Sequence[PurePosixPath],
 ) -> Document:
     # the archive's top-level .dist-info names the project; every other .dist-info marks a wheel bundled unpacked into
     # its parent directory and every .whl member a bundled wheel; other files belong to the deepest distribution that
     # holds them, or, at the top level, to the archive
     settings = settings_from_pyproject(root, {})
-    content = content or load_content_provider(settings.content_provider, root)
+    content, provider_scripts = resolve_provider(provider, settings, root)
     with tempfile.TemporaryDirectory() as directory:
         held = _read_archive(root, archive, Path(directory), settings, content)
         contributions = checked_contributions(content.contributions(held.reader.context), content)
@@ -59,7 +59,7 @@ def describe_archive(
         dependencies=vendored_dependencies(held.components),
         build_scripts=[
             BuildScript(path=path, sha256=hashlib.sha256((root / str(path)).read_bytes()).hexdigest())
-            for path in [*build_scripts, *filter(None, [provider_script(content, root)])]
+            for path in dict.fromkeys([*build_scripts, *provider_scripts])
         ],
         version=held.metadata.version,
         sbom_file=f"{archive.name}.cdx.json",
