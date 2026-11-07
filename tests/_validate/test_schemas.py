@@ -10,6 +10,7 @@ from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDi
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 
 from python_sbom._errors import MissingExtraError
+from python_sbom._formats._json import dumps
 from python_sbom._formats._spdx import render_spdx
 from python_sbom._validate._document import validate_document
 from python_sbom._validate._schemas import schema_error, spdx_problems
@@ -79,6 +80,15 @@ def test_validate_with_broken_extra(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(MissingExtraError, match=r"pip install 'python-sbom\[validate\]'") as raised:
         validate_document(b'{"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1}', None)
     assert isinstance(raised.value.__cause__, ImportError)
+
+
+def test_license_policy_with_broken_extra(describe: Describe, monkeypatch: pytest.MonkeyPatch) -> None:
+    # the license parser loads only for a policy, and a broken one reports the extra as missing there too
+    document = dumps(describe())
+    monkeypatch.setitem(sys.modules, "python_sbom._validate._licenses", None)
+    assert validate_document(document, None) == []
+    with pytest.raises(MissingExtraError, match=r"pip install 'python-sbom\[validate\]'"):
+        validate_document(document, frozenset({"MIT"}))
 
 
 def test_schema_error_names_the_path() -> None:

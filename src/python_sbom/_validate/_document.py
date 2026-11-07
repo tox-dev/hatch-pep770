@@ -78,7 +78,6 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
         return census
     # find_spec sees only the top-level modules, not a dependency of theirs that is missing or broken
     try:
-        from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
         from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
     except ImportError as error:
         raise MissingExtraError(missing_extra) from error
@@ -102,6 +101,11 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
     # the SPDX rendering of a document whose references are broken only repeats those problems
     problems: Final[list[str]] = _reference_problems(loaded) or spdx_problems(render_spdx(loaded))
     if allowed_licenses is not None:
+        # the license parser loads only for a policy to judge against, as most checks have none
+        try:
+            from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # see above
+        except ImportError as error:
+            raise MissingExtraError(missing_extra) from error
         problems.extend(license_problems(loaded["components"], allowed_licenses))
     return problems
 
