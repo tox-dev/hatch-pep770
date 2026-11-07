@@ -101,3 +101,15 @@ def test_metadata_the_validating_parser_rejects(text: str, described: tuple[str,
     component = component_from_metadata(parse_metadata(text))
     names = [entry["license"]["name"] for entry in component["licenses"] if "name" in entry["license"]]
     assert (component["name"], component["version"], names) == described
+
+
+@pytest.mark.parametrize("newline", [pytest.param("\n", id="lf"), pytest.param("\r\n", id="crlf")])
+def test_body_is_not_read(newline: str) -> None:
+    # the headers end at the first empty line; a line of whitespace still continues the one before
+    text = newline.join(["Name: a", "Version: 1", "Summary: one", "  more", "", "Author: in the body", ""])
+    metadata = parse_metadata(text)
+    assert (metadata.first("summary"), metadata.first("author"), "description" in metadata.raw) == (
+        f"one{newline}  more",
+        None,
+        False,
+    )

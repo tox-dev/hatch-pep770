@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final, Literal, TypeAlias
 
@@ -27,13 +28,16 @@ Field: TypeAlias = Literal[
     "version",
 ]
 
+# the empty line that ends the headers, as the email parser ends them; a line of whitespace continues a header
+_BODY: Final[re.Pattern[str]] = re.compile(r"^\r?\n", re.MULTILINE)
 # unparsed keys a field by its header name, lowercased, which is the RawMetadata key with dashes except for these
 _HEADERS: Final[dict[str, str]] = {"classifiers": "classifier", "license_files": "license-file"}
 
 
 def parse_metadata(text: str) -> CoreMetadata:
-    # not validated: the SBOM describes a distribution whose metadata breaks the specification as well, as written
-    raw, unparsed = parse_email(text)
+    # not validated: the SBOM describes a distribution whose metadata breaks the specification as well, as written; the
+    # body holds the long description, which nothing reads, and parsing it took most of the time
+    raw, unparsed = parse_email(text[: match.start()] if (match := _BODY.search(text)) else text)
     return CoreMetadata(raw=raw, unparsed=unparsed)
 
 
