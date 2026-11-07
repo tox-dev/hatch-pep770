@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from python_sbom._model._types import Component, Document
 
 # a JSON value, as json.loads hands it over
-_Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
+Json: TypeAlias = "str | int | float | bool | list[Json] | dict[str, Json] | None"
 # the schema leaves these optional, yet every document python-sbom writes carries them and the checks below read them
 _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("metadata", "timestamp"),
@@ -36,8 +36,8 @@ _MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
 MAX_COMPONENTS: Final[int] = 100_000
 # the modules of the validate extra
 _EXTRA: Final[tuple[str, ...]] = ("jsonschema_rs", "license_expression", "spdx_tools")
-# an exception's message can quote the hostile value that caused it
-_MAX_TEXT: Final[int] = 200
+# an exception's message, or a schema error's, can quote the hostile value that caused it, which runs to megabytes
+MAX_TEXT: Final[int] = 200
 # the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread
 # stack; the SBOMs python-sbom and other tools write nest about a dozen levels deep
 _MAX_DEPTH: Final[int] = 128
@@ -59,7 +59,7 @@ def validate_document(
         # the JSON parser recurses once per level, how deep it gets depends on the Python version
         return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
     except Exception as error:  # ruff: ignore[blind-except] # a hostile document may trip any check, see above
-        return [f"could not be checked, {type(error).__name__}: {str(error)[:_MAX_TEXT]}"]
+        return [f"could not be checked, {type(error).__name__}: {str(error)[:MAX_TEXT]}"]
 
 
 def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
@@ -98,13 +98,13 @@ def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components:
     return problems
 
 
-def _census_problems(document: _Json, max_components: int) -> list[str]:
+def _census_problems(document: Json, max_components: int) -> list[str]:
     # counts the components and bom-refs and measures the depth in one linear pass before the schema vouches for any
     # shape; iterative, so deep nesting cannot exhaust the stack. Nested components count too: the schema checks every
     # components array, and one array may hold them all, so only the total bounds its work
     components = 0
     refs: Final[Counter[str]] = Counter()
-    pending: Final[list[tuple[_Json, int]]] = [(document, 1)]
+    pending: Final[list[tuple[Json, int]]] = [(document, 1)]
     while pending:
         node, depth = pending.pop()
         if depth > _MAX_DEPTH:
@@ -131,7 +131,7 @@ def _census_problems(document: _Json, max_components: int) -> list[str]:
     return []
 
 
-def _has(value: _Json, path: tuple[str, ...]) -> bool:
+def _has(value: Json, path: tuple[str, ...]) -> bool:
     for key in path:
         if not isinstance(value, dict) or key not in value:
             return False
@@ -187,6 +187,8 @@ def _walk(components: list[Component]) -> list[Component]:
 
 __all__ = [
     "MAX_COMPONENTS",
+    "MAX_TEXT",
+    "Json",
     "is_document",
     "validate_document",
 ]

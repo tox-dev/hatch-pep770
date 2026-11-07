@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from typing import TYPE_CHECKING, Final, TypeAlias
+from typing import TYPE_CHECKING, Final
 
 import pytest
 
@@ -20,9 +20,8 @@ if TYPE_CHECKING:
     from python_sbom import Component, License
     from python_sbom._model._inputs import BuildFacts
     from python_sbom._model._types import Document
+    from python_sbom._validate._document import Json
 
-# a JSON value, as json.loads hands it over
-_Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
 # what auditwheel writes: CycloneDX 1.4 conventions, a legacy tools array, no timestamp
 _FOREIGN: Final[str] = json.dumps({
     "bomFormat": "CycloneDX",
@@ -171,7 +170,7 @@ def test_component_without_bom_ref(describe: Describe) -> None:
         ),
     ],
 )
-def test_schema_valid_variations_pass(describe: Describe, mutate: Callable[[dict[str, _Json]], None]) -> None:
+def test_schema_valid_variations_pass(describe: Describe, mutate: Callable[[dict[str, Json]], None]) -> None:
     loaded = json.loads(dumps(describe()))
     mutate(loaded)
     assert validate_document(json.dumps(loaded), None) == []
@@ -277,5 +276,5 @@ def test_unexpected_error_is_reported(describe: Describe, mocker: MockerFixture)
         pytest.param([], False, id="not-an-object"),
     ],
 )
-def test_is_document(value: _Json, expected: bool) -> None:
+def test_is_document(value: Json, expected: bool) -> None:
     assert is_document(value) is expected

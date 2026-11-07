@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from importlib.resources import files
-from typing import TYPE_CHECKING, Final, TypeAlias
+from typing import TYPE_CHECKING, Final
 
 from jsonschema_rs import Draft7Validator, Registry
 from spdx_tools.spdx.parser.error import SPDXParsingError
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
+
+from ._document import MAX_TEXT
 
 if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
@@ -16,13 +18,10 @@ if TYPE_CHECKING:
 
     from python_sbom._formats._spdx import Spdx
 
-# a JSON value, as json.loads hands it over
-_Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
-# the message quotes the offending value, which for a document root runs to megabytes
-_MAX_TEXT: Final[int] = 200
+    from ._document import Json
 
 
-def schema_error(document: _Json) -> str | None:
+def schema_error(document: Json) -> str | None:
     detail: Final[ValidationError | None] = next(_VALIDATOR.iter_errors(document), None)
     if detail is None:
         return None
@@ -30,7 +29,7 @@ def schema_error(document: _Json) -> str | None:
         f"[{step}]" if isinstance(step, int) else f".{step}" if step.isidentifier() else f"[{step!r}]"
         for step in detail.instance_path
     )
-    return f"{detail.message[:_MAX_TEXT]} at {f'${steps}'[:_MAX_TEXT]}"
+    return f"{detail.message[:MAX_TEXT]} at {f'${steps}'[:MAX_TEXT]}"
 
 
 def spdx_problems(spdx: Spdx) -> list[str]:
@@ -46,7 +45,7 @@ def spdx_problems(spdx: Spdx) -> list[str]:
 # references serves the newest; Apache-2.0, see the LICENSE beside them. Format assertion is on, as in CycloneDX's own
 # Draft 7 validation, and offline, so a reference missing from the registry fails instead of reaching the network
 _SCHEMAS: Final[Traversable] = files(__package__) / "schemas"
-_REFERENCED: Final[list[dict[str, _Json]]] = [
+_REFERENCED: Final[list[dict[str, Json]]] = [
     json.loads((_SCHEMAS / name).read_text(encoding="utf-8")) for name in ("spdx.schema.json", "jsf-0.82.schema.json")
 ]
 _VALIDATOR: Final[Draft7Validator] = Draft7Validator(

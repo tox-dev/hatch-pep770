@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import sys
 from importlib.resources import files
-from typing import TypeAlias
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -11,8 +11,8 @@ from python_sbom._errors import MissingExtraError
 from python_sbom._validate._document import validate_document
 from python_sbom._validate._schemas import schema_error
 
-# a JSON value, as json.loads hands it over
-_Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
+if TYPE_CHECKING:
+    from python_sbom._validate._document import Json
 
 
 @pytest.mark.parametrize(
@@ -65,12 +65,12 @@ def test_validate_without_extra(monkeypatch: pytest.MonkeyPatch, module: str) ->
 
 
 def test_schema_error_names_the_path() -> None:
-    document: _Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}
+    document: Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}
     assert schema_error(document) == '"one" is not of type "integer" at $.version'
 
 
 def test_schema_error_quotes_keys_that_are_not_names() -> None:
-    document: _Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "metadata": {"component": {"bom-ref": ""}}}
+    document: Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "metadata": {"component": {"bom-ref": ""}}}
     assert schema_error(document) == '"type" is a required property at $.metadata.component'
     document = {
         "bomFormat": "CycloneDX",
@@ -81,11 +81,11 @@ def test_schema_error_quotes_keys_that_are_not_names() -> None:
 
 
 def test_schema_error_clips_the_offending_value() -> None:
-    document: _Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "x" * 1000}
+    document: Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "x" * 1000}
     assert schema_error(document) == f'"{"x" * 199} at $.version'
 
 
-def _url(value: str) -> dict[str, _Json]:
+def _url(value: str) -> dict[str, Json]:
     return {"externalReferences": [{"type": "website", "url": value}]}
 
 
@@ -112,7 +112,7 @@ def _url(value: str) -> dict[str, _Json]:
         pytest.param({"serialNumber": "urn:uuid:bde8d34d-2da7-5045-bd69-644208002436\n"}, False, id="pattern-newline"),
     ],
 )
-def test_formats_follow_their_rfcs(fields: dict[str, _Json], valid: bool) -> None:
+def test_formats_follow_their_rfcs(fields: dict[str, Json], valid: bool) -> None:
     assert (schema_error({"bomFormat": "CycloneDX", "specVersion": "1.6", **fields}) is None) is valid
 
 
@@ -125,13 +125,13 @@ def test_formats_follow_their_rfcs(fields: dict[str, _Json], valid: bool) -> Non
         pytest.param({"version": "1"}, {"version": "2"}, True, id="different"),
     ],
 )
-def test_unique_items(first: dict[str, _Json], second: dict[str, _Json], unique: bool) -> None:
-    components: list[_Json] = [{"type": "library", "name": "a", **first}, {"type": "library", "name": "a", **second}]
+def test_unique_items(first: dict[str, Json], second: dict[str, Json], unique: bool) -> None:
+    components: list[Json] = [{"type": "library", "name": "a", **first}, {"type": "library", "name": "a", **second}]
     assert (schema_error({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": components}) is None) is unique
 
 
 def test_many_unique_components_pass() -> None:
-    components: list[_Json] = [
+    components: list[Json] = [
         {"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(20_000)
     ]
     assert schema_error({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": components}) is None
