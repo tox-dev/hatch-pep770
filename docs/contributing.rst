@@ -1,6 +1,22 @@
 Contributing
 ============
 
+How the code fits together
+--------------------------
+
+Every SBOM comes out of one pipeline. An adapter, the hatchling hook or a command of the command line, gathers what the
+edge knows: the request (the wheel's core metadata and file name, the project directory, the options and the build
+scripts), the source tree (license files and bundled wheels), and the build facts (time, source revision and toolchain).
+It hands them, with a content provider, to the pipeline, which builds the document with pure functions in ``_model``.
+:doc:`explanation` draws the packages and their imports.
+
+To record a new field, read it at the edge into ``_model/_inputs.py`` and write it in ``_model``; to add a subcommand,
+add a registration function and a handler next to the others in ``_cli/_commands.py`` and list the registration in
+``_cli/_parser.py``. Tests mirror the source: ``tests/<package>/test_<module>.py``.
+
+Changelog fragments
+-------------------
+
 Add a changelog fragment under ``docs/changelog.d`` when a pull request changes what package users can use or observe.
 Name it ``+short-name.<type>.rst``, for example ``+vendored-licenses.feature.rst``. The name describes the change; you
 do not need a pull request number before opening the pull request. Write one change per fragment, and use several

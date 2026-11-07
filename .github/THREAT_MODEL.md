@@ -8,8 +8,9 @@ SECURITY.md wins and we fix this file.
 
 The build hook runs inside a hatchling wheel build. It reads the wheel's core metadata, the project's license files, the
 wheels the project bundles and the installed distributions of the build environment, and writes a CycloneDX document
-that hatchling adds to the wheel. `python-sbom embed` does the same for a wheel another backend built and rewrites that
-wheel. `python-sbom spdx` and `validate` read a CycloneDX document and write or check its SPDX form.
+that it writes into the built wheel. `python-sbom embed` does the same for a wheel another backend built,
+`python-sbom archive` describes another zip archive such as a zipapp, and `python-sbom spdx` and `validate` read
+CycloneDX documents and write or check them.
 
 ```mermaid
 flowchart LR
@@ -28,17 +29,22 @@ flowchart LR
 
 An attacker who controls any of these already has what python-sbom could give them:
 
-- The project source, its `pyproject.toml` and the build hook script.
+- The project source, its `pyproject.toml`, the build hook script, and the module the `content-provider` option or
+  `--content-provider` names: python-sbom imports that module from the project directory, so `embed` and `archive` run
+  code from `--root`.
+- The git checkout that tracks the project, whose `HEAD` python-sbom reads. A repository that merely contains the
+  project directory is not trusted: git is used only when it tracks the project, and runs with `core.fsmonitor` off.
 - The build environment and the build backend.
-- The wheel handed to `python-sbom embed`, which the project's own build produced.
+- The wheel handed to `python-sbom embed` and the archive handed to `python-sbom archive`, which the project's own build
+  produced.
 
 ## Untrusted inputs
 
-| Input                                   | Comes from                | What python-sbom guarantees                                                               |
-| --------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------- |
-| Metadata and `RECORD` of bundled wheels | Upstream projects         | Read as text, copied into the document as JSON strings; nothing is extracted or executed. |
-| `_vendor/vendor.txt` of bundled wheels  | Upstream projects         | Each line must pin one exact version, or the build fails.                                 |
-| SBOM files given to `spdx`, `validate`  | Whoever produced the file | Parsed as JSON only; `spdx` writes the one file named on the command line.                |
+| Input                                   | Comes from                | What python-sbom guarantees                                                                                                                                   |
+| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Metadata and `RECORD` of bundled wheels | Upstream projects         | Read as text with capped sizes, copied as JSON strings; every member is checked against its `RECORD` row, duplicate members are refused, nothing is executed. |
+| `_vendor/vendor.txt` of bundled wheels  | Upstream projects         | Each line must pin one exact version, or the build fails.                                                                                                     |
+| SBOM files given to `spdx`, `validate`  | Whoever produced the file | Parsed as JSON only, with capped sizes and nesting; problems are reported, not raised; `spdx` writes the one file named on the command line.                  |
 
 ## Threats and controls
 

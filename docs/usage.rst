@@ -5,8 +5,9 @@ With hatchling
 --------------
 
 Add the hook to ``build-system.requires`` and enable it with an empty table, as the quick start on the :doc:`index`
-shows. The ``hatch`` extra brings hatchling; the command line and the library need none. The hook acts on wheel builds
-only: an sdist and an editable wheel carry no SBOM.
+shows. The ``hatch`` extra brings hatchling; the command line needs none. The hook writes the SBOM into wheels only:
+an editable wheel carries none, and an sdist carries the source revision instead, so a wheel built from it still names
+its commit.
 
 The hook writes the SBOM once hatchling has written the wheel, so the document describes the final file name and
 metadata, whatever dependencies or tag other hooks changed. Hatchling runs the hooks in the order of their tables; see
@@ -16,9 +17,10 @@ for this hook.
 Options
 ~~~~~~~
 
-The options live in a ``[tool.python-sbom]`` table. Each is optional; an unknown key fails the build, so a typo cannot
-pass silently. A key in the hook's own table, such as ``[tool.hatch.build.hooks.python-sbom]``, wins over the same key
-in ``[tool.python-sbom]``.
+The options live in a ``[tool.python-sbom]`` table, the one place the hook, ``python-sbom embed`` and ``python-sbom
+archive`` all read, so every SBOM of a project names it alike. Each option is optional; an unknown key fails the
+build, so a typo cannot pass silently. The hook's own table holds only hatchling's options, and a python-sbom option
+there fails the build with a pointer to ``[tool.python-sbom]``.
 
 ``supplier``
     The organization that supplies the project: a table with a ``name`` string and an optional ``url`` string array. It
@@ -58,7 +60,7 @@ in ``[tool.python-sbom]``.
 
 ``content-provider``
     A :class:`~python_sbom.ContentProvider`, as ``module:attribute`` importable from the project root, that adds what
-    the project knows beyond its metadata; :doc:`extend` shows one.
+    the project knows beyond its metadata; :doc:`extend` shows one. Loading it imports, and so runs, that module.
 
     .. code-block:: toml
 
@@ -74,11 +76,19 @@ never from its own metadata.
 The source revision
 ~~~~~~~~~~~~~~~~~~~
 
-The SBOM names the commit the wheel was built from. It takes the first of: the ``PYTHON_SBOM_COMMIT`` environment
-variable; git, for a checkout or any directory inside one; and the ``node`` line of an expanded ``.git_archival.txt``,
-for a ``git archive``. A checkout with uncommitted changes to tracked files gets a ``<project>:vcs-dirty`` property, and
-the link to the revision says so. A wheel built from an sdist, as ``python -m build`` and ``uv build`` do by default,
-has no checkout, so set ``PYTHON_SBOM_COMMIT`` or ship ``.git_archival.txt`` to keep the commit.
+The SBOM names the commit the wheel was built from. It takes the first source that knows it:
+
+#. the ``PYTHON_SBOM_COMMIT`` environment variable, or ``--commit`` on the command line;
+#. git, when the project's ``pyproject.toml`` is tracked by the checkout that holds it, so a project unpacked inside an
+   unrelated repository never borrows that repository's commit;
+#. ``.python-sbom-revision``, which the hook writes into every sdist built from a clean checkout, so a wheel built from
+   the sdist, as ``python -m build`` and ``uv build`` do by default, keeps the commit;
+#. the ``node`` line of an expanded ``.git_archival.txt``, for a ``git archive``.
+
+A commit must be a full hash of 40 or 64 hex characters. A checkout with changes, including untracked files that are
+not ignored, gets a ``<project>:vcs-dirty`` property, and the link to the revision says so. When git cannot read the
+checkout, the build warns and moves on to the next source. git runs with ``core.fsmonitor`` off, so a repository's
+configuration runs no command.
 
 With another build backend
 --------------------------
@@ -103,13 +113,14 @@ Build, then embed, from the project root:
 ``--commit`` names the source revision when the wheel came from an sdist, and ``--content-provider`` overrides the
 ``content-provider`` option.
 
-The build tool record lists the environment named by ``--build-env``, by default the one ``embed`` runs in. To record
-the real toolchain, point ``--build-env`` at the build environment's ``site-packages``, or build without isolation in
-the same locked environment. On Linux, meson-python also needs ``patchelf`` there:
+The build tool record lists the packages of the environment named by ``--build-env``, by default the one ``embed`` runs
+in; the interpreter it records is always the one running ``embed``. To record the real toolchain, build without
+isolation in the environment ``embed`` runs in, from the same lock. On Linux, meson-python also needs ``patchelf``
+there:
 
 .. code-block:: console
 
-    $ python -m pip install python-sbom meson-python meson ninja patchelf
+    $ python -m pip install build python-sbom meson-python meson ninja patchelf
     $ python -m build --wheel --no-isolation
     $ python-sbom embed dist/*.whl
 

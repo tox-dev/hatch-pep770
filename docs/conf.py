@@ -61,7 +61,6 @@ inheritance_alias: Final[dict[str, str]] = _inheritance_aliases()
 inheritance_graph_attrs: Final[dict[str, str]] = {"rankdir": "TB"}
 # each directive names the members it documents, so hatchling's lifecycle methods and inherited members stay out
 autodoc_default_options: Final[dict[str, bool | str]] = {"member-order": "bysource", "show-inheritance": True}
-autodoc_type_aliases: Final[dict[str, str]] = {"Toml": "python_sbom.Toml"}
 typehints_fully_qualified: Final[bool] = False
 always_document_param_types: Final[bool] = True
 typehints_document_rtype: Final[bool] = True
@@ -80,11 +79,6 @@ nitpick_ignore: Final[list[tuple[str, str]]] = [
     ("py:class", "hatchling.bridge.app.Application"),
     # the Python documentation describes the protocol without a reference target
     ("py:class", "importlib.metadata._meta.PackageMetadata"),
-]
-# parts of the document types that the CycloneDX and SPDX references describe
-nitpick_ignore_regex: Final[list[tuple[str, str]]] = [
-    ("py:class", r"python_sbom\._model\._types\.(Composition|LicenseInfo|Metadata)"),
-    ("py:class", r"python_sbom\._formats\._spdx\._\w+"),
 ]
 
 

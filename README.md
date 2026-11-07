@@ -14,13 +14,19 @@ reproduces it byte for byte.
 
 ## Install
 
-The command line, to embed, convert and validate SBOMs:
+A hatchling project names `python-sbom[hatch]` in its build requirements, as shown below. To embed an SBOM into a wheel
+another backend built, install the command line into the environment that built the wheel, since the SBOM lists that
+environment's packages as the build tools (or point `--build-env` at it):
+
+```console
+python -m pip install python-sbom
+```
+
+To convert and validate SBOMs in CI, a separate tool environment is fine:
 
 ```console
 pipx install 'python-sbom[validate]'
 ```
-
-A hatchling project names `python-sbom[hatch]` in its build requirements instead, as shown below.
 
 ## Use
 
@@ -40,5 +46,6 @@ With another build backend, such as meson-python, embed the SBOM after the build
 python-sbom embed dist/*.whl
 ```
 
-The [documentation](https://python-sbom.readthedocs.io) covers the options, extending the SBOM from a custom build hook,
-rendering it as SPDX and validating it.
+Describe another zip archive the project publishes, such as a zipapp, with `python-sbom archive`. The
+[documentation](https://python-sbom.readthedocs.io) covers the options, adding project knowledge through a content
+provider, rendering an SBOM as SPDX and validating it.
