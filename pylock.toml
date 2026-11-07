@@ -659,6 +659,34 @@ size = 25604
 sha256 = "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
 
 [[packages]]
+name = "dep-logic"
+version = "0.7.2"
+marker = "\"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.10"
+dependencies = [
+    { name = "packaging" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "dep_logic-0.7.2.tar.gz"
+upload-time = 2026-08-28 03:43:17.064829+00:00
+url = "https://files.pythonhosted.org/packages/1b/7a/ac7db322bfc792c237e059e0b048e8e0784eb624d0447e3cf5e231323725/dep_logic-0.7.2.tar.gz"
+size = 37962
+
+[packages.sdist.hashes]
+sha256 = "2a3c49526075b0bc6825f0ea8c2d9f464de48b7b85f3f3d2900b4e5950fefedf"
+
+[[packages.wheels]]
+name = "dep_logic-0.7.2-py3-none-any.whl"
+upload-time = 2026-08-28 03:43:15.718045+00:00
+url = "https://files.pythonhosted.org/packages/d0/71/e6979663eb7feaab2a2fcd3a004c0fc33b2a5d0ebafc4c474000b2be6732/dep_logic-0.7.2-py3-none-any.whl"
+size = 36183
+
+[packages.wheels.hashes]
+sha256 = "33640c4ba7fd45f2504442eb9e0c12e57dac253c748ca3925749548a5c556bae"
+
+[[packages]]
 name = "distlib"
 version = "0.4.4"
 marker = "\"dev\" in dependency_groups or \"lint\" in dependency_groups"
@@ -1009,7 +1037,7 @@ sha256 = "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
 [[packages]]
 name = "installer"
 version = "1.1.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1614,7 +1642,7 @@ sha256 = "bc0fb085d8ed0d67a6471892535f3d9b795eb911b7cd129d3a24967aab7a538f"
 [[packages]]
 name = "packageurl-python"
 version = "0.17.6"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
@@ -3580,7 +3608,6 @@ command-line = [
     "--all-groups",
     "--all-extras",
     "--no-cache",
-    "--upgrade",
 ]
 input-path = "pyproject.toml"
 mode = "universal"
