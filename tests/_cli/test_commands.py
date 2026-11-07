@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import runpy
+import stat
 import struct
 import subprocess
 import sys
@@ -210,7 +211,7 @@ def test_archive_embeds_sbom(project: Path, zipapp: Path, tmp_path: Path) -> Non
     entry = zipfile.ZipFile(zipapp).getinfo("app.pyz.cdx.json")
     assert (entry.create_system, entry.external_attr, entry.compress_type, zipfile.ZipFile(zipapp).read(entry)) == (
         3,
-        0o644 << 16,
+        (stat.S_IFREG | 0o644) << 16,
         zipfile.ZIP_STORED,
         (tmp_path / "out.json").read_bytes(),
     )

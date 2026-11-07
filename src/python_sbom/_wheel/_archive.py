@@ -29,6 +29,11 @@ if TYPE_CHECKING:
 # metadata files beyond this size are refused, so a hostile wheel cannot exhaust memory
 _METADATA_LIMIT: Final[int] = 16 * 1024 * 1024
 _CHUNK: Final[int] = 1024 * 1024
+# 1980-01-01, the earliest time a zip entry holds
+_ZIP_EPOCH: Final[int] = 315532800
+# the zlib level each setting of the deflate option bits in a member's flags stands for (APPNOTE 4.4.4: normal, maximum,
+# fast, super fast), as Info-ZIP sets them; None is zlib's default
+_DEFLATE_LEVELS: Final[dict[int, int | None]] = {0b000: None, 0b010: 9, 0b100: 2, 0b110: 1}
 
 
 def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
@@ -41,11 +46,8 @@ def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
         record_info: Final[zipfile.ZipInfo] = archive.getinfo(record)
         record_data: Final[bytes] = archive.read(record_info)
     sbom: Final[str] = f"{dist_info}/sboms/{name}"
-    # zip timestamps start at 1980
-    entry = zipfile.ZipInfo(sbom, time.gmtime(max(epoch, 315532800))[:6])
+    entry: Final[zipfile.ZipInfo] = _entry(sbom, epoch)
     entry.compress_type = zipfile.ZIP_DEFLATED
-    entry.create_system = 3  # Unix, whichever system writes the entry, so the bytes match across operating systems
-    entry.external_attr = (stat.S_IFREG | 0o644) << 16
     rewritten: Final[bytes] = _rewritten_record(record_data, record, sbom, content)
     # a name no "dist/*.whl" glob matches, in the wheel's directory so the final rename stays on one file system
     descriptor, temporary = tempfile.mkstemp(dir=wheel.parent, prefix=".python-sbom-", suffix=".tmp")
@@ -100,11 +102,22 @@ def _wheel_source(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, str]
     return wheel, dist_info
 
 
+def _entry(name: str, epoch: int) -> zipfile.ZipInfo:
+    # zip times start at 1980; Unix attributes whichever system writes the entry, so the bytes match across systems
+    entry: Final[zipfile.ZipInfo] = zipfile.ZipInfo(name, time.gmtime(max(epoch, _ZIP_EPOCH))[:6])
+    entry.create_system = 3
+    entry.external_attr = (stat.S_IFREG | 0o644) << 16
+    return entry
+
+
 def _rewritten_record(record: bytes, name: str, sbom: str, content: bytes) -> bytes:
     lines: Final[list[str]] = [
         line for line in record.decode("utf-8").splitlines(keepends=True) if not line.startswith(f"{sbom},")
     ]
     newline: Final[str] = "\r\n" if lines and lines[0].endswith("\r\n") else "\n"
+    # a last row without its line end would take the SBOM's row onto its own line
+    if lines and not lines[-1].endswith(("\n", "\r")):
+        lines[-1] += newline
     # the row of RECORD itself stays last
     at: Final[int] = next((index for index, line in enumerate(lines) if line.startswith(f"{name},")), len(lines))
     # installer's helper hashes as it copies; the copy is thrown away
@@ -146,7 +159,27 @@ def member_digest(archive: zipfile.ZipFile, name: str | zipfile.ZipInfo, algorit
     return digest.hexdigest()
 
 
+def append_member(archive: Path, name: str, content: bytes, epoch: int) -> None:
+    with zipfile.ZipFile(archive, "a") as handle:
+        if name in handle.namelist():
+            msg = f"{archive.name} already holds {name}"
+            raise WheelError(msg)
+        # compressed by the method most of the archive's files use, at the level their deflate option bits name, since
+        # the zip format records no level itself and Python's zipfile leaves the bits at normal, zlib's default;
+        # directories and empty files count for none, as zip tools store them whatever they compress
+        files: Final[list[zipfile.ZipInfo]] = [
+            info for info in handle.infolist() if info.file_size and not info.is_dir()
+        ]
+        method: Final[int] = next(
+            iter(Counter(info.compress_type for info in files).most_common(1)), (zipfile.ZIP_STORED, 0)
+        )[0]
+        flags: Final[int] = next((info.flag_bits for info in files if info.compress_type == method), 0)
+        level: Final[int | None] = _DEFLATE_LEVELS[flags & 0b110] if method == zipfile.ZIP_DEFLATED else None
+        handle.writestr(_entry(name, epoch), content, compress_type=method, compresslevel=level)
+
+
 __all__ = [
+    "append_member",
     "member_digest",
     "open_archive",
     "read_member",

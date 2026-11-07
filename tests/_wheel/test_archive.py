@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Final
 import pytest
 
 from python_sbom._errors import WheelError
-from python_sbom._wheel._archive import open_archive, read_member, write_sbom
+from python_sbom._wheel._archive import append_member, open_archive, read_member, write_sbom
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -264,3 +264,50 @@ def test_wheel_with_two_dist_info_directories(tmp_path: Path, write_wheel: Write
     message = r"Wheel doesn't contain exactly one \.dist-info directory .*'aaa-0\.dist-info', 'native-1\.0\.dist-info'"
     with pytest.raises(WheelError, match=message):
         write_sbom(wheel, "native.cdx.json", b"{}\n", 0)
+
+
+def test_embed_ends_an_unterminated_last_row(tmp_path: Path, write_wheel: WriteWheel) -> None:
+    # no row for RECORD itself, and no line end after the last row, so the SBOM's row goes after it on a line of its own
+    record = b"native-1.0.dist-info/METADATA,,"
+    wheel = write_wheel(
+        tmp_path / "native-1.0-py3-none-any.whl",
+        {"native-1.0.dist-info/METADATA": b"Name: native\n", "native-1.0.dist-info/RECORD": record},
+        record=False,
+    )
+    write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
+    assert zipfile.ZipFile(wheel).read("native-1.0.dist-info/RECORD").decode().splitlines() == [
+        "native-1.0.dist-info/METADATA,,",
+        _SBOM_ROW,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("members", "method"),
+    [
+        pytest.param([("a.py", b"x" * 100, zipfile.ZIP_DEFLATED)], zipfile.ZIP_DEFLATED, id="deflated"),
+        pytest.param([("a.py", b"x" * 100, zipfile.ZIP_STORED)], zipfile.ZIP_STORED, id="stored"),
+        # Info-ZIP stores directories and empty files whatever it compresses, so they outvote no one
+        pytest.param(
+            [("d/", b"", zipfile.ZIP_STORED), ("e", b"", zipfile.ZIP_STORED), ("a.py", b"x", zipfile.ZIP_DEFLATED)],
+            zipfile.ZIP_DEFLATED,
+            id="directories-and-empty-files-skipped",
+        ),
+        pytest.param([], zipfile.ZIP_STORED, id="empty-archive"),
+    ],
+)
+def test_append_member_compresses_as_the_files_are(
+    tmp_path: Path, members: list[tuple[str, bytes, int]], method: int
+) -> None:
+    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
+        for name, content, compression in members:
+            handle.writestr(name, content, compression)
+    append_member(archive, "app.pyz.cdx.json", b"{}\n", 1_700_000_000)
+    entry = zipfile.ZipFile(archive).getinfo("app.pyz.cdx.json")
+    assert (entry.compress_type, entry.create_system, entry.date_time) == (method, 3, (2023, 11, 14, 22, 13, 20))
+
+
+def test_append_member_refuses_a_second_copy(tmp_path: Path) -> None:
+    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
+        handle.writestr("app.pyz.cdx.json", b"{}")
+    with pytest.raises(WheelError, match=r"app\.pyz already holds app\.pyz\.cdx\.json"):
+        append_member(archive, "app.pyz.cdx.json", b"{}\n", 1_700_000_000)

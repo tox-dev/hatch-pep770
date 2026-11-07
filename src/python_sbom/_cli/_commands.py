@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import json
 import sys
-import zipfile
-from collections import Counter
-from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from python_sbom._errors import SbomError
 from python_sbom._validate._document import MAX_COMPONENTS
@@ -15,10 +12,6 @@ if TYPE_CHECKING:
     from argparse import ArgumentParser, _SubParsersAction
 
     from ._options import Options
-
-# the zlib level each setting of the deflate option bits in a member's flags stands for (APPNOTE 4.4.4: normal, maximum,
-# fast, super fast), as Info-ZIP sets them; None is zlib's default
-_DEFLATE_LEVELS: Final[dict[int, int | None]] = {0b000: None, 0b010: 9, 0b100: 2, 0b110: 1}
 
 
 def add_embed(commands: _SubParsersAction[ArgumentParser]) -> None:
@@ -97,6 +90,7 @@ def _archive(options: Options) -> bool:
     from python_sbom._formats._json import dumps  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._generate._archive import describe_archive  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
     from python_sbom._generate._embed import revision_reader  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._wheel._archive import append_member  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
 
     root = Path.cwd() if options.root is None else options.root
     facts = collect_facts(root, revision_reader(options.commit), path=options.build_env)
@@ -111,20 +105,7 @@ def _archive(options: Options) -> bool:
     (target := options.output or options.archive.with_name(name)).write_bytes(content := dumps(document))
     sys.stdout.write(f"wrote {target}\n")
     if options.embed:
-        with zipfile.ZipFile(options.archive, "a") as handle:
-            if name in handle.namelist():
-                msg = f"{options.archive.name} already holds {name}"
-                raise SbomError(msg)
-            # a fixed time and Unix attributes, so the archive's bytes are the same whichever system adds the entry
-            entry = zipfile.ZipInfo(name, datetime.fromtimestamp(max(facts.epoch, 315532800), tz=UTC).timetuple()[:6])
-            entry.create_system, entry.external_attr = 3, 0o644 << 16
-            # compressed by the method most members use, at the level their deflate option bits name, since the zip
-            # format records no level itself; Python's zipfile leaves the bits at normal, zlib's default level
-            methods = Counter(info.compress_type for info in handle.infolist())
-            method = next(iter(methods.most_common(1)), (zipfile.ZIP_STORED, 0))[0]
-            flags = next((info.flag_bits for info in handle.infolist() if info.compress_type == method), 0)
-            level = _DEFLATE_LEVELS[flags & 0b110] if method == zipfile.ZIP_DEFLATED else None
-            handle.writestr(entry, content, compress_type=method, compresslevel=level)
+        append_member(options.archive, name, content, facts.epoch)
         sys.stdout.write(f"wrote {name} into {options.archive.name}\n")
     return True
 
