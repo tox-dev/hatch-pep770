@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
 import zipfile
@@ -13,6 +14,7 @@ from python_sbom._collect._facts import collect_facts
 from python_sbom._errors import WheelError
 from python_sbom._generate._archive import describe_archive
 from python_sbom._generate._embed import revision_reader
+from python_sbom._model._inputs import Revision
 from python_sbom._validate._artifact import validate
 
 if TYPE_CHECKING:
@@ -104,12 +106,33 @@ def test_archive_root(document: Document) -> None:
         "version": "1.0",
         "purl": "pkg:generic/app.pyz@1.0",
         "supplier": {"name": "Example Org", "url": []},
+        "externalReferences": [
+            {"type": "security-contact", "url": "https://github.com/example/app/security/policy"},
+            {"type": "advisories", "url": "https://github.com/example/app/security/advisories"},
+            {
+                "type": "vcs",
+                "url": f"https://github.com/example/app/tree/{_COMMIT}",
+                "comment": "exact source revision",
+            },
+        ],
         "properties": [
             {"name": "extra:project", "value": "project"},
             {"name": "extra:table", "value": "loaded.json"},
             {"name": "app:vcs-commit", "value": _COMMIT},
         ],
     }
+
+
+def test_archive_of_dirty_checkout(project: Path, archive: Path) -> None:
+    # the same provenance a wheel built from a dirty checkout carries, so the commit is not taken for the exact source
+    facts = dataclasses.replace(
+        collect_facts(project, revision_reader(_COMMIT)), revision=Revision(commit=_COMMIT, dirty=True)
+    )
+    root = describe_archive(project, archive, facts=facts)["metadata"]["component"]
+    assert (root.get("properties", [])[-1], root.get("externalReferences", [])[-1]["comment"]) == (
+        {"name": "app:vcs-dirty", "value": "true"},
+        "source revision, with uncommitted changes",
+    )
 
 
 def test_archive_loose_files_belong_to_the_archive(document: Document) -> None:
@@ -156,7 +179,15 @@ def test_archive_tools_and_metadata(document: Document) -> None:
     assert (script["name"], script.get("externalReferences"), metadata.get("properties"), metadata.get("supplier")) == (
         "build_app.py",
         [{"type": "vcs", "url": "https://github.com/example/app/blob/main/build_app.py"}],
-        [{"name": "app:sbom:file", "value": "app.pyz.cdx.json"}],
+        [
+            {
+                "name": "app:sbom:scope",
+                "value": "Components are the distributions the archive holds, as wheels or unpacked, each with its"
+                " files; the archive's own top-level files sit under the root component.",
+            },
+            {"name": "app:sbom:file", "value": "app.pyz.cdx.json"},
+            {"name": "app:sbom:repository", "value": "https://github.com/example/app"},
+        ],
         {"name": "Example Org", "url": []},
     )
 

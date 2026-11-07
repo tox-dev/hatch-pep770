@@ -9,6 +9,7 @@ from packaging.requirements import Requirement
 from ._components import bundled_wheel_component, component_from_metadata, script_tool, vendored_dependencies
 from ._document import contributed_properties, formulation, timestamp, with_header
 from ._identity import project_identity
+from ._inputs import Artifact
 from ._markers import applies_without_extras
 from ._names import SBOM_FILE, SBOM_REPOSITORY, purl, pypi_url, sbom_file_name, sbom_property
 from ._tools import tool_components
@@ -28,8 +29,8 @@ def describe(
     bundled_info: Mapping[str, BundledWheelInfo],
     contributions: Contributions,
 ) -> Document:
-    project = project_identity(request.metadata, request.settings)
-    root = _root_component(request, source, facts, project, contributions)
+    metadata, settings = request.metadata, request.settings
+    project = project_identity(metadata, settings)
     bundled = [
         bundled_wheel_component(
             wheel,
@@ -39,75 +40,118 @@ def describe(
         )
         for wheel in source.bundled
     ]
-    components = [
-        *bundled,
-        # hatchling repeats a Requires-Dist when a hook re-adds a dependency, and each bom-ref must be unique
-        *(
-            _declared_dependency(text, requirement, project.property_prefix)
-            for text in dict.fromkeys(request.metadata.values("requires_dist"))
-            if applies_without_extras(requirement := Requirement(text))
-        ),
-        *contributions.components,
+    root = component_from_metadata(metadata)
+    root["type"] = "application"
+    name, version = metadata.name, metadata.version
+    root["externalReferences"] = [
+        *root["externalReferences"],
+        {"type": "distribution", "url": pypi_url(name, version)},
+        {"type": "attestation", "url": f"https://pypi.org/integrity/{name}/{version}/{request.wheel_name}/provenance"},
     ]
+    artifact = Artifact(
+        root=root,
+        components=[
+            *bundled,
+            # hatchling repeats a Requires-Dist when a hook re-adds a dependency, and each bom-ref must be unique
+            *(
+                _declared_dependency(text, requirement, project.property_prefix)
+                for text in dict.fromkeys(metadata.values("requires_dist"))
+                if applies_without_extras(requirement := Requirement(text))
+            ),
+        ],
+        dependencies=vendored_dependencies(bundled),
+        build_scripts=source.build_scripts,
+        version=version,
+        sbom_file=sbom_file_name(name),
+        scope=_scope(settings),
+        workflow=("wheel-build", "build the wheel and this SBOM"),
+        license_file=next(iter(metadata.values("license_files")), None),
+        copyright=source.copyright,
+    )
+    return assemble(artifact, project, settings, facts, contributions)
+
+
+def _declared_dependency(text: str, requirement: Requirement, namespace: str) -> Component:
+    component: Final[Component] = {
+        "type": "library",
+        # the same distribution can be declared more than once with different markers, so the purl is not unique
+        "bom-ref": f"requires-dist:{text}",
+        "name": requirement.name,
+        "purl": purl(requirement.name),
+        "externalReferences": [{"type": "distribution", "url": pypi_url(requirement.name)}],
+        "properties": [{"name": f"{namespace}:requires-dist", "value": text}],
+    }
+    if requirement.marker is not None:
+        component["properties"].append({"name": f"{namespace}:environment-marker", "value": str(requirement.marker)})
+    return component
+
+
+def _scope(settings: Settings) -> str:
+    declared = (
+        "the direct runtime dependencies declared in the wheel's core metadata, which carry no version because the"
+        " installer resolves them"
+    )
+    if directories := " and ".join(sorted({str(PurePosixPath(pattern).parent) for pattern in settings.bundled_wheels})):
+        return f"Components are the wheels bundled as data files under {directories} and {declared}."
+    return f"Components are {declared}."
+
+
+def assemble(
+    artifact: Artifact, project: ProjectIdentity, settings: Settings, facts: BuildFacts, contributions: Contributions
+) -> Document:
+    # what every artifact of the project carries alike: who supplies it, where its source lives and at which revision,
+    # the tools that built it and what the project contributes
+    root = _provenance(artifact, project, settings, facts, contributions)
+    components: Final[list[Component]] = [*artifact.components, *contributions.components]
     environment, tool_dependencies = tool_components(facts)
-    tools = [
+    tools: Final[list[Component]] = [
         *(
-            script_tool(
-                script.path,
-                script.sha256,
-                request.metadata.version,
-                _file_link(project, request.settings, str(script.path)),
-            )
-            for script in source.build_scripts
+            script_tool(script.path, script.sha256, artifact.version, _file_link(project, settings, script.path))
+            for script in artifact.build_scripts
         ),
         *environment,
         *contributions.tools,
     ]
+    uid, name = artifact.workflow
     return with_header(
         {
-            "metadata": _metadata(root, tools, request, project, facts),
+            "metadata": _metadata(tools, artifact, project, settings, facts),
             "components": components,
             "dependencies": [
                 {"ref": root["bom-ref"], "dependsOn": [component["bom-ref"] for component in components]},
-                *vendored_dependencies(bundled),
+                *artifact.dependencies,
                 *tool_dependencies,
                 *contributions.dependencies,
             ],
-            # transitive runtime dependencies are unknown until install time
+            # what the artifact needs at run time beyond what it ships, an interpreter and the dependencies an installer
+            # resolves, is not listed
             "compositions": [{"aggregate": "incomplete", "dependencies": [root["bom-ref"]]}],
-            "formulation": [formulation("wheel-build", "build the wheel and this SBOM", tools, root["bom-ref"], facts)],
+            "formulation": [formulation(uid, name, tools, root["bom-ref"], facts)],
         },
         project.serial_namespace,
     )
 
 
-def _root_component(
-    request: SbomRequest, source: SourceTree, facts: BuildFacts, project: ProjectIdentity, contributions: Contributions
+def _provenance(
+    artifact: Artifact, project: ProjectIdentity, settings: Settings, facts: BuildFacts, contributions: Contributions
 ) -> Component:
-    metadata, settings = request.metadata, request.settings
-    name, version = metadata.name, metadata.version
-    root = component_from_metadata(metadata)
-    root["type"] = "application"
+    root = artifact.root
     if settings.supplier is not None:
         root["supplier"] = settings.supplier
-    if source.copyright is not None:
-        root["copyright"] = source.copyright
-    references: Final[list[ExternalReference]] = [
-        *root["externalReferences"],
-        {"type": "distribution", "url": pypi_url(name, version)},
-        {"type": "attestation", "url": f"https://pypi.org/integrity/{name}/{version}/{request.wheel_name}/provenance"},
-    ]
+    if artifact.copyright is not None:
+        root["copyright"] = artifact.copyright
+    references: Final[list[ExternalReference]] = [*root.get("externalReferences", [])]
     if project.repository and urlsplit(project.repository).netloc == "github.com":
         references.extend([
             {"type": "security-contact", "url": f"{project.repository}/security/policy"},
             {"type": "advisories", "url": f"{project.repository}/security/advisories"},
         ])
-    if (license_files := metadata.values("license_files")) and (
-        link := _file_link(project, settings, license_files[0])
+    if artifact.license_file is not None and (
+        link := _file_link(project, settings, PurePosixPath(artifact.license_file))
     ):
         references.append({"type": "license", "url": link})
     properties: Final[list[Property]] = [
-        *root["properties"],
+        *root.get("properties", []),
         *contributed_properties(contributions.root_properties, project.property_prefix),
     ]
     if (revision := facts.revision) is not None:
@@ -126,34 +170,22 @@ def _root_component(
     return root
 
 
-def _declared_dependency(text: str, requirement: Requirement, namespace: str) -> Component:
-    component: Final[Component] = {
-        "type": "library",
-        # the same distribution can be declared more than once with different markers, so the purl is not unique
-        "bom-ref": f"requires-dist:{text}",
-        "name": requirement.name,
-        "purl": purl(requirement.name),
-        "externalReferences": [{"type": "distribution", "url": pypi_url(requirement.name)}],
-        "properties": [{"name": f"{namespace}:requires-dist", "value": text}],
-    }
-    if requirement.marker is not None:
-        component["properties"].append({"name": f"{namespace}:environment-marker", "value": str(requirement.marker)})
-    return component
-
-
-def _file_link(project: ProjectIdentity, settings: Settings, path: str) -> str | None:
+def _file_link(project: ProjectIdentity, settings: Settings, path: PurePosixPath) -> str | None:
     return None if project.repository is None else f"{project.repository}/blob/{settings.default_branch}/{path}"
 
 
 def _metadata(
-    root: Component, tools: list[Component], request: SbomRequest, project: ProjectIdentity, facts: BuildFacts
+    tools: list[Component],
+    artifact: Artifact,
+    project: ProjectIdentity,
+    settings: Settings,
+    facts: BuildFacts,
 ) -> Metadata:
-    settings = request.settings
     metadata: Final[Metadata] = {
         "timestamp": timestamp(facts),
         "lifecycles": [{"phase": "build"}],
         "tools": {"components": tools},
-        "component": root,
+        "component": (root := artifact.root),
     }
     if settings.supplier is not None:
         metadata["manufacturer"] = metadata["supplier"] = settings.supplier
@@ -162,8 +194,9 @@ def _metadata(
     if "licenses" in root:
         metadata["licenses"] = root["licenses"]
     properties: Final[list[Property]] = [
-        {"name": sbom_property(project.property_prefix, "sbom:scope"), "value": _scope(settings)},
-        {"name": sbom_property(project.property_prefix, SBOM_FILE), "value": sbom_file_name(request.metadata.name)},
+        {"name": sbom_property(project.property_prefix, "sbom:scope"), "value": artifact.scope},
+        # names the document's file, which marks it as one python-sbom built, so validation checks it in full
+        {"name": sbom_property(project.property_prefix, SBOM_FILE), "value": artifact.sbom_file},
     ]
     if project.repository is not None:
         properties.append({
@@ -174,16 +207,7 @@ def _metadata(
     return metadata
 
 
-def _scope(settings: Settings) -> str:
-    declared = (
-        "the direct runtime dependencies declared in the wheel's core metadata, which carry no version because the"
-        " installer resolves them"
-    )
-    if directories := " and ".join(sorted({str(PurePosixPath(pattern).parent) for pattern in settings.bundled_wheels})):
-        return f"Components are the wheels bundled as data files under {directories} and {declared}."
-    return f"Components are {declared}."
-
-
 __all__ = [
+    "assemble",
     "describe",
 ]

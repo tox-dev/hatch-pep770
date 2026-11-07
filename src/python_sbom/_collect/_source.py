@@ -33,16 +33,7 @@ def read_source_tree(request: SbomRequest) -> SourceTree:
             msg = f"`bundled-wheels` pattern {pattern!r} must be relative to the project, without `..`"
             raise SettingsError(msg)
     return SourceTree(
-        copyright=next(
-            (
-                line
-                for license_file in request.metadata.values("license_files")
-                if (path := root / license_file).is_file()
-                for line in path.read_text(encoding="utf-8").splitlines()
-                if line.startswith("Copyright")
-            ),
-            None,
-        ),
+        copyright=copyright_notice(root, request.metadata.values("license_files")),
         bundled=read_bundled_wheels(
             root,
             sorted({
@@ -57,6 +48,16 @@ def read_source_tree(request: SbomRequest) -> SourceTree:
             for script in request.build_scripts
         ],
     )
+
+
+def copyright_notice(root: Path, license_files: list[str]) -> str | None:
+    # the first Copyright line of the license files the project names, as they sit in the project
+    for license_file in license_files:
+        if (path := root / license_file).is_file():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("Copyright"):
+                    return line
+    return None
 
 
 def read_bundled_wheels(root: Path, paths: list[str]) -> list[BundledWheel]:
@@ -178,6 +179,7 @@ def wheel_request(wheel: Path, root: Path, settings: Settings, build_scripts: tu
 
 
 __all__ = [
+    "copyright_notice",
     "read_bundled_wheel",
     "read_bundled_wheels",
     "read_source_tree",

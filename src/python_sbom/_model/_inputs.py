@@ -95,6 +95,22 @@ class BuildScript:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class Artifact:
+    # what one artifact, a wheel or an archive, puts in its SBOM; the provenance every artifact of the project shares is
+    # added around it
+    root: Component
+    components: list[Component]
+    dependencies: list[Dependency]
+    build_scripts: list[BuildScript]
+    version: str
+    sbom_file: str
+    scope: str
+    workflow: tuple[str, str]
+    license_file: str | None
+    copyright: str | None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SourceTree:
     copyright: str | None
     bundled: list[BundledWheel]
@@ -142,6 +158,7 @@ class Contributions:
 
 
 __all__ = [
+    "Artifact",
     "BuildFacts",
     "BuildScript",
     "BundledWheel",

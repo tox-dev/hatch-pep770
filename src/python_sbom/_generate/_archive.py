@@ -10,22 +10,19 @@ from packageurl import PackageURL
 
 from python_sbom._collect._content import load_content_provider, provider_script
 from python_sbom._collect._settings import settings_from_pyproject
-from python_sbom._collect._source import read_bundled_wheels
+from python_sbom._collect._source import copyright_notice, read_bundled_wheels
 from python_sbom._errors import WheelError
+from python_sbom._model._bom import assemble
 from python_sbom._model._components import (
     bundled_wheel_component,
     component_from_metadata,
     file_component_from_bytes,
-    script_tool,
     vendored_dependencies,
 )
 from python_sbom._model._content import ProviderContext
-from python_sbom._model._document import contributed_properties, formulation, timestamp, with_header
 from python_sbom._model._identity import project_identity
+from python_sbom._model._inputs import Artifact, BuildScript
 from python_sbom._model._metadata import parse_metadata
-from python_sbom._model._names import SBOM_FILE, sbom_property
-from python_sbom._model._tools import tool_components
-from python_sbom._model._types import Dependency
 from python_sbom._wheel._archive import open_archive
 
 if TYPE_CHECKING:
@@ -35,7 +32,7 @@ if TYPE_CHECKING:
     from python_sbom._model._identity import ProjectIdentity
     from python_sbom._model._inputs import BuildFacts, BundledWheel, Settings
     from python_sbom._model._metadata import CoreMetadata
-    from python_sbom._model._types import Component, Document, Metadata
+    from python_sbom._model._types import Component, Document
 
 
 def describe_archive(
@@ -54,56 +51,26 @@ def describe_archive(
     with tempfile.TemporaryDirectory() as directory:
         held = _read_archive(root, archive, Path(directory), settings, content)
         contributions = content.contributions(held.reader.context)
-    held.root["properties"] = list(contributed_properties(contributions.root_properties, held.project.property_prefix))
-    if facts.revision is not None:
-        held.root["properties"].append({
-            "name": f"{held.project.property_prefix}:vcs-commit",
-            "value": facts.revision.commit,
-        })
-    components: Final[list[Component]] = [*held.components, *contributions.components]
-    tools: Final[list[Component]] = [
-        *(
-            script_tool(
-                path,
-                hashlib.sha256((root / str(path)).read_bytes()).hexdigest(),
-                held.version,
-                None
-                if held.project.repository is None
-                else f"{held.project.repository}/blob/{settings.default_branch}/{path}",
-            )
+    license_files: Final[list[str]] = held.metadata.values("license_files")
+    artifact = Artifact(
+        root=held.root,
+        components=held.components,
+        dependencies=vendored_dependencies(held.components),
+        build_scripts=[
+            BuildScript(path=path, sha256=hashlib.sha256((root / str(path)).read_bytes()).hexdigest())
             for path in [*build_scripts, *filter(None, [provider_script(content, root)])]
-        ),
-        *(environment := tool_components(facts))[0],
-        *contributions.tools,
-    ]
-    metadata: Final[Metadata] = {
-        "timestamp": timestamp(facts),
-        "lifecycles": [{"phase": "build"}],
-        "tools": {"components": tools},
-        "component": held.root,
-        # names the document's file, which marks it as one python-sbom built, so validation checks it in full
-        "properties": [
-            {"name": sbom_property(held.project.property_prefix, SBOM_FILE), "value": f"{archive.name}.cdx.json"}
         ],
-    }
-    if settings.supplier is not None:
-        held.root["supplier"] = metadata["manufacturer"] = metadata["supplier"] = settings.supplier
-    return with_header(
-        {
-            "metadata": metadata,
-            "components": components,
-            "dependencies": [
-                Dependency(ref=held.root["bom-ref"], dependsOn=[component["bom-ref"] for component in components]),
-                *vendored_dependencies(components),
-                *environment[1],
-                *contributions.dependencies,
-            ],
-            "formulation": [
-                formulation("archive-build", f"build {archive.name} and this SBOM", tools, held.root["bom-ref"], facts)
-            ],
-        },
-        held.project.serial_namespace,
+        version=held.metadata.version,
+        sbom_file=f"{archive.name}.cdx.json",
+        scope=(
+            "Components are the distributions the archive holds, as wheels or unpacked, each with its files; the"
+            " archive's own top-level files sit under the root component."
+        ),
+        workflow=("archive-build", f"build {archive.name} and this SBOM"),
+        license_file=next(iter(license_files), None),
+        copyright=copyright_notice(root, license_files),
     )
+    return assemble(artifact, held.reader.project, settings, facts, contributions)
 
 
 def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings, content: ContentProvider) -> _Held:
@@ -148,8 +115,7 @@ def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings,
     ref = PackageURL(type="generic", name=archive.name, version=version).to_string()
     return _Held(
         reader=reader,
-        project=reader.project,
-        version=version,
+        metadata=metadata[""],
         root={
             "type": "application",
             "bom-ref": ref,
@@ -207,8 +173,8 @@ class _Reader:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _Held:
     reader: _Reader
-    project: ProjectIdentity
-    version: str
+    # the project's own, from the archive's top-level .dist-info
+    metadata: CoreMetadata
     root: Component
     components: list[Component]
 
