@@ -3,44 +3,59 @@ on:
   workflow_dispatch:
   push:
     branches: ["main"]
-    tags-ignore: ["**"]
   pull_request:
     types: [opened, synchronize, reopened]
   schedule:
     - cron: "27 8 * * *"
 concurrency:
-  group: check-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   test:
-    name: 🧪 Test
+    name: 🧪 test
+    if: github.event_name != 'schedule' || github.repository_owner == 'gaborbernat'
     uses: tox-dev/github-workflows/.github/workflows/check.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
     permissions:
       contents: read
     with:
       include: |
         [
-          {"env": "3.15"},
           {"env": "3.15t", "python": "3.15t"},
+          {"env": "3.15", "python": "3.15"},
+          {"env": "3.14t", "python": "3.14t"},
           {"env": "3.14", "python": "3.14"},
           {"env": "3.13", "python": "3.13"},
           {"env": "3.12", "python": "3.12"},
           {"env": "3.11", "python": "3.11"},
-          {"env": "3.10", "python": "3.10"},
-          {"env": "3.9", "python": "3.9"},
-          {"env": "type"},
+          {"env": "3.15t", "python": "3.15t", "os": "macos-26"},
+          {"env": "3.15", "python": "3.15", "os": "macos-26"},
+          {"env": "3.14t", "python": "3.14t", "os": "macos-26"},
+          {"env": "3.14", "python": "3.14", "os": "macos-26"},
+          {"env": "3.13", "python": "3.13", "os": "macos-26"},
+          {"env": "3.12", "python": "3.12", "os": "macos-26"},
+          {"env": "3.11", "python": "3.11", "os": "macos-26"},
+          {"env": "3.15t", "python": "3.15t", "os": "windows-2025"},
+          {"env": "3.15", "python": "3.15", "os": "windows-2025"},
+          {"env": "3.14t", "python": "3.14t", "os": "windows-2025"},
+          {"env": "3.14", "python": "3.14", "os": "windows-2025"},
+          {"env": "3.13", "python": "3.13", "os": "windows-2025"},
+          {"env": "3.12", "python": "3.12", "os": "windows-2025"},
+          {"env": "3.11", "python": "3.11", "os": "windows-2025"},
           {"env": "dev"},
+          {"env": "dev", "os": "windows-2025"},
+          {"env": "docs"},
+          {"env": "docs", "os": "windows-2025"},
+          {"env": "fix"},
+          {"env": "type"},
+          {"env": "type", "os": "windows-2025"},
           {"env": "pkg_meta"},
-          {"env": "3.15", "os": "windows-2025-vs2026"},
-          {"env": "3.14", "python": "3.14", "os": "windows-2025-vs2026"},
-          {"env": "3.9", "python": "3.9", "os": "windows-2025-vs2026"},
-          {"env": "3.15", "os": "macos-26"}
+          {"env": "pkg_meta", "os": "windows-2025"}
         ]
   release:
     name: 🏷️ Release dry run
-    uses: ./.github/workflows/prepare-release.yaml # zizmor: ignore[self-repository] actionlint rejects the $/ form
+    uses: $/.github/workflows/prepare-release.yaml
     permissions:
       contents: read
       pull-requests: read
@@ -56,6 +71,7 @@ jobs:
     if: ${{ !cancelled() }} # codespell:ignore cancelled
     needs: [test, release, hooks]
     runs-on: ubuntu-26.04
+    permissions: {}
     steps:
       - name: 🚦 Require all needed jobs to pass
         uses: tox-dev/github-workflows/required-checks@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1

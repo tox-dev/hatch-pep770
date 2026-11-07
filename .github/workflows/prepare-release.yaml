@@ -1,4 +1,4 @@
-name: 🏷️ Prepare release
+name: Prepare release
 on:
   workflow_dispatch:
     inputs:
@@ -26,8 +26,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    secrets:
-      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
     with:
       bump: ${{ inputs.bump || 'auto' }}
       dry-run: ${{ inputs.dry-run == true }}
+      release-auth-deployment: false
+    secrets:
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

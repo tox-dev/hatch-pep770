@@ -1,6 +1,7 @@
 [build-system]
 build-backend = "hatchling.build"
 requires = [
+  "hatch-fancy-pypi-readme>=25.1",
   "hatch-vcs>=0.5",
   "hatchling>=1.32.4",
 ]
@@ -8,8 +9,7 @@ requires = [
 [project]
 name = "hatch-pep770"
 import-names = [ "hatch_pep770" ]
-description = "Hatchling build hook that embeds a PEP 770 CycloneDX SBOM in the wheel."
-readme = "README.md"
+description = "Write PEP 770 CycloneDX SBOMs into wheels, from a hatchling build hook or the command line."
 keywords = [
   "cyclonedx",
   "hatch",
@@ -18,10 +18,11 @@ keywords = [
   "spdx",
 ]
 license = "MIT"
+license-files = [ "LICENSE" ]
 maintainers = [
   { name = "Bernát Gábor", email = "gaborjbernat@gmail.com" },
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Framework :: Hatch",
@@ -29,29 +30,30 @@ classifiers = [
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
+  "Programming Language :: Python :: Implementation :: CPython",
   "Topic :: Security",
   "Topic :: Software Development :: Build Tools",
+  "Typing :: Typed",
 ]
 dynamic = [
+  "readme",
   "version",
 ]
 dependencies = [
-  "hatchling>=1.27",
-  "packaging>=24.2",
+  "hatchling>=1.28",
+  "packaging>=26.3",
 ]
 optional-dependencies.validate = [
-  "cyclonedx-python-lib[json-validation]>=11",
-  "spdx-tools>=0.8.3",
+  "cyclonedx-python-lib[json-validation]>=11.12",
+  "spdx-tools>=0.8.5",
 ]
-urls.Changelog = "https://github.com/tox-dev/hatch-pep770/blob/main/CHANGELOG.md"
-urls.Documentation = "https://github.com/tox-dev/hatch-pep770#hatch-pep770"
+urls.Changelog = "https://hatch-pep770.readthedocs.io/en/latest/changelog.html"
+urls.Documentation = "https://hatch-pep770.readthedocs.io"
 urls.Homepage = "https://github.com/tox-dev/hatch-pep770"
 urls.Source = "https://github.com/tox-dev/hatch-pep770"
 urls.Tracker = "https://github.com/tox-dev/hatch-pep770/issues"
@@ -59,32 +61,39 @@ scripts.hatch-pep770 = "hatch_pep770.__main__:main"
 entry-points.hatch.pep770 = "hatch_pep770.hooks"
 
 [dependency-groups]
+dev = [
+  { include-group = "lint" },
+  { include-group = "pkg-meta" },
+  { include-group = "test" },
+  { include-group = "type" },
+]
 test = [
   "covdefaults>=2.3",
-  "cyclonedx-python-lib[json-validation]>=11",
-  "pytest>=8.4.2",
+  "cyclonedx-python-lib[json-validation]>=11.12",
+  "installer>=0.7",
+  "pytest>=9.1.1",
   "pytest-cov>=7.1",
-  "pytest-mock>=3.15.1",
-  "spdx-tools>=0.8.3",
+  "pytest-mock>=3.16",
+  "spdx-tools>=0.8.5",
 ]
 type = [
   "ty>=0.0.84",
+  { include-group = "docs" },
   { include-group = "test" },
 ]
+docs = [
+  "furo>=2025.12.19",
+  "sphinx>=9.0.4",
+  "sphinx-argparse-cli>=1.23",
+  "sphinx-autodoc-typehints>=3.17",
+]
 build = [
+  "hatch-fancy-pypi-readme>=25.1",
   "hatch-vcs>=0.5",
   "hatchling>=1.32.4",
 ]
-pkg-meta = [
-  "check-wheel-contents>=0.6.3",
-  "twine>=7",
-  "uv>=0.12.22",
-]
-release = [
-  "prek>=0.5",
-  "release-creator>=4.4",
-  "towncrier>=26.9",
-]
+lint = [ "pre-commit-uv>=4.3" ]
+pkg-meta = [ "check-wheel-contents>=0.6.3", "twine>=7", "uv>=0.12.22" ]
 release-news = [
   "release-creator>=4.4",
   "towncrier>=26.9",
@@ -100,19 +109,17 @@ release-prepare = [
 
 [tool.hatch]
 version.source = "vcs"
+metadata.hooks.fancy-pypi-readme.content-type = "text/markdown"
+metadata.hooks.fancy-pypi-readme.fragments = [ { path = "README.md" } ]
 build.hooks.vcs.version-file = "src/hatch_pep770/version.py"
-build.targets.sdist.include = [
-  "/src",
-  "/tests",
-]
 
 [tool.uv]
-dependency-groups.release = { requires-python = ">=3.15" }
 dependency-groups.release-news = { requires-python = ">=3.15" }
 dependency-groups.release-notes = { requires-python = ">=3.15" }
 dependency-groups.release-prepare = { requires-python = ">=3.15" }
 
 [tool.ruff]
+target-version = "py311"
 line-length = 120
 format.preview = true
 format.docstring-code-line-length = 100
@@ -121,31 +128,28 @@ lint.select = [
   "ALL",
 ]
 lint.ignore = [
-  "CPY",                                       # No copyright statements
-  "D1",                                        # docstrings only on the public API, enforced in review
-  "DOC",                                       # not supported
+  "CPY",                                       # The project does not add copyright headers to individual files
+  "D1",                                        # names and types document the code; simplint asks for public API docs
+  "DOC",                                       # Public API documentation is generated from signatures
   "incorrect-blank-line-before-class",         # `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
   "missing-trailing-comma",                    # Conflict with formatter
   "multi-line-summary-first-line",             # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
+  "non-empty-init-module",                     # `__init__` module should only contain docstrings and re-exports
   "single-line-implicit-string-concatenation", # Conflict with formatter
-  "subprocess-without-shell-equals-true",      # subprocess calls are fine
-  "suspicious-subprocess-import",              # Using subprocess is alright
 ]
 lint.per-file-ignores."tests/**/*.py" = [
-  "assert",                               # asserts allowed in tests
-  "D",                                    # don't care about documentation in tests
-  "FBT",                                  # don't care about booleans as positional arguments in tests
-  "implicit-namespace-package",           # no implicit namespace
-  "magic-value-comparison",               # Magic value used in comparison, consider replacing with a constant variable
-  "pytest-fixture-autouse",               # shared setup fixtures are meant to apply to every test
-  "start-process-with-partial-path",      # partial executable path is fine in tests
-  "subprocess-without-shell-equals-true", # `subprocess` call: check for execution of untrusted input
-  "too-many-arguments",                   # fixtures arrive as arguments
-  "too-many-positional-arguments",        # fixtures arrive as arguments
+  "assert",                               # Tests use assertions
+  "D",                                    # Test names document behavior
+  "FBT",                                  # Boolean parameters keep parameterized cases compact
+  "implicit-namespace-package",           # The tests directory is not a package
+  "import-private-name",                  # Tests cover private parsing boundaries directly
+  "magic-value-comparison",               # Literal expected values keep assertions local
+  "subprocess-without-shell-equals-true", # Entry-point arguments are fixed by the tests
+  "suspicious-subprocess-import",         # Entry-point tests invoke a local Python executable
+  "too-many-positional-arguments",        # Test inputs favor explicit parameters over setup objects
 ]
 lint.isort = { known-first-party = [
   "hatch_pep770",
-  "tests",
 ], required-imports = [
   "from __future__ import annotations",
 ] }
@@ -154,7 +158,6 @@ lint.preview = true
 [tool.codespell]
 builtin = "clear,usage,en-GB_to_en-US"
 ignore-words-list = "acknowledgement"
-write-changes = true
 count = true
 
 [tool.pyproject-fmt]
@@ -163,11 +166,19 @@ max_supported_python = "3.15"
 [tool.ty]
 environment.python-version = "3.15"
 
+[tool.pytest]
+ini_options.testpaths = [ "tests" ]
+ini_options.filterwarnings = [
+  "error",
+]
+ini_options.verbosity_assertions = 2
+
 [tool.coverage]
 run.parallel = true
 run.plugins = [
   "covdefaults",
 ]
+run.core = "ctrace"  # sysmon (3.14+ default) cannot record the per-test contexts we collect
 paths.source = [
   "src",
   ".tox*/*/lib/python*/site-packages",
@@ -176,15 +187,17 @@ paths.source = [
   "*/src",
   "*\\src",
 ]
+report.fail_under = 100
 html.show_contexts = true
 html.skip_covered = false
 
 [tool.towncrier]
 name = "hatch-pep770"
-directory = "changelog.d"
-filename = "CHANGELOG.md"
-template = "release_creator.fragments:template.jinja2"
+directory = "docs/changelog.d"
+filename = "docs/changelog.rst"
+template = "release_creator.fragments:template.rst.jinja2"
 title_format = false
+underlines = [ "-", "~", "^" ]
 type = [
   { directory = "feature", name = "Added", showcontent = true },
   { directory = "change", name = "Changes", showcontent = true },
@@ -204,7 +217,7 @@ base-group = "project-runtime"
 uploaded-prior-to = "P7D"
 decision-order = "stable"
 matrix.python = ">=3.15,<3.16"
-matrix.platforms = [ "linux_x86_64", "macos_arm64", "windows_amd64" ]
+matrix.platforms = [ "linux_x86_64" ]
 # release-creator 4.4.0 needs a seven-day cutoff exception.
 # expires 2026-11-09
 packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z

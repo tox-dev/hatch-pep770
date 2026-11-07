@@ -1,0 +1,17 @@
+name: Upgrade release tools
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "51 8 * * 2"
+permissions: {}
+concurrency:
+  group: upgrade-release-tools
+  cancel-in-progress: false
+jobs:
+  upgrade:
+    name: 🔀 Upgrade release tools
+    uses: tox-dev/github-workflows/.github/workflows/upgrade-release-tools.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+    permissions:
+      contents: read
+    secrets:
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

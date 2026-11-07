@@ -1,4 +1,4 @@
-name: 🚀 Release to PyPI
+name: Release to PyPI
 on:
   push:
     tags: ["*"]
@@ -20,9 +20,9 @@ jobs:
       contents: read
     with:
       tag: ${{ github.ref_name }}
-      changelog: CHANGELOG.md
+      changelog: docs/changelog.rst
       artifact-url: https://pypi.org/project/hatch-pep770/${{ github.ref_name }}/
-  publish-pypi:
+  publish:
     name: 🚀 Publish to PyPI
     needs: [build, notes]
     runs-on: ubuntu-26.04
@@ -36,15 +36,15 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.distributions-artifact-id }}
-          path: dist
+          path: dist/
       - name: 🚀 Publish to PyPI
         uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           attestations: true
           packages-dir: dist
-  github-release:
+  release:
     name: 🚀 Publish GitHub Release
-    needs: [build, notes, publish-pypi]
+    needs: [build, publish, notes]
     uses: tox-dev/github-workflows/.github/workflows/github-release.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
     permissions:
       contents: write

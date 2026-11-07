@@ -1,4 +1,4 @@
-name: 📝 Changelog
+name: Changelog
 on:
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled]
@@ -10,7 +10,7 @@ jobs:
     name: 📝 News fragment
     runs-on: ubuntu-26.04
     steps:
-      - name: 📥 Check out code
+      - name: 📥 Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -26,5 +26,5 @@ jobs:
         with:
           groups: release-news
           venv: ${{ runner.temp }}/release-tools
-      - name: 🔍 Validate news fragments
+      - name: 🔍 Validate changelog fragments
         uses: tox-dev/github-workflows/validate-news@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
