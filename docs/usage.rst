@@ -159,13 +159,12 @@ and validates the SPDX rendering; an SBOM another tool wrote, such as auditwheel
 Each ``--allow-license`` adds an SPDX id that bundled wheels may use. With any given, a bundled wheel whose license the
 ids do not allow fails the check, and so does one that declares a license only by name.
 
-Before the schema check, ``validate`` counts the components an SBOM lists, nested ones included, and fails an SBOM that
-lists more than 5,000 without checking it further. The schema's ``uniqueItems`` rule compares every pair of items in an
-array, so its time grows with the square of the count: 5,000 components in one array take about ten seconds to check,
-10,000 about forty, and a document crafted that way could stall a CI job. Every file of the wheel, of each bundled wheel
-and of each build tool counts, so a project with a large build environment can come close. Raise the cap for an SBOM
-you expect to be larger:
+Before anything else, ``validate`` counts the components an SBOM lists, nested ones included, and fails an SBOM that
+lists more than 100,000 without checking it further. Every check takes time in proportion to the count, about a tenth
+of a second for 100,000 components, so the cap bounds what an untrusted SBOM can ask of a CI job while staying far above
+real SBOMs: every file of the wheel, of each bundled wheel and of each build tool counts, and virtualenv's wheel lists
+about 5,200. Raise the cap for an SBOM you expect to be larger, or lower it to refuse more:
 
 .. code-block:: console
 
-    $ python-sbom validate dist/ --max-components 10000
+    $ python-sbom validate dist/ --max-components 500000

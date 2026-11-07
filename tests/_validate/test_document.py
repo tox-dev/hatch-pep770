@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from typing import TYPE_CHECKING, Final, TypeAlias
 
 import pytest
 
 from python_sbom._formats._json import dumps
+from python_sbom._model._inputs import InstalledDistribution, RecordRow
+from python_sbom._model._metadata import parse_metadata
 from python_sbom._validate._document import is_document, validate_document
 
 if TYPE_CHECKING:
@@ -15,6 +18,7 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from python_sbom import Component, License
+    from python_sbom._model._inputs import BuildFacts
     from python_sbom._model._types import Document
 
 # a JSON value, as json.loads hands it over
@@ -57,26 +61,45 @@ def test_oversized_document_is_not_parsed() -> None:
 
 
 def test_component_cap_counts_nested_components() -> None:
-    assert validate_document(many_components(), None) == [
-        "lists more than 5000 components, nested ones included; pass a higher --max-components to check it"
+    assert validate_document(many_components(1_001), None) == [
+        "lists more than 100000 components, nested ones included; pass a higher --max-components to check it"
     ]
 
 
-def many_components() -> str:
-    # 100 groups of 50 parts, 5,100 components in all, yet no array long enough to slow the schema check
-    groups = [
+def many_components(groups: int) -> str:
+    # groups of 100 parts each
+    components = [
         {
             "type": "library",
             "name": f"group-{group}",
-            "components": [{"type": "library", "name": f"part-{part}"} for part in range(50)],
+            "components": [{"type": "library", "name": f"part-{part}"} for part in range(99)],
         }
-        for group in range(100)
+        for group in range(groups)
     ]
-    return json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": groups})
+    return json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": components})
 
 
 def test_component_cap_can_be_raised() -> None:
-    assert validate_document(many_components(), None, max_components=5_100) == []
+    assert validate_document(many_components(1_001), None, max_components=100_100) == []
+
+
+def test_component_cap_can_be_lowered() -> None:
+    assert validate_document(many_components(2), None, max_components=199) == [
+        "lists more than 199 components, nested ones included; pass a higher --max-components to check it"
+    ]
+
+
+def test_sbom_the_size_of_virtualenvs_passes_by_default(describe: Describe, facts: BuildFacts) -> None:
+    # virtualenv's wheel lists 5,207 components and its zipapp 5,452, nearly all of them files of its build tools
+    rows = [
+        RecordRow(path=f"tool/module_{index}.py", algorithm="SHA-256", digest="0" * 64, size="1")
+        for index in range(5_500)
+    ]
+    tool = InstalledDistribution(
+        name="tool", metadata=parse_metadata("Name: tool\nVersion: 1.0\n"), files=rows, depends_on=[]
+    )
+    document = describe(facts=dataclasses.replace(facts, distributions=[tool]))
+    assert validate_document(dumps(document).decode(), None) == []
 
 
 def test_missing_fields(describe: Describe) -> None:

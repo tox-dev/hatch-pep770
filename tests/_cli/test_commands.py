@@ -138,17 +138,17 @@ def crowded_wheel(tmp_path: Path, write_wheel: WriteWheel) -> Path:
     return write_wheel(tmp_path / "native-1.0-py3-none-any.whl", {"native-1.0.dist-info/METADATA": b"", _SBOM: sbom})
 
 
-def test_validate_caps_components(crowded_wheel: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_validate_max_components_sets_the_cap(crowded_wheel: Path, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
-        main(["validate", str(crowded_wheel)])
+        main(["validate", str(crowded_wheel), "--max-components", "5000"])
     assert capsys.readouterr().err == (
         f"SBOM invalid: {crowded_wheel.name}: {_SBOM}: lists more than 5000 components, nested ones included;"
         " pass a higher --max-components to check it\n"
     )
 
 
-def test_validate_max_components_raises_the_cap(crowded_wheel: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    main(["validate", str(crowded_wheel), "--max-components", "5100"])
+def test_validate_default_cap_admits_thousands(crowded_wheel: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    main(["validate", str(crowded_wheel)])
     assert capsys.readouterr().out == f"SBOM in {crowded_wheel.name} is valid\n"
 
 

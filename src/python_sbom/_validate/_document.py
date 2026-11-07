@@ -30,9 +30,9 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
 _SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 # the archive reader stops at the same size
 _MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
-# every check takes time in proportion to the count, about half a second of CPU per ten thousand components, so the cap
-# bounds the work an untrusted document can ask for
-MAX_COMPONENTS: Final[int] = 5_000
+# every check takes time in proportion to the count, so the cap bounds the work an untrusted document can ask for, far
+# above the few thousand components a wheel with its build tools' files lists
+MAX_COMPONENTS: Final[int] = 100_000
 # an exception's message can quote the hostile value that caused it
 _MAX_TEXT: Final[int] = 200
 # the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread
