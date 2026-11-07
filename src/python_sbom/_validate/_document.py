@@ -4,6 +4,7 @@ import json
 import math
 import re
 from collections import Counter
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, Final, TypeAlias
 
 from python_sbom._errors import MissingExtraError
@@ -33,6 +34,8 @@ _MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
 # every check takes time in proportion to the count, so the cap bounds the work an untrusted document can ask for, far
 # above the few thousand components a wheel with its build tools' files lists
 MAX_COMPONENTS: Final[int] = 100_000
+# the modules of the validate extra
+_EXTRA: Final[tuple[str, ...]] = ("jsonschema_rs", "license_expression", "spdx_tools")
 # an exception's message can quote the hostile value that caused it
 _MAX_TEXT: Final[int] = 200
 # the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread
@@ -62,12 +65,16 @@ def validate_document(
 def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
     # every document must conform to the CycloneDX 1.6 schema; one python-sbom wrote must also carry the urn:uuid serial
     # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy
-    from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # parses with the optional extra
-    from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra loads on first use
-
+    # a missing extra fails every document alike, while importing it, half a second, waits until the cheap census passes
+    if any(find_spec(name) is None for name in _EXTRA):
+        msg = "validation needs the validate extra: pip install 'python-sbom[validate]'"
+        raise MissingExtraError(msg)
     loaded: Final = json.loads(raw)
     if census := _census_problems(loaded, max_components):
         return census
+    from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
+    from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
+
     if error := schema_error(loaded):
         return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
     # python-sbom names its file in a metadata property, so documents other tools wrote get the schema check alone; the

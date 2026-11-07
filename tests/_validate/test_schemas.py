@@ -48,12 +48,20 @@ def test_schema_files_are_the_upstream_release(path: str, release: str, digest: 
     assert hashlib.sha256(shipped.read_bytes()).hexdigest() == digest, f"not the file of the {release} release"
 
 
-def test_validate_without_extra(monkeypatch: pytest.MonkeyPatch) -> None:
-    # None in sys.modules makes the import fail, as when the extra is not installed
-    monkeypatch.setitem(sys.modules, "jsonschema_rs", None)
-    monkeypatch.delitem(sys.modules, "python_sbom._validate._schemas", raising=False)
+@pytest.mark.parametrize(
+    "module",
+    [
+        pytest.param("jsonschema_rs", id="jsonschema-rs"),
+        pytest.param("license_expression", id="license-expression"),
+        pytest.param("spdx_tools", id="spdx-tools"),
+    ],
+)
+def test_validate_without_extra(monkeypatch: pytest.MonkeyPatch, module: str) -> None:
+    # None in sys.modules makes the import fail, as when the extra is not installed; even a document the cheap checks
+    # would reject reports the missing extra
+    monkeypatch.setitem(sys.modules, module, None)
     with pytest.raises(MissingExtraError, match=r"pip install 'python-sbom\[validate\]'"):
-        validate_document("{}", None)
+        validate_document("not JSON", None)
 
 
 def test_schema_error_names_the_path() -> None:

@@ -4,16 +4,10 @@ import json
 from importlib.resources import files
 from typing import TYPE_CHECKING, Final, TypeAlias
 
-from python_sbom._errors import MissingExtraError
-
-try:
-    from jsonschema_rs import Draft7Validator, Registry
-    from spdx_tools.spdx.parser.error import SPDXParsingError
-    from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
-    from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
-except ImportError as error:
-    _MESSAGE: Final[str] = "validation needs the validate extra: pip install 'python-sbom[validate]'"
-    raise MissingExtraError(_MESSAGE) from error
+from jsonschema_rs import Draft7Validator, Registry
+from spdx_tools.spdx.parser.error import SPDXParsingError
+from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
+from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 
 if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
