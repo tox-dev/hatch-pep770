@@ -3,13 +3,14 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
+from python_sbom import _core
 from python_sbom._collect._content import load_content_provider, provider_script
 from python_sbom._collect._facts import collect_facts, commit_revision, default_revision
 from python_sbom._collect._settings import settings_from_pyproject
 from python_sbom._collect._source import read_source_tree, wheel_request
 from python_sbom._model._content import ProviderContext
 from python_sbom._model._identity import project_identity
-from python_sbom._wheel._archive import member_digest, open_archive, write_sbom
+from python_sbom._wheel._archive import write_sbom
 
 from ._pipeline import build_sbom
 
@@ -43,8 +44,7 @@ def embed_sbom(
 
 def embed_into(wheel: Path, request: SbomRequest, content: ContentProvider, facts: BuildFacts) -> str:
     source = read_source_tree(request)
-    with open_archive(wheel, str(wheel)) as archive:
-        inside = {member_digest(archive, name, "sha256"): name for name in archive.namelist() if name.endswith(".whl")}
+    inside = dict(_core.whl_member_digests(wheel))
     # a bundled wheel the built wheel holds is named by its path in there, as an archive SBOM names it, so both
     # documents give one wheel the same identity
     source = dataclasses.replace(

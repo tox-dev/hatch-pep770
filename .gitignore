@@ -2,5 +2,8 @@
 *.egg-info
 dist/
 .tox/
-/src/python_sbom/version.py
 /uv.lock
+/target/
+.venv/
+src/python_sbom/_core*.so
+src/python_sbom/_core*.pyd

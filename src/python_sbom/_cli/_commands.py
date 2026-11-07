@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import json
 import sys
-import zipfile
-from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
+from python_sbom import _core
 from python_sbom._collect._content import load_content_provider
 from python_sbom._collect._facts import collect_facts
 from python_sbom._errors import SbomError
-from python_sbom._formats._json import dumps
-from python_sbom._formats._spdx import to_spdx
-from python_sbom._generate._archive import describe_archive
+from python_sbom._generate._archive import archive_document
 from python_sbom._generate._embed import embed_sbom, revision_reader
 from python_sbom._validate._artifact import validate as validate_artifact
-from python_sbom._validate._document import MAX_COMPONENTS, is_document
+from python_sbom._validate._document import MAX_COMPONENTS
+from python_sbom.version import __version__
 
 if TYPE_CHECKING:
     from argparse import ArgumentParser, _SubParsersAction
@@ -94,7 +91,7 @@ def add_archive(commands: _SubParsersAction[ArgumentParser]) -> None:
 def _archive(options: Options) -> bool:
     root = Path.cwd() if options.root is None else options.root
     facts = collect_facts(root, revision_reader(options.commit), path=options.build_env)
-    document = describe_archive(
+    document = archive_document(
         root,
         options.archive,
         facts=facts,
@@ -102,17 +99,13 @@ def _archive(options: Options) -> bool:
         build_scripts=tuple(PurePosixPath(script) for script in options.build_scripts or []),
     )
     name = f"{options.archive.name}.cdx.json"
-    (target := options.output or options.archive.with_name(name)).write_bytes(content := dumps(document))
+    (target := options.output or options.archive.with_name(name)).write_bytes(content := document.dumps())
     sys.stdout.write(f"wrote {target}\n")
     if options.embed:
-        with zipfile.ZipFile(options.archive, "a") as handle:
-            if name in handle.namelist():
-                msg = f"{options.archive.name} already holds {name}"
-                raise SbomError(msg)
-            # a fixed time and Unix attributes, so the archive's bytes are the same whichever system adds the entry
-            entry = zipfile.ZipInfo(name, datetime.fromtimestamp(max(facts.epoch, 315532800), tz=UTC).timetuple()[:6])
-            entry.create_system, entry.external_attr = 3, 0o644 << 16
-            handle.writestr(entry, content)
+        # a fixed time and Unix attributes, so the archive's bytes are the same whichever system adds the entry
+        if not _core.append_member(options.archive, name, content, facts.epoch):
+            msg = f"{options.archive.name} already holds {name}"
+            raise SbomError(msg)
         sys.stdout.write(f"wrote {name} into {options.archive.name}\n")
     return True
 
@@ -125,17 +118,10 @@ def add_spdx(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _spdx(options: Options) -> bool:
-    if not is_document(loaded := json.loads(options.source.read_text(encoding="utf-8"))):
-        msg = f"{options.source} is not a CycloneDX document python-sbom can render"
+    # the CLI renders without the schema check, which validate runs
+    if (problem := _core.spdx_file(options.source, options.target, __version__)) is not None:
+        msg = f"{options.source} is not a CycloneDX document python-sbom can render" + (f": {problem}" if problem else "")
         raise SbomError(msg)
-    try:
-        rendered = to_spdx(loaded)
-    except (KeyError, TypeError) as error:
-        # the CLI renders without the schema check, which needs the validate extra
-        msg = f"{options.source} is not a CycloneDX document python-sbom can render: {error!r}"
-        raise SbomError(msg) from error
-    # bytes, so the line endings are the same on every operating system
-    options.target.write_bytes(rendered.encode())
     return True
 
 

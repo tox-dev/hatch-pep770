@@ -4,9 +4,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
-from python_sbom._formats._json import dumps
-from python_sbom._model._bom import describe
-from python_sbom._model._names import sbom_file_name
+from python_sbom import _core
 
 if TYPE_CHECKING:
     from python_sbom._model._content import ContentProvider, ProviderContext
@@ -18,8 +16,8 @@ def build_sbom(
     request: SbomRequest, source: SourceTree, facts: BuildFacts, content: ContentProvider, context: ProviderContext
 ) -> Sbom:
     return Sbom(
-        file_name=sbom_file_name(request.metadata["Name"]),
-        document=describe(
+        file_name=f"{_core.project_identity(request.metadata, request.settings)[0]}.cdx.json",
+        built=_core.describe(
             request,
             source,
             facts,
@@ -32,11 +30,16 @@ def build_sbom(
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Sbom:
     file_name: str
-    document: Document
+    #: the document as the core built it, written without becoming Python objects
+    built: _core.Document
+
+    @property
+    def document(self) -> Document:
+        return self.built.to_python()
 
     @property
     def content(self) -> bytes:
-        return dumps(self.document)
+        return self.built.dumps()
 
 
 __all__ = [

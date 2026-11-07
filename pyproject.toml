@@ -1,12 +1,7 @@
 [build-system]
-build-backend = "hatchling.build"
+build-backend = "maturin"
 requires = [
-  "hatch-fancy-pypi-readme>=25.1",
-  "hatch-vcs>=0.5",
-  "hatchling>=1.32.4",
-  "installer>=1.1",
-  "packageurl-python>=0.11.1",
-  "zipremove>=0.10",
+  "maturin>=1.15,<2",
 ]
 
 [project]
@@ -39,29 +34,22 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Rust",
   "Topic :: Security",
   "Topic :: Software Development :: Build Tools",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Typing :: Typed",
 ]
+readme = "README.md"
 dynamic = [
-  "readme",
   "version",
 ]
-dependencies = [
-  "installer>=1.1",
-  "packageurl-python>=0.11.1",
-  "packaging>=26.3",
-  "zipremove>=0.10",
-]
+dependencies = [ ]
 optional-dependencies.hatch = [
   "hatchling>=1.28",
 ]
-optional-dependencies.validate = [
-  "cyclonedx-python-lib[json-validation]>=11.12",
-  "license-expression>=30",
-  "spdx-tools>=0.8.5",
-]
+# validation is built in; the extra stays so existing `python-sbom[validate]` pins keep resolving
+optional-dependencies.validate = [ ]
 urls.Changelog = "https://python-sbom.readthedocs.io/en/latest/changelog.html"
 urls.Documentation = "https://python-sbom.readthedocs.io"
 urls.Homepage = "https://github.com/tox-dev/python-sbom"
@@ -79,13 +67,12 @@ dev = [
 ]
 test = [
   "covdefaults>=2.3",
-  "cyclonedx-python-lib[json-validation]>=11.12",
+  "packaging>=26.3",
   "hatchling>=1.28",
   "installer>=1.1",
   "pytest>=9.1.1",
   "pytest-cov>=7.1",
   "pytest-mock>=3.16",
-  "spdx-tools>=0.8.5",
 ]
 type = [
   "ty>=0.0.84",
@@ -120,13 +107,11 @@ release-prepare = [
   "towncrier>=26.9",
 ]
 
-[tool.hatch]
-version.source = "vcs"
-metadata.hooks.fancy-pypi-readme.content-type = "text/markdown"
-metadata.hooks.fancy-pypi-readme.fragments = [ { path = "README.md" } ]
-build.hooks.vcs.version-file = "src/python_sbom/version.py"
-# writes python-sbom's own SBOM with the hook it ships, after the vcs hook writes the version
-build.hooks.custom.path = "hatch_build.py"
+[tool.maturin]
+module-name = "python_sbom._core"
+bindings = "pyo3"
+python-source = "src"
+manifest-path = "Cargo.toml"
 
 [tool.uv]
 dependency-groups.release-news = { requires-python = ">=3.15" }

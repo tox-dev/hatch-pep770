@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
+
+from python_sbom import _core
 
 if TYPE_CHECKING:
     from python_sbom._model._types import Document
@@ -10,7 +11,8 @@ if TYPE_CHECKING:
 
 
 def dumps(document: Document | Spdx) -> bytes:
-    return f"{json.dumps(document, indent=2)}\n".encode()
+    # what f"{json.dumps(document, indent=2)}\n".encode() writes
+    return _core.dumps(document)
 
 
 __all__ = [

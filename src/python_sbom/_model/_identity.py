@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ._names import project_urls, property_prefix, reference_type
+from python_sbom import _core
 
 if TYPE_CHECKING:
     from email.message import Message
@@ -12,17 +12,9 @@ if TYPE_CHECKING:
     from ._inputs import Settings
 
 
-def project_identity(metadata: Message, settings: Settings) -> ProjectIdentity:
-    project = property_prefix(metadata["Name"])
-    repository = settings.repository or next(
-        (url.rstrip("/") for label, url in project_urls(metadata) if reference_type(label) == "vcs"), None
-    )
-    base = repository or f"https://pypi.org/project/{project}"
-    return ProjectIdentity(
-        property_prefix=project,
-        repository=repository,
-        serial_namespace=uuid.uuid5(uuid.NAMESPACE_URL, f"{base}/sboms"),
-    )
+def project_identity(metadata: Message | _core.Metadata, settings: Settings) -> ProjectIdentity:
+    prefix, repository, namespace = _core.project_identity(metadata, settings)
+    return ProjectIdentity(property_prefix=prefix, repository=repository, serial_namespace=uuid.UUID(namespace))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

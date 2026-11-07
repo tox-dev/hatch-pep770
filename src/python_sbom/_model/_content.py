@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import zipfile
 from typing import TYPE_CHECKING
 
 from ._inputs import BundledWheelInfo, Contributions
@@ -45,6 +44,8 @@ class ProviderContext:
             if not (target := self._artifact / str(path)).is_file():
                 raise KeyError(str(path))
             return target.read_bytes()
+        import zipfile  # noqa: PLC0415 # only a provider reading a built wheel needs it, so the CLI starts without it
+
         with zipfile.ZipFile(self._artifact) as archive:
             return archive.read(str(path))
 

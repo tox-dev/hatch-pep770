@@ -13,11 +13,12 @@ class SettingsError(SbomError): ...  # simplint: ignore[SMP704] # see above
 class WheelError(SbomError, ValueError): ...  # simplint: ignore[SMP704] # see above
 
 
-class MissingExtraError(SbomError, ImportError): ...  # simplint: ignore[SMP704] # see above
+# a Requires-Dist that does not parse, as packaging's InvalidRequirement reported it
+class InvalidRequirement(ValueError): ...  # simplint: ignore[SMP704] # see above
 
 
 __all__ = [
-    "MissingExtraError",
+    "InvalidRequirement",
     "SbomError",
     "SettingsError",
     "WheelError",

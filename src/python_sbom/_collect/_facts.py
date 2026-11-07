@@ -9,23 +9,14 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import] # runs git to re
 import sys
 import time
 import warnings
-from importlib.metadata import distributions
-from itertools import starmap
 from typing import TYPE_CHECKING, Final, Protocol
 
-from installer.records import InvalidRecordEntry, RecordEntry, parse_record_file
-from installer.utils import parse_metadata_file
-from packaging.direct_url import DirectUrl, DirectUrlValidationError
-from packaging.requirements import InvalidRequirement, Requirement
-from packaging.utils import canonicalize_name
-
+from python_sbom import _core
 from python_sbom._errors import SettingsError
-from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, RecordRow, Revision
-from python_sbom._wheel._record import decode_digest
+from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, Revision
 
 if TYPE_CHECKING:
-    from collections.abc import Container, Sequence
-    from importlib.metadata import Distribution, PackageMetadata
+    from collections.abc import Sequence
     from pathlib import Path
 
 #: the file an sdist carries its source revision in, as ``node: <commit>``, for the wheel built from it
@@ -62,89 +53,49 @@ def collect_facts(
 
 
 def _installed(path: Sequence[str] | None) -> list[InstalledDistribution]:
-    found: Final[dict[str, tuple[Distribution, PackageMetadata]]] = {}
-    for distribution in distributions(path=list(path)) if path is not None else distributions():
-        try:
-            metadata = distribution.metadata
-        # a .dist-info without METADATA, which newer Pythons refuse to read
-        except FileNotFoundError:  # pragma: >=3.15 cover
-            continue
-        # the first on the path is the one imports load, so a shadowed copy further down is left out
-        if "Name" in metadata and "Version" in metadata:
-            found.setdefault(canonicalize_name(metadata["Name"]), (distribution, metadata))
+    # read straight from each .dist-info by the core, in parallel; the first on the path is the one imports load, so a
+    # shadowed copy further down is left out
+    found, raised = _core.collect_distributions(list(sys.path if path is None else path), _marker_environment())
+    for warned in raised:
+        for warning in warned:
+            warnings.warn(_message(warning), stacklevel=3)
     return [
-        InstalledDistribution(
-            name=name,
-            metadata=metadata,
-            files=_recorded_files(distribution),
-            depends_on=_depends_on(name, distribution, found),
-        )
-        for name, (distribution, metadata) in found.items()
+        InstalledDistribution(name=name, metadata=metadata, files=files, depends_on=depends_on)
+        for name, metadata, files, depends_on in found
     ]
 
 
-def _recorded_files(distribution: Distribution) -> list[RecordRow]:
-    # a platform wheel's files are built for this machine's OS and architecture, and an editable install's point at a
-    # checkout, so listing either would tie the document to one machine
-    if parse_metadata_file(distribution.read_text("WHEEL") or "")["Root-Is-Purelib"] != "true" or _editable(
-        distribution
-    ):
-        return []
-    # RECORD read once and as written: Distribution.files would stat every row to drop files missing on disk, and
-    # build a path object for each, while the SBOM lists what the install recorded
+def _message(warning: str | tuple[str, str]) -> str:
+    if isinstance(warning, str):
+        return warning
+    # json words its own errors, so the core leaves a direct_url.json that does not parse to it
+    name, text = warning
     try:
-        entries: Final[list[RecordEntry]] = list(
-            starmap(RecordEntry.from_elements, parse_record_file((distribution.read_text("RECORD") or "").splitlines()))
-        )
-    except InvalidRecordEntry as error:
-        warnings.warn(f"listed no files of {distribution.name}, its RECORD is malformed: {error}", stacklevel=2)
-        return []
-    rows: Final[list[RecordRow]] = []
-    for entry in entries:
-        if entry.hash_ is None or not _describes_distribution(entry.path):
-            continue
-        algorithm, digest = decode_digest(str(entry.hash_), entry.path)
-        rows.append(RecordRow(path=entry.path, algorithm=algorithm, digest=digest, size=str(entry.size)))
-    return rows
+        json.loads(text)
+    except ValueError as error:
+        return f"read the direct_url.json of {name} as not editable: {error}"
+    return f"read the direct_url.json of {name} as not editable"  # pragma: no cover # the core parses what json does
 
 
-def _editable(distribution: Distribution) -> bool:
-    if (text := distribution.read_text("direct_url.json")) is None:
-        return False
-    try:
-        dir_info = DirectUrl.from_dict(json.loads(text)).dir_info
-    # an installer that wrote the file wrong breaks no build: its files get listed, as for any other install
-    except (ValueError, DirectUrlValidationError) as error:
-        warnings.warn(f"read the direct_url.json of {distribution.name} as not editable: {error}", stacklevel=2)
-        return False
-    return dir_info is not None and dir_info.editable is True
-
-
-def _describes_distribution(path: str) -> bool:
-    # console-script launchers live outside site-packages and embed the environment's interpreter path; the installer
-    # metadata names the frontend; uv's cache files hold paths and times; none of them says anything about the package
-    directory, _, name = path.rpartition("/")
-    return not (
-        path.startswith("../")
-        or (directory.endswith(".dist-info") and name in {"INSTALLER", "REQUESTED", "direct_url.json"})
-        or re.fullmatch(r"uv_.*\.json", name)
-    )
-
-
-def _depends_on(name: str, distribution: Distribution, installed: Container[str]) -> list[str]:
-    names: Final[set[str]] = set()
-    for line in distribution.requires or []:
-        try:
-            requirement = Requirement(line)
-        except InvalidRequirement as error:
-            # old distributions declare requirements, such as "pytz (>dev)", that today's syntax rejects
-            warnings.warn(f"left out the requirement {line!r} of {name}: {error}", stacklevel=2)
-            continue
-        if (required := canonicalize_name(requirement.name)) in installed and (
-            requirement.marker is None or requirement.marker.evaluate()
-        ):
-            names.add(required)
-    return sorted(names)
+def _marker_environment() -> dict[str, str]:
+    # packaging's default_environment, built without importing packaging
+    info = sys.implementation.version
+    implementation_version = f"{info.major}.{info.minor}.{info.micro}"
+    if info.releaselevel != "final":  # pragma: no cover # depends on the interpreter running the tests
+        implementation_version += f"{info.releaselevel[0]}{info.serial}"
+    return {
+        "implementation_name": sys.implementation.name,
+        "implementation_version": implementation_version,
+        "os_name": os.name,
+        "platform_machine": platform.machine(),
+        "platform_release": platform.release(),
+        "platform_system": platform.system(),
+        "platform_version": platform.version(),
+        "python_full_version": platform.python_version(),
+        "platform_python_implementation": platform.python_implementation(),
+        "python_version": ".".join(platform.python_version_tuple()[:2]),
+        "sys_platform": sys.platform,
+    }
 
 
 def default_revision(root: Path, /) -> Revision | None:

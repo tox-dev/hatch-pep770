@@ -1,49 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import re
-from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
-from python_sbom._model._names import SBOM_FILE, SBOM_REPOSITORY, property_prefix, sbom_property
+from python_sbom import _core
 from python_sbom.version import __version__
 
-from ._json import dumps
-
 if TYPE_CHECKING:
-    from python_sbom._model._types import (
-        Component,
-        Document,
-        ExternalReference,
-        License,
-        Metadata,
-        OrganizationalEntity,
-        Tools,
-    )
-
-# SPDX 2.3 JSON names every CycloneDX 1.6 hash algorithm, but by names of its own
-_HASH_ALGORITHMS: Final[dict[str, str]] = {
-    "MD5": "MD5",
-    "SHA-1": "SHA1",
-    "SHA-256": "SHA256",
-    "SHA-384": "SHA384",
-    "SHA-512": "SHA512",
-    "SHA3-256": "SHA3-256",
-    "SHA3-384": "SHA3-384",
-    "SHA3-512": "SHA3-512",
-    "BLAKE2b-256": "BLAKE2b-256",
-    "BLAKE2b-384": "BLAKE2b-384",
-    "BLAKE2b-512": "BLAKE2b-512",
-    "BLAKE3": "BLAKE3",
-}
-_LICENSE_REF: Final[re.Pattern[str]] = re.compile(r"LicenseRef-[A-Za-z0-9.-]+")
-
-
-class _LegacyTool(TypedDict):
-    vendor: NotRequired[str]
-    name: NotRequired[str]
-    version: NotRequired[str]
+    from python_sbom._model._types import Document
 
 
 class _Checksum(TypedDict):
@@ -107,168 +70,11 @@ class Spdx(TypedDict):
 
 
 def to_spdx(document: Document) -> str:
-    return dumps(render_spdx(document, __version__)).decode()
+    return _core.spdx_text(document, __version__)
 
 
 def render_spdx(bom: Document, tool_version: str) -> Spdx:
-    metadata: Final[Metadata] = bom["metadata"]
-    root: Final[Component] = metadata["component"]
-    project: Final[str] = property_prefix(root["name"])
-    recorded: Final[dict[str, str]] = {prop["name"]: prop.get("value", "") for prop in metadata.get("properties", [])}
-    name: Final[str] = f"{root['name']}-{root['version']}" if "version" in root else root["name"]
-    # without a serial number the content names the document, so rendering it twice gives the same namespace
-    source: Final[str] = (
-        bom["serialNumber"]
-        if "serialNumber" in bom
-        else f"sha256:{hashlib.sha256(json.dumps(bom, sort_keys=True).encode()).hexdigest()}"
-    )
-    repository: Final[str] = recorded.get(sbom_property(project, SBOM_REPOSITORY), "https://spdx.org/spdxdocs")
-    sbom_file: Final[str] = recorded.get(sbom_property(project, SBOM_FILE), "CycloneDX JSON")
-    tools, tool_creators = _tools(metadata)
-    components: Final[list[Component]] = _walk([root, *bom.get("components", []), *tools])
-    packages: Final[list[_Package]] = [_package(component, f"{project}:") for component in components]
-    spdx: Final[Spdx] = {
-        "spdxVersion": "SPDX-2.3",
-        "dataLicense": "CC0-1.0",
-        "SPDXID": "SPDXRef-DOCUMENT",
-        "name": name,
-        "documentNamespace": f"{repository}/sboms/{name}-{source.removeprefix('urn:uuid:')}",
-        "comment": f"Rendered from the CycloneDX SBOM {source} ({sbom_file}), which also carries per-file hashes and"
-        " the build formulation.",
-        "creationInfo": _creation_info(metadata, tool_creators, tool_version),
-        "packages": packages,
-        "relationships": _relationships(bom, components, tools),
-    }
-    # SPDX requires the text of every LicenseRef a package declares; the metadata names them, it holds no text
-    references: Final[list[str]] = sorted({
-        token for package in packages for token in _LICENSE_REF.findall(package["licenseDeclared"])
-    })
-    if references:
-        spdx["hasExtractedLicensingInfos"] = [
-            {"licenseId": token, "extractedText": f"{token}, as named in package metadata", "name": token}
-            for token in references
-        ]
-    return spdx
-
-
-def _tools(metadata: Metadata) -> tuple[list[Component], list[str]]:
-    # CycloneDX 1.5 lists the tools as components; earlier versions as a bare array, whose entries carry no bom-ref,
-    # so they become creators alone
-    tools: Final[Tools | list[_LegacyTool] | None] = metadata.get("tools")
-    if isinstance(tools, list):
-        return [], [_creator(name, tool.get("version")) for tool in tools if (name := tool.get("name"))]
-    components: Final[list[Component]] = [] if tools is None else tools.get("components", [])
-    return components, [
-        _creator(tool["name"], tool.get("version")) for tool in components if tool["type"] == "application"
-    ]
-
-
-def _creator(name: str, version: str | None) -> str:
-    return f"Tool: {name}" if version is None else f"Tool: {name}-{version}"
-
-
-def _walk(components: list[Component]) -> list[Component]:
-    # iterative, so a deeply nested hostile document cannot exhaust the stack; file components mirror wheel RECORD
-    # entries, which carry no SHA-1 and so cannot become SPDX files
-    found: Final[list[Component]] = []
-    pending: Final[list[Component]] = list(reversed(components))
-    while pending:
-        if (component := pending.pop())["type"] != "file":
-            found.append(component)
-            pending.extend(reversed(component.get("components", [])))
-    return found
-
-
-def _package(component: Component, property_prefix: str) -> _Package:
-    # a component carries either one SPDX expression, or the free-form names from License/classifier metadata plus the
-    # SPDX ids concluded from them
-    licenses: Final[list[License]] = component.get("licenses", [])
-    concluded: Final[list[str]] = [
-        entry["license"]["id"] for entry in licenses if "license" in entry and "id" in entry["license"]
-    ]
-    package: Final[_Package] = {
-        "SPDXID": _spdx_id(component["bom-ref"]),
-        "name": component["name"],
-        "downloadLocation": "NOASSERTION",
-        "filesAnalyzed": False,
-        "licenseConcluded": " AND ".join(concluded) or "NOASSERTION",
-        "licenseDeclared": next((entry["expression"] for entry in licenses if "expression" in entry), "NOASSERTION"),
-        "primaryPackagePurpose": {"application": "APPLICATION", "library": "LIBRARY"}.get(component["type"], "OTHER"),
-    }
-    if version := component.get("version"):
-        package["versionInfo"] = version
-    if (supplier := component.get("supplier")) and (organization := supplier.get("name")):
-        package["supplier"] = f"Organization: {organization}"
-    checksums: Final[list[_Checksum]] = [
-        {"algorithm": _HASH_ALGORITHMS[entry["alg"]], "checksumValue": entry["content"]}
-        for entry in component.get("hashes", [])
-        if entry["alg"] in _HASH_ALGORITHMS
-    ]
-    if checksums:
-        package["checksums"] = checksums
-    references: Final[list[ExternalReference]] = component.get("externalReferences", [])
-    if homepage := next((reference["url"] for reference in references if reference["type"] == "website"), None):
-        package["homepage"] = homepage
-    if copyright_text := component.get("copyright"):
-        package["copyrightText"] = copyright_text
-    if description := component.get("description"):
-        package["summary"] = description
-    if comment := "\n".join(
-        f"{prop['name']}: {prop.get('value', '')}"
-        for prop in component.get("properties", [])
-        if prop["name"].startswith(property_prefix)
-    ):
-        package["comment"] = comment
-    if purl := component.get("purl"):
-        package["externalRefs"] = [
-            {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": purl}
-        ]
-    if package["licenseDeclared"] == "NOASSERTION" and (
-        names := [entry["license"]["name"] for entry in licenses if "license" in entry and "name" in entry["license"]]
-    ):
-        package["licenseComments"] = f"Declared in package metadata as: {'; '.join(names)}"
-    return package
-
-
-def _spdx_id(bom_ref: str) -> str:
-    # SPDX ids allow letters, digits, "." and "-"; the digest keeps two refs that differ only in other characters,
-    # such as the markers of two conditional requirements, apart
-    readable: Final[str] = re.sub(r"[^A-Za-z0-9.]+", "-", bom_ref).strip("-")
-    return f"SPDXRef-{readable}-{hashlib.sha256(bom_ref.encode()).hexdigest()[:8]}"
-
-
-def _creation_info(metadata: Metadata, tool_creators: list[str], tool_version: str) -> _CreationInfo:
-    timestamp: Final[str | None] = metadata.get("timestamp")
-    # SPDX requires a creation time; without the CycloneDX one, the time of this rendering is the true one
-    created: Final[datetime] = datetime.now(UTC) if timestamp is None else datetime.fromisoformat(timestamp)
-    supplier: Final[OrganizationalEntity | None] = metadata.get("supplier")
-    organization: Final[str] = "" if supplier is None else supplier.get("name", "")
-    creators: Final[list[str]] = [f"Organization: {organization}"] if organization else []
-    creators.extend(tool_creators)
-    creators.append(f"Tool: python-sbom-{tool_version}")
-    return {"created": created.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), "creators": creators}
-
-
-def _relationships(bom: Document, components: list[Component], tools: list[Component]) -> list[_Relationship]:
-    root_id: Final[str] = _spdx_id(bom["metadata"]["component"]["bom-ref"])
-    relationships: Final[list[_Relationship]] = [_relationship("SPDXRef-DOCUMENT", "DESCRIBES", root_id)]
-    relationships.extend(
-        _relationship(_spdx_id(parent["bom-ref"]), "CONTAINS", _spdx_id(child["bom-ref"]))
-        for parent in components
-        for child in parent.get("components", [])
-        if child["type"] != "file"
-    )
-    relationships.extend(
-        _relationship(_spdx_id(entry["ref"]), "DEPENDS_ON", _spdx_id(dependency))
-        for entry in bom.get("dependencies", [])
-        for dependency in entry.get("dependsOn", [])
-    )
-    relationships.extend(_relationship(_spdx_id(tool["bom-ref"]), "BUILD_TOOL_OF", root_id) for tool in tools)
-    return relationships
-
-
-def _relationship(element: str, kind: str, related: str) -> _Relationship:
-    return {"spdxElementId": element, "relationshipType": kind, "relatedSpdxElement": related}
+    return _core.render_spdx(bom, tool_version)
 
 
 __all__ = [
