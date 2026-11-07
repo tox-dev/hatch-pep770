@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 def with_header(body: Body, namespace: uuid.UUID) -> Document:
     # a provider contributes refs of its own, so the document is checked before it is written rather than by validate
     components: Final[list[Component]] = [
-        *_walk_components([
+        *walk_components([
             body["metadata"]["component"],
             *body["components"],
             *body["metadata"]["tools"]["components"],
@@ -56,9 +56,9 @@ def with_header(body: Body, namespace: uuid.UUID) -> Document:
     }
 
 
-def _walk_components(components: Iterable[Component]) -> Iterator[Component]:
-    # depth first, each component before the ones it nests, in document order; iterative, so deep nesting cannot exhaust
-    # the stack
+def walk_components(components: Iterable[Component]) -> Iterator[Component]:
+    # depth first, each component before the ones it nests, in document order; iterative, so a deeply nested document
+    # cannot exhaust the stack
     pending: Final[list[Component]] = list(reversed(list(components)))
     while pending:
         component = pending.pop()
@@ -69,7 +69,7 @@ def _walk_components(components: Iterable[Component]) -> Iterator[Component]:
 def checked_contributions(contributions: Contributions, provider: ContentProvider) -> Contributions:
     # what a provider adds is checked for the fields everything else here reads, so a mistake names the provider rather
     # than surfacing as a KeyError deep in the build
-    for component in _walk_components([*contributions.components, *contributions.tools]):
+    for component in walk_components([*contributions.components, *contributions.tools]):
         if missing := [key for key in ("type", "bom-ref", "name") if key not in component]:
             name = type(provider).__qualname__
             msg = f"content provider {name} added a component without {', '.join(missing)}: {component!r:.200}"
@@ -114,5 +114,6 @@ __all__ = [
     "contributed_properties",
     "formulation",
     "timestamp",
+    "walk_components",
     "with_header",
 ]

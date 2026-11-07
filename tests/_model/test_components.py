@@ -9,6 +9,7 @@ from python_sbom._model._components import (
     bundled_wheel_component,
     component_from_metadata,
     script_tool,
+    vendored_dependencies,
 )
 from python_sbom._model._inputs import BundledWheel, RecordRow
 from python_sbom._model._metadata import parse_metadata
@@ -345,3 +346,20 @@ def test_vendored_spellings_of_one_package_merge() -> None:
 def test_pypi_purl_keeps_dots() -> None:
     component = component_from_metadata(parse_metadata("Name: zope.interface\nVersion: 7.0\n"))
     assert component["purl"] == "pkg:pypi/zope.interface@7.0"
+
+
+def test_vendored_dependencies_at_any_depth_in_document_order() -> None:
+    def bundled(ref: str, *children: Component) -> Component:
+        return {"type": "library", "bom-ref": ref, "name": ref, "components": list(children)}
+
+    vendored: Component = {"type": "library", "bom-ref": "bundled:b.whl#vendored/pkg:pypi/six@1", "name": "six"}
+    # a file whose path holds the marker is no vendored package
+    file: Component = {"type": "file", "bom-ref": "bundled:a.whl#x#vendored/y", "name": "x#vendored/y"}
+    components = [
+        bundled("pkg:pypi/app@1", bundled("bundled:a.whl", file), bundled("bundled:b.whl", vendored)),
+        bundled("bundled:c.whl", {**vendored, "bom-ref": "bundled:c.whl#vendored/pkg:pypi/six@1"}),
+    ]
+    assert vendored_dependencies(components) == [
+        {"ref": "bundled:b.whl", "dependsOn": ["bundled:b.whl#vendored/pkg:pypi/six@1"]},
+        {"ref": "bundled:c.whl", "dependsOn": ["bundled:c.whl#vendored/pkg:pypi/six@1"]},
+    ]

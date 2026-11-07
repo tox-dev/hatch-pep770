@@ -6,6 +6,7 @@ import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
+from python_sbom._model._document import walk_components
 from python_sbom._model._names import SBOM_FILE, SBOM_REPOSITORY, property_prefix, sbom_property
 from python_sbom.version import __version__
 
@@ -125,7 +126,12 @@ def render_spdx(bom: Document, tool_version: str) -> Spdx:
     repository: Final[str] = recorded.get(sbom_property(project, SBOM_REPOSITORY), "https://spdx.org/spdxdocs")
     sbom_file: Final[str] = recorded.get(sbom_property(project, SBOM_FILE), "CycloneDX JSON")
     tools, tool_creators = _tools(metadata)
-    components: Final[list[Component]] = _walk([root, *bom.get("components", []), *tools])
+    # file components mirror wheel RECORD entries, which carry no SHA-1 and so cannot become SPDX files
+    components: Final[list[Component]] = [
+        component
+        for component in walk_components([root, *bom.get("components", []), *tools])
+        if component["type"] != "file"
+    ]
     packages: Final[list[_Package]] = [_package(component, f"{project}:") for component in components]
     spdx: Final[Spdx] = {
         "spdxVersion": "SPDX-2.3",
@@ -165,18 +171,6 @@ def _tools(metadata: Metadata) -> tuple[list[Component], list[str]]:
 
 def _creator(name: str, version: str | None) -> str:
     return f"Tool: {name}" if version is None else f"Tool: {name}-{version}"
-
-
-def _walk(components: list[Component]) -> list[Component]:
-    # iterative, so a deeply nested hostile document cannot exhaust the stack; file components mirror wheel RECORD
-    # entries, which carry no SHA-1 and so cannot become SPDX files
-    found: Final[list[Component]] = []
-    pending: Final[list[Component]] = list(reversed(components))
-    while pending:
-        if (component := pending.pop())["type"] != "file":
-            found.append(component)
-            pending.extend(reversed(component.get("components", [])))
-    return found
 
 
 def _package(component: Component, property_prefix: str) -> _Package:

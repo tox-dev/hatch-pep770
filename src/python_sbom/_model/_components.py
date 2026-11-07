@@ -6,6 +6,7 @@ from itertools import starmap
 from typing import TYPE_CHECKING, Final
 from urllib.parse import urlsplit
 
+from ._document import walk_components
 from ._licenses import licenses
 from ._names import property_prefix, purl, pypi_url, reference_type, tool_ref
 from ._types import Dependency
@@ -131,19 +132,13 @@ def file_component(parent_ref: str, row: RecordRow) -> Component:
 def vendored_dependencies(components: list[Component]) -> list[Dependency]:
     # each bundled wheel depends on the packages it vendors, wherever it sits in the document
     found: Final[list[Dependency]] = []
-    pending = list(components)
-    while pending:
-        component = pending.pop(0)
-        children = component.get("components", [])
-        if component["bom-ref"].startswith("bundled:") and (
-            vendored := [
-                child["bom-ref"]
-                for child in children
-                if child["type"] == "library" and "#vendored/" in child["bom-ref"]
-            ]
-        ):
+    for component in walk_components(components):
+        if not component["bom-ref"].startswith("bundled:"):
+            continue
+        # a file's ref holds its path, which may itself hold "#vendored/"
+        libraries = (child["bom-ref"] for child in component.get("components", []) if child["type"] == "library")
+        if vendored := [ref for ref in libraries if "#vendored/" in ref]:
             found.append(Dependency(ref=component["bom-ref"], dependsOn=vendored))
-        pending.extend(children)
     return found
 
 
