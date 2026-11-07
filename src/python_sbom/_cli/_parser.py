@@ -83,6 +83,9 @@ def _add_spdx(commands: _SubParsersAction[ArgumentParser]) -> None:
     parser = commands.add_parser(
         "spdx",
         help="render a CycloneDX SBOM as SPDX 2.3 JSON",
+        description="Render a CycloneDX JSON SBOM, such as one python-sbom wrote, as an SPDX 2.3 JSON document. It"
+        " checks only the fields the rendering reads, so it needs no extra; python-sbom validate checks the whole"
+        " document.",
     )
     parser.set_defaults(handler="python_sbom._cli._spdx:run")
     parser.add_argument("source", type=Path, metavar="SOURCE", help="CycloneDX JSON file to read")
