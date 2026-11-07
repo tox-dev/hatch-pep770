@@ -18,8 +18,10 @@ it adds.
   only from here, never from the wheel's own metadata.
 - :meth:`~python_sbom.ContentProvider.contributions` returns extra top-level components, the dependencies between them,
   root properties and build tools, such as the C libraries a native wheel links. They join the document before the
-  root's dependencies and the serial number derive from it. The build fails when a ``bom-ref`` repeats, a dependency
-  names one that no component has, or a root property uses the project's own prefix.
+  root's dependencies and the serial number derive from it. The build fails when a component or tool lacks ``type``,
+  ``bom-ref`` or ``name``, a ``bom-ref`` repeats, the ``formula:`` and ``workflow:`` refs of the build's formulation
+  included, a dependency names one that no component has, a ``bom-ref`` gets a second dependency entry (the root's
+  included, which python-sbom writes), or a root property uses the project's own prefix.
 
 Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and the
 hook, ``python-sbom embed`` and ``python-sbom archive`` all load it. When the provider's class lives in the project, the

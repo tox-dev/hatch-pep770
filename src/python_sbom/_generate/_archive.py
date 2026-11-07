@@ -20,6 +20,7 @@ from python_sbom._model._components import (
     vendored_dependencies,
 )
 from python_sbom._model._content import ProviderContext
+from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
 from python_sbom._model._inputs import Artifact, BuildScript
 from python_sbom._model._metadata import parse_metadata
@@ -50,7 +51,7 @@ def describe_archive(
     content = content or load_content_provider(settings.content_provider, root)
     with tempfile.TemporaryDirectory() as directory:
         held = _read_archive(root, archive, Path(directory), settings, content)
-        contributions = content.contributions(held.reader.context)
+        contributions = checked_contributions(content.contributions(held.reader.context), content)
     license_files: Final[list[str]] = held.metadata.values("license_files")
     artifact = Artifact(
         root=held.root,

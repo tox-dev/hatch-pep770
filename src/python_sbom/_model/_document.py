@@ -9,27 +9,41 @@ from typing import TYPE_CHECKING, Final
 from python_sbom._errors import SbomError
 
 if TYPE_CHECKING:
-    from ._inputs import BuildFacts
+    from collections.abc import Iterable, Iterator
+
+    from ._content import ContentProvider
+    from ._inputs import BuildFacts, Contributions
     from ._types import Body, Component, Document, Formula, Property
 
 
 def with_header(body: Body, namespace: uuid.UUID) -> Document:
     # a provider contributes refs of its own, so the document is checked before it is written rather than by validate
-    refs: Final[Counter[str]] = Counter()
-    pending: Final[list[Component]] = [
-        body["metadata"]["component"],
-        *body["components"],
-        *body["metadata"]["tools"]["components"],
+    components: Final[list[Component]] = [
+        *_walk_components([
+            body["metadata"]["component"],
+            *body["components"],
+            *body["metadata"]["tools"]["components"],
+        ])
     ]
-    while pending:
-        component = pending.pop()
-        refs[component["bom-ref"]] += 1
-        pending.extend(component.get("components", []))
+    refs: Final[Counter[str]] = Counter(component["bom-ref"] for component in components)
+    # formulas and workflows share the bom-ref namespace, so a component cannot take theirs
+    refs.update(
+        ref
+        for formula in body.get("formulation", [])
+        for ref in (formula["bom-ref"], *(workflow["bom-ref"] for workflow in formula["workflows"]))
+    )
     if repeated := sorted(ref for ref, count in refs.items() if count > 1):
         msg = f"bom-ref values repeat: {', '.join(repeated)}"
         raise SbomError(msg)
+    # one entry per component, as validation requires, so a provider adds to a component's dependencies, not a second
+    # entry for it
+    entries: Final[Counter[str]] = Counter(entry["ref"] for entry in body["dependencies"])
+    if repeated := sorted(ref for ref, count in entries.items() if count > 1):
+        msg = f"dependencies list more than one entry for: {', '.join(repeated)}"
+        raise SbomError(msg)
+    known: Final[set[str]] = {component["bom-ref"] for component in components}
     named = {ref for entry in body["dependencies"] for ref in (entry["ref"], *entry.get("dependsOn", []))}
-    if unknown := sorted(named - refs.keys()):
+    if unknown := sorted(named - known):
         msg = f"dependencies name bom-refs no component has: {', '.join(unknown)}"
         raise SbomError(msg)
     return {
@@ -40,6 +54,27 @@ def with_header(body: Body, namespace: uuid.UUID) -> Document:
         "version": 1,
         **body,
     }
+
+
+def _walk_components(components: Iterable[Component]) -> Iterator[Component]:
+    # depth first, each component before the ones it nests, in document order; iterative, so deep nesting cannot exhaust
+    # the stack
+    pending: Final[list[Component]] = list(reversed(list(components)))
+    while pending:
+        component = pending.pop()
+        yield component
+        pending.extend(reversed(component.get("components", [])))
+
+
+def checked_contributions(contributions: Contributions, provider: ContentProvider) -> Contributions:
+    # what a provider adds is checked for the fields everything else here reads, so a mistake names the provider rather
+    # than surfacing as a KeyError deep in the build
+    for component in _walk_components([*contributions.components, *contributions.tools]):
+        if missing := [key for key in ("type", "bom-ref", "name") if key not in component]:
+            name = type(provider).__qualname__
+            msg = f"content provider {name} added a component without {', '.join(missing)}: {component!r:.200}"
+            raise SbomError(msg)
+    return contributions
 
 
 def contributed_properties(properties: list[Property], prefix: str) -> list[Property]:
@@ -75,6 +110,7 @@ def timestamp(facts: BuildFacts) -> str:
 
 
 __all__ = [
+    "checked_contributions",
     "contributed_properties",
     "formulation",
     "timestamp",

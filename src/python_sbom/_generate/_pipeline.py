@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from python_sbom._formats._json import dumps
 from python_sbom._model._bom import describe
+from python_sbom._model._document import checked_contributions
 from python_sbom._model._names import sbom_file_name
 
 if TYPE_CHECKING:
@@ -24,7 +25,7 @@ def build_sbom(
             source,
             facts,
             {wheel.path: content.bundled_wheel(context, PurePosixPath(wheel.path)) for wheel in source.bundled},
-            content.contributions(context),
+            checked_contributions(content.contributions(context), content),
         ),
     )
 

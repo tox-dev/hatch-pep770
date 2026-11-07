@@ -139,8 +139,10 @@ class Contributions:
     """
     What a project adds to the document beyond its bundled wheels, merged before references and the serial are derived.
 
-    Each field defaults to empty, so a provider names only what it adds. The build fails when a ``bom-ref`` repeats or a
-    dependency names one that does not exist.
+    Each field defaults to empty, so a provider names only what it adds. The build fails when a component or tool lacks
+    ``type``, ``bom-ref`` or ``name``, a ``bom-ref`` repeats, the ``formula:`` and ``workflow:`` refs of the build's
+    formulation included, a dependency names one that does not exist, or a ``bom-ref`` gets a second dependency entry,
+    as the root does if a provider adds one, since python-sbom writes the root's.
 
     :param components: extra top-level components, such as vendored C libraries; the root depends on each, and a
         component's own parts nest under its ``components``
