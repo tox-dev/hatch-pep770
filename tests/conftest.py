@@ -111,7 +111,27 @@ def seeder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         ),
         encoding="utf-8",
     )
+    write_seed_wheel(target / "src" / "seeder" / "embed")
     return target
+
+
+def write_seed_wheel(directory: Path) -> Path:
+    # the pip wheel a seeder bundles, built here rather than committed so the repository holds no binaries
+    files: Final[dict[str, bytes]] = {
+        "pip/__init__.py": b"",
+        "pip/_vendor/vendor.txt": b"urllib3==1.26.4\n",
+        "pip-1.0.dist-info/METADATA": (
+            b"Metadata-Version: 2.4\nName: pip\nVersion: 1.0\nLicense-Expression: MIT\n"
+            b"Project-URL: Source, https://github.com/example/pip\n"
+        ),
+        "pip-1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\nGenerator: tests\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+    }
+    record = "".join(f"{name},{digest(content)},{len(content)}\n" for name, content in files.items())
+    files["pip-1.0.dist-info/RECORD"] = f"{record}pip-1.0.dist-info/RECORD,,\n".encode()
+    with zipfile.ZipFile(wheel := directory / "pip-1.0-py3-none-any.whl", "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, content in files.items():
+            archive.writestr(zipfile.ZipInfo(name, (2020, 2, 2, 0, 0, 0)), content, zipfile.ZIP_DEFLATED)
+    return wheel
 
 
 @pytest.fixture

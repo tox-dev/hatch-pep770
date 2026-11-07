@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import json
-import shutil
 import sys
 import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
-from conftest import digest
+from conftest import digest, write_seed_wheel
 from installer import install
 from installer.destinations import SchemeDictionaryDestination
 from installer.sources import WheelFile
@@ -113,8 +112,7 @@ def test_embed_uses_project_settings(make_wheel: MakeWheel, tmp_path: Path) -> N
 
 def test_embed_bundled_wheel(make_wheel: MakeWheel, tmp_path: Path) -> None:
     wheel: Final[Path] = make_wheel(_METADATA)
-    seed: Final[Path] = Path(__file__).parent / "seeder" / "src" / "seeder" / "embed" / "pip-1.0-py3-none-any.whl"
-    shutil.copyfile(seed, tmp_path / seed.name)
+    write_seed_wheel(tmp_path)
     project: Final[Project] = Project.from_table(
         {"bundled-wheels": ["*.whl"]}, root=tmp_path, where="[tool.python-sbom]"
     )
