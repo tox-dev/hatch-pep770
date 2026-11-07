@@ -64,6 +64,14 @@ def test_validate_without_extra(monkeypatch: pytest.MonkeyPatch, module: str) ->
         validate_document("not JSON", None)
 
 
+def test_validate_with_broken_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    # find_spec finds the extra's modules, yet one of their dependencies, such as spdx-tools' beartype, fails to import
+    monkeypatch.setitem(sys.modules, "python_sbom._validate._schemas", None)
+    with pytest.raises(MissingExtraError, match=r"pip install 'python-sbom\[validate\]'") as raised:
+        validate_document('{"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1}', None)
+    assert isinstance(raised.value.__cause__, ImportError)
+
+
 def test_schema_error_names_the_path() -> None:
     document: Json = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}
     assert schema_error(document) == '"one" is not of type "integer" at $.version'

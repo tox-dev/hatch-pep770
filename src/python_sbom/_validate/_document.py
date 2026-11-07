@@ -65,16 +65,20 @@ def validate_document(
 
 def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
     # every document must conform to the CycloneDX 1.6 schema; one python-sbom wrote must also carry the urn:uuid serial
-    # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy a
+    # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy. A
     # missing extra fails every document alike, while importing it, half a second, waits until the cheap census passes
+    missing_extra: Final[str] = "validation needs the validate extra: pip install 'python-sbom[validate]'"
     if any(find_spec(name) is None for name in _EXTRA):
-        msg = "validation needs the validate extra: pip install 'python-sbom[validate]'"
-        raise MissingExtraError(msg)
+        raise MissingExtraError(missing_extra)
     loaded: Final = json.loads(raw)
     if census := _census_problems(loaded, max_components):
         return census
-    from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
-    from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
+    # find_spec sees only the top-level modules, not a dependency of theirs that is missing or broken
+    try:
+        from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
+        from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra, see above
+    except ImportError as error:
+        raise MissingExtraError(missing_extra) from error
 
     if error := schema_error(loaded):
         return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
