@@ -246,8 +246,7 @@ def _stats_text(stats_file: Path) -> str:
 
 
 def _hot_spots(name: str, stats_file: Path) -> str:
-    stats = pstats.Stats(str(stats_file))
-    entries = stats.stats  # ty: ignore[unresolved-attribute] # the table pstats keeps is not in its stubs
+    entries = pstats.Stats(str(stats_file)).stats  # ty: ignore[unresolved-attribute] # the table pstats keeps is not in its stubs
     total = sum(entry[2] for entry in entries.values()) or 1.0
     rows = [
         (_label(function), entry[1], entry[0], entry[2], entry[3])

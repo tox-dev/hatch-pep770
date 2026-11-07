@@ -70,13 +70,6 @@ def prepare(work: Path, project: Path, virtualenv: Path | None) -> None:
     sys.stdout.write(f"wrote {work / 'fixtures.json'}\n")
 
 
-def load(work: Path) -> dict[str, str]:
-    if not (manifest := work / "fixtures.json").is_file():
-        msg = f"{manifest} does not exist; run `python -m bench prepare` first"
-        raise SystemExit(msg)
-    return json.loads(manifest.read_text(encoding="utf-8"))
-
-
 def _small_project(root: Path) -> Path:
     # a pure-Python project of forty modules that turns the hook on, as a typical hatchling user does
     shutil.rmtree(root, ignore_errors=True)
@@ -114,6 +107,50 @@ repository = "https://github.com/example/proj"
         )
     _commit(root)
     return root
+
+
+def _commit(root: Path) -> None:
+    # a checkout, as projects build from one, so the timed runs include reading the source revision with git
+    _run(["git", "init", "--quiet", str(root)])
+    _run(["git", "-C", str(root), "add", "."])
+    _run([
+        "git",
+        "-C",
+        str(root),
+        *_GIT_IDENTITY,
+        "commit",
+        "--quiet",
+        "--no-verify",
+        "--no-gpg-sign",
+        "-m",
+        "bench fixture",
+    ])
+
+
+def _run(command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
+    subprocess.run(command, check=True, cwd=cwd, env=env)
+
+
+def _hatchling_wheel(root: Path, directory: Path) -> Path:
+    # without isolation, in this environment, so the hook under test is the one installed here
+    shutil.rmtree(directory, ignore_errors=True)
+    _run([sys.executable, "-m", "hatchling", "build", "--target", "wheel", "--directory", str(directory)], cwd=root)
+    (wheel,) = directory.glob("*.whl")
+    return wheel
+
+
+def _hostile_document(wheel: Path, target: Path) -> Path:
+    # ten thousand unique components: over the default component cap, which rejects the document before the schema
+    # check, and with a raised limit a uniqueItems check that compares every pair of them
+    with zipfile.ZipFile(wheel) as archive:
+        (name,) = (member for member in archive.namelist() if "/sboms/" in member)
+        document = json.loads(archive.read(name))
+    hostile = copy.deepcopy(document)
+    hostile["components"] = [
+        {"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(_HOSTILE_COMPONENTS)
+    ]
+    target.write_text(json.dumps(hostile), encoding="utf-8")
+    return target
 
 
 def _meson_project(root: Path) -> Path:
@@ -200,25 +237,25 @@ def _fat_environment(target: Path) -> str:
     return _output([str(python), "-c", "import sysconfig; print(sysconfig.get_path('purelib'))"]).strip()
 
 
-def _hatchling_wheel(root: Path, directory: Path) -> Path:
-    # without isolation, in this environment, so the hook under test is the one installed here
-    shutil.rmtree(directory, ignore_errors=True)
-    _run([sys.executable, "-m", "hatchling", "build", "--target", "wheel", "--directory", str(directory)], cwd=root)
-    (wheel,) = directory.glob("*.whl")
-    return wheel
+def _output(command: list[str]) -> str:
+    return subprocess.run(command, check=True, capture_output=True, text=True).stdout
 
 
-def _hostile_document(wheel: Path, target: Path) -> Path:
-    # ten thousand unique components: over the default component cap, which rejects the document before the schema
-    # check, and with a raised limit a uniqueItems check that compares every pair of them
-    with zipfile.ZipFile(wheel) as archive:
-        (name,) = (member for member in archive.namelist() if "/sboms/" in member)
-        document = json.loads(archive.read(name))
-    hostile = copy.deepcopy(document)
-    hostile["components"] = [
-        {"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(_HOSTILE_COMPONENTS)
-    ]
-    target.write_text(json.dumps(hostile), encoding="utf-8")
+def _snapshot(source: Path, target: Path) -> Path:
+    # a clone of the checkout plus its uncommitted changes, so builds write their version files there and never into
+    # the checkout itself; --shared borrows its objects, so even a detached HEAD resolves
+    shutil.rmtree(target, ignore_errors=True)
+    _run(["git", "clone", "--quiet", "--shared", "--no-checkout", str(source), str(target)])
+    head = _output(["git", "-C", str(source), "rev-parse", "HEAD"]).strip()
+    _run(["git", "-C", str(target), "checkout", "--quiet", "--detach", head])
+    if diff := subprocess.run(
+        ["git", "-C", str(source), "diff", "--binary", "HEAD"], check=True, capture_output=True
+    ).stdout:
+        subprocess.run(["git", "-C", str(target), "apply", "--index"], check=True, input=diff)
+    for name in _output(["git", "-C", str(source), "ls-files", "--others", "--exclude-standard", "-z"]).split("\0"):
+        if name:
+            (target / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source / name, target / name)
     return target
 
 
@@ -265,48 +302,11 @@ def _wheel_version(wheel: Path) -> tuple[int, ...]:
     return tuple(int(part) for part in wheel.name.split("-")[1].split(".") if part.isdigit())
 
 
-def _snapshot(source: Path, target: Path) -> Path:
-    # a clone of the checkout plus its uncommitted changes, so builds write their version files there and never into
-    # the checkout itself; --shared borrows its objects, so even a detached HEAD resolves
-    shutil.rmtree(target, ignore_errors=True)
-    _run(["git", "clone", "--quiet", "--shared", "--no-checkout", str(source), str(target)])
-    head = _output(["git", "-C", str(source), "rev-parse", "HEAD"]).strip()
-    _run(["git", "-C", str(target), "checkout", "--quiet", "--detach", head])
-    if diff := subprocess.run(
-        ["git", "-C", str(source), "diff", "--binary", "HEAD"], check=True, capture_output=True
-    ).stdout:
-        subprocess.run(["git", "-C", str(target), "apply", "--index"], check=True, input=diff)
-    for name in _output(["git", "-C", str(source), "ls-files", "--others", "--exclude-standard", "-z"]).split("\0"):
-        if name:
-            (target / name).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source / name, target / name)
-    return target
-
-
-def _commit(root: Path) -> None:
-    # a checkout, as projects build from one, so the timed runs include reading the source revision with git
-    _run(["git", "init", "--quiet", str(root)])
-    _run(["git", "-C", str(root), "add", "."])
-    _run([
-        "git",
-        "-C",
-        str(root),
-        *_GIT_IDENTITY,
-        "commit",
-        "--quiet",
-        "--no-verify",
-        "--no-gpg-sign",
-        "-m",
-        "bench fixture",
-    ])
-
-
-def _run(command: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None) -> None:
-    subprocess.run(command, check=True, cwd=cwd, env=env)
-
-
-def _output(command: list[str]) -> str:
-    return subprocess.run(command, check=True, capture_output=True, text=True).stdout
+def load(work: Path) -> dict[str, str]:
+    if not (manifest := work / "fixtures.json").is_file():
+        msg = f"{manifest} does not exist; run `python -m bench prepare` first"
+        raise SystemExit(msg)
+    return json.loads(manifest.read_text(encoding="utf-8"))
 
 
 __all__ = [

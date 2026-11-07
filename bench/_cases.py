@@ -32,7 +32,7 @@ TIERS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Step:
     run: Callable[[], object]
     reset: Callable[[], object] | None = None
@@ -40,7 +40,7 @@ class Step:
     command: tuple[str, ...] | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Case:
     name: str
     tier: str
