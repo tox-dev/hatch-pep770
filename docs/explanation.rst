@@ -8,8 +8,10 @@ Each concern has its own subpackage, and only the adapters know a build system o
 and the ``embed`` and ``archive`` commands gather what the edge knows: the request (core metadata, file name, options,
 build scripts), the source tree, and the build facts (time, revision, toolchain). They hand those, with a
 :class:`~python_sbom.ContentProvider` and its :class:`~python_sbom.ProviderContext`, to one pipeline, and the model
-turns them into the document with pure functions. The diagram follows the imports between the subpackages: an arrow
-points at what a package imports, and a dashed arrow at what it imports only for type annotations.
+turns them into the document with pure functions.
+
+The diagram follows the imports between the subpackages: an arrow points at what a package imports, and a dashed arrow
+at what it imports only for type annotations.
 
 .. mermaid::
 
