@@ -29,8 +29,8 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
 _SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 # the archive reader stops at the same size
 _MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
-# the schema's uniqueItems compares every pair of items in an array, so a document whose components share one array
-# takes about ten seconds to check at this count and four times that at twice it
+# every check takes time in proportion to the count, about half a second of CPU per ten thousand components, so the cap
+# bounds the work an untrusted document can ask for
 MAX_COMPONENTS: Final[int] = 5_000
 # an exception's message can quote the hostile value that caused it
 _MAX_TEXT: Final[int] = 200
@@ -64,7 +64,7 @@ def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components:
     loaded: Final = json.loads(raw)
     if census := _census_problems(loaded, max_components):
         return census
-    if error := schema_error(raw):
+    if error := schema_error(loaded):
         return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
     # python-sbom names its file in a metadata property, so documents other tools wrote get the schema check alone; the
     # schema already guarantees the shape of what this reads
