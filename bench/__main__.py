@@ -208,7 +208,8 @@ def _profile(work: Path, out: Path, names: list[str], *, py_spy: bool) -> None:
     sys.stdout.write(f"wrote {target}\n")
 
 
-def _once(name: str, work: Path, stats_file: Path | None) -> None:  # simplint: ignore[SMP505] # ruff's C901 on main
+# a helper of main's because, inlined into main, it pushes main over ruff's C901 complexity limit
+def _once(name: str, work: Path, stats_file: Path | None) -> None:  # simplint: ignore[SMP505] # see above
     # without a stats file for an outside profiler such as py-spy
     with tempfile.TemporaryDirectory(dir=work, prefix="scratch-") as scratch:
         step = make_step(name, load(work), Path(scratch))
