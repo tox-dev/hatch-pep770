@@ -37,80 +37,60 @@ SBOM lists its module among the build tools, hashed, because it shapes the docum
             zlib = {'type': 'library', 'bom-ref': 'pkg:generic/zlib@1.3.1', 'name': 'zlib', 'version': '1.3.1'}
             return Contributions(components=[zlib])
 
-Worked example: virtualenv
---------------------------
+Worked example: a seeder
+------------------------
 
-`virtualenv <https://virtualenv.pypa.io/en/latest/>`_ ships the pip and setuptools wheels it installs into new
-environments, under ``src/virtualenv/seed/wheels/embed``. A ``BUNDLE_SUPPORT`` table in that package's ``__init__.py``,
-after a ``BUNDLE_FOLDER`` assignment, decides which Python versions receive each wheel. Its options name the supplier
-and the wheels:
+A seeder, a project like `virtualenv <https://virtualenv.pypa.io/en/latest/>`_, ships the wheels it installs into new
+environments under ``src/seeder/embed``. A ``BUNDLE_SUPPORT`` table in that package's ``__init__.py``, after a
+``BUNDLE_FOLDER`` assignment, decides which Python versions receive each wheel. The project's options name the supplier
+and the wheels, and enable hatchling's custom hook, which loads ``hatch_build.py`` from the project root:
 
-.. code-block:: toml
+.. literalinclude:: ../tests/_seeder/pyproject.toml
+    :language: toml
+    :start-at: [tool.hatch]
 
-    [build-system]
-    build-backend = 'hatchling.build'
-    requires = ['hatch-vcs>=0.5', 'hatchling>=1.28', "python-sbom[hatch]>=0.1; python_version >= '3.11'"]
-
-    [tool.hatch.build.hooks.custom]
-    path = 'hatch_build.py'
-
-    [tool.python-sbom]
-    supplier = { name = 'Python Packaging Authority', url = ['https://www.pypa.io'] }
-    bundled-wheels = ['src/virtualenv/seed/wheels/embed/*.whl']
-    content-provider = 'tasks.sbom_content:VirtualenvContent'
-
-virtualenv still builds on Python versions python-sbom does not support, so its ``hatch_build.py`` loads the hook only
-where the requirement's marker installs it, and falls back to hatchling's plain hook elsewhere:
-
-.. code-block:: python
-
-    import sys
-
-    if sys.version_info >= (3, 11):
-        from python_sbom.hatch import SbomBuildHook
-    else:  # python-sbom needs Python 3.11, so builds on older interpreters carry no SBOM
-        from hatchling.builders.hooks.plugin.interface import BuildHookInterface as SbomBuildHook
-
-
-    def get_build_hook():
-        return SbomBuildHook
-
-The ``get_build_hook`` function tells hatchling which class to load. The SBOM lists the script among the build tools,
-hashed. The provider reads the table next to each wheel through the context, by name, without importing the package, and
-names the project's supplier as the wheels' supplier, since virtualenv bundles only PyPA's own projects. The test suite
-builds a project with virtualenv's layout with the same provider, handed over from a hook subclass:
+The hook script subclasses :class:`~python_sbom.hatch.SbomBuildHook` and overrides
+:meth:`~python_sbom.hatch.SbomBuildHook.content_provider`, so it builds the provider with the table's name, an argument
+the ``content-provider`` option has no way to pass. ``get_build_hook`` tells hatchling which class to load, since the
+script also imports the base class. The provider reads the table next to each wheel through the context, by name,
+without importing the package, and names the project's supplier as the wheels' supplier, since the seeder bundles only
+that supplier's wheels. The test suite builds this project:
 
 .. literalinclude:: ../tests/_seeder/hatch_build.py
     :language: python
-    :pyobject: BundleSupport
 
-The pip component then carries these properties, in this order:
+The SBOM lists ``hatch_build.py`` among the build tools, hashed. The bundled pip wheel's component then carries these
+properties first, in this order, followed by those from its own metadata:
 
 .. list-table::
     :header-rows: 1
 
     * - Property
       - Value
-    * - ``virtualenv:bundled-wheel``
-      - ``virtualenv/seed/wheels/embed/pip-26.1-py3-none-any.whl``
-    * - ``virtualenv:seeded-for-python``
+    * - ``seeder:bundled-wheel``
+      - ``seeder/embed/pip-1.0-py3-none-any.whl``
+    * - ``seeder:seeded-for-python``
       - ``3.14``
-    * - ``virtualenv:seeded-for-python``
+    * - ``seeder:seeded-for-python``
       - ``3.15``
-    * - ``python:requires-python``
-      - ``>=3.10``
 
-A bundled wheel is named by its path inside the artifact, so the wheel's SBOM and the zipapp's give it the same
+A bundled wheel is named by its path inside the artifact, so the wheel's SBOM and an archive's give it the same
 ``bom-ref``.
+
+A hook subclass serves only the hatchling build: ``python-sbom embed`` and ``python-sbom archive`` load the provider the
+``content-provider`` option or their ``--content-provider`` names, and build a class without arguments. A project that
+wants the same provider in every SBOM it publishes gives the provider a constructor without arguments, or a module-level
+instance, and names it in the option instead of overriding the hook.
 
 Describe another archive
 ------------------------
 
-virtualenv also publishes a zipapp, ``virtualenv.pyz``, that holds virtualenv's own ``.dist-info`` at its top level, the
-wheels it seeds, and its dependencies unpacked under ``__virtualenv__/``. ``python-sbom archive`` describes such an
-archive the way the hook describes a wheel: the archive's own files, the project's distribution, each wheel it bundles
-as a ``.whl`` member, and each one unpacked into a directory with a ``.dist-info``. The content provider hears of every
-bundled wheel, and its context reads the archive's files:
+A project may also publish a zipapp, such as virtualenv's ``virtualenv.pyz``, which holds virtualenv's own
+``.dist-info`` at its top level, the wheels it seeds, and its dependencies unpacked under ``__virtualenv__/``.
+``python-sbom archive`` describes such an archive the way the hook describes a wheel: the archive's own files, the
+project's distribution, each wheel it bundles as a ``.whl`` member, and each one unpacked into a directory with a
+``.dist-info``. The content provider the option names hears of every bundled wheel, and its context reads the archive's
+files:
 
 .. code-block:: console
 
