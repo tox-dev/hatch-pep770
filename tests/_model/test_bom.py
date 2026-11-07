@@ -341,34 +341,41 @@ def test_contributions_join_before_references_and_serial(describe: Describe) -> 
 
 
 _ORG: Final[OrganizationalEntity] = {"name": "Example Org", "url": []}
+_PIP: Final[str] = "src/pip-1.0-py3-none-any.whl"
+
+
+class _ProjectSupplies(ContentProvider):
+    # the wheels the project builds itself, which its own supplier supplies
+    def __init__(self, *own: str) -> None:
+        self._own = frozenset(own)
+
+    def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:
+        if str(wheel) in self._own:
+            return BundledWheelInfo(supplier=context.settings.supplier)
+        return BundledWheelInfo()
 
 
 @pytest.mark.parametrize(
-    ("supplied", "expected"),
-    [pytest.param(True, _ORG, id="by-project"), pytest.param(False, None, id="unnamed")],
+    ("content", "expected"),
+    [
+        pytest.param(_ProjectSupplies(_PIP), _ORG, id="by-project"),
+        pytest.param(_ProjectSupplies(), None, id="unnamed"),
+    ],
 )
 def test_bundled_wheel_supplier_is_the_projects_choice(
-    describe: Describe, settings: Settings, supplied: bool, expected: OrganizationalEntity | None
+    describe: Describe, settings: Settings, content: ContentProvider, expected: OrganizationalEntity | None
 ) -> None:
     wheel = BundledWheel(
-        path="src/pip-1.0-py3-none-any.whl",
+        path=_PIP,
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
         metadata=parse_metadata("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
         files=[],
         vendored=[],
     )
-
-    class Supplied(ContentProvider):
-        def __init__(self, supplied: bool) -> None:
-            self._supplied = supplied
-
-        def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:  # ruff: ignore[unused-method-argument] # the base class's signature
-            return BundledWheelInfo(supplier=context.settings.supplier if self._supplied else None)
-
     document = describe(
         settings=dataclasses.replace(settings, supplier=_ORG),
         source=SourceTree(copyright=None, bundled=[wheel], build_scripts=[]),
-        content=Supplied(supplied),
+        content=content,
     )
     assert document["components"][0].get("supplier") == expected
