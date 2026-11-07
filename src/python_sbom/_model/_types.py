@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import NotRequired, TypedDict
 
+# the document model is our own: cyclonedx-python-lib models neither formulation nor compositions (its model/bom.py
+# holds only commented-out stubs, tracked upstream in CycloneDX/cyclonedx-python-lib#578 and #581), and its SortedSet
+# collections re-order lists whose order the document keeps on purpose
+
 
 class OrganizationalEntity(TypedDict):
     """
