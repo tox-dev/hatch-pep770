@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import dataclasses
 import uuid
-from email import message_from_string
 from typing import TYPE_CHECKING
 
 import pytest
 
 from python_sbom._model._identity import ProjectIdentity, project_identity
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from python_sbom._model._inputs import Settings
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 def test_project_identity_repository(
     settings: Settings, repository: str | None, urls: str, expected: str | None
 ) -> None:
-    metadata = message_from_string(f"Name: My_Project\nVersion: 1.0\n{urls}")
+    metadata = parse_metadata(f"Name: My_Project\nVersion: 1.0\n{urls}")
     identity = project_identity(metadata, dataclasses.replace(settings, repository=repository))
     assert identity == ProjectIdentity(
         property_prefix="my-project",

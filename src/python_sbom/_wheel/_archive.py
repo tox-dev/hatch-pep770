@@ -18,13 +18,13 @@ from typing import IO, TYPE_CHECKING, Final
 import zipremove
 from installer.records import Hash, RecordEntry
 from installer.sources import WheelFile
-from installer.utils import copyfileobj_with_hashing, parse_metadata_file
+from installer.utils import copyfileobj_with_hashing
 
 from python_sbom._errors import WheelError
+from python_sbom._model._metadata import CoreMetadata, parse_metadata
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from email.message import Message
 
 # metadata files beyond this size are refused, so a hostile wheel cannot exhaust memory
 _METADATA_LIMIT: Final[int] = 16 * 1024 * 1024
@@ -113,10 +113,10 @@ def _rewritten_record(record: bytes, name: str, sbom: str, content: bytes) -> by
     return "".join(lines).encode()
 
 
-def read_wheel_metadata(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, Message]:
+def read_wheel_metadata(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, CoreMetadata]:
     wheel, dist_info = _wheel_source(archive, where)
     # read capped, as installer's read_dist_info decompresses the member whole
-    return wheel, parse_metadata_file(read_member(archive, f"{dist_info}/METADATA", where).decode("utf-8"))
+    return wheel, parse_metadata(read_member(archive, f"{dist_info}/METADATA", where).decode("utf-8"))
 
 
 def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _METADATA_LIMIT) -> bytes:

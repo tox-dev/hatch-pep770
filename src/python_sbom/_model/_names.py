@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Final
+from typing import Final
 
 from packageurl import PackageURL
 from packaging.utils import canonicalize_name
-
-if TYPE_CHECKING:
-    from email.message import Message
-    from importlib.metadata import PackageMetadata
 
 #: the metadata property in which a document names its own file; validation checks such documents in full
 SBOM_FILE: Final[str] = "sbom:file"
@@ -73,17 +69,9 @@ def reference_type(label: str) -> str:
     return _URL_LABEL_TO_REFERENCE_TYPE.get(re.sub(r"[^a-z]", "", label.lower()), "other")
 
 
-def project_urls(metadata: PackageMetadata | Message) -> list[tuple[str, str]]:
-    return [
-        (label.strip(), url.strip())
-        for label, url in (entry.split(",", 1) for entry in metadata.get_all("Project-URL", []) if "," in entry)
-    ]
-
-
 __all__ = [
     "SBOM_FILE",
     "SBOM_REPOSITORY",
-    "project_urls",
     "property_prefix",
     "purl",
     "pypi_url",

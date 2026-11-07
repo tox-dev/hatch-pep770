@@ -9,17 +9,16 @@ from typing import TYPE_CHECKING, Final
 
 from installer.records import InvalidRecordEntry, RecordEntry, parse_record_file
 from installer.sources import WheelFile
-from installer.utils import parse_metadata_file
 from packaging.requirements import InvalidRequirement, Requirement
 
 from python_sbom._errors import SettingsError, WheelError
 from python_sbom._model._inputs import BuildScript, BundledWheel, RecordRow, SbomRequest, SourceTree
+from python_sbom._model._metadata import CoreMetadata, parse_metadata
 from python_sbom._wheel._archive import open_archive, read_member, read_wheel_metadata
 from python_sbom._wheel._record import decode_digest
 
 if TYPE_CHECKING:
     import zipfile
-    from email.message import Message
     from pathlib import Path, PurePosixPath
 
     from python_sbom._model._inputs import Settings
@@ -36,7 +35,7 @@ def read_source_tree(request: SbomRequest) -> SourceTree:
         copyright=next(
             (
                 line
-                for license_file in request.metadata.get_all("License-File", [])
+                for license_file in request.metadata.values("license_files")
                 if (path := root / license_file).is_file()
                 for line in path.read_text(encoding="utf-8").splitlines()
                 if line.startswith("Copyright")
@@ -69,7 +68,7 @@ def read_bundled_wheel(data: bytes, path: str) -> BundledWheel:
         dist_info: Final[str] = wheel.dist_info_dir
         _check_named(metadata, where, f"{dist_info}/METADATA")
         files: Final[list[RecordRow]] = _verified_record(archive, wheel, where)
-        vendored: Final[list[tuple[str, Message]]] = [
+        vendored: Final[list[tuple[str, CoreMetadata]]] = [
             *_vendor_manifest(archive, where, members),
             *(
                 (name, _vendored_metadata(archive, where, name))
@@ -87,8 +86,8 @@ def read_bundled_wheel(data: bytes, path: str) -> BundledWheel:
     )
 
 
-def _check_named(metadata: Message, where: str, name: str) -> None:
-    if not (metadata["Name"] and metadata["Version"]):
+def _check_named(metadata: CoreMetadata, where: str, name: str) -> None:
+    if not (metadata.name and metadata.version):
         msg = f"{where}: {name} lacks Name or Version"
         raise WheelError(msg)
 
@@ -137,9 +136,9 @@ def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> 
     return found
 
 
-def _vendor_manifest(archive: zipfile.ZipFile, where: str, members: list[str]) -> list[tuple[str, Message]]:
+def _vendor_manifest(archive: zipfile.ZipFile, where: str, members: list[str]) -> list[tuple[str, CoreMetadata]]:
     # pip lists what it vendors in _vendor/vendor.txt instead of shipping each vendored .dist-info
-    found: Final[list[tuple[str, Message]]] = []
+    found: Final[list[tuple[str, CoreMetadata]]] = []
     for name in (member for member in members if member.endswith("/_vendor/vendor.txt")):
         for line in read_member(archive, name, where).decode("utf-8").splitlines():
             if not (text := line.partition("#")[0].strip()):
@@ -152,12 +151,12 @@ def _vendor_manifest(archive: zipfile.ZipFile, where: str, members: list[str]) -
             if len(pins) != 1 or pins[0].operator != "==" or "*" in pins[0].version:
                 msg = f"{where}: vendored requirement in {name} pins no one exact version: {text}"
                 raise WheelError(msg)
-            found.append((name, parse_metadata_file(f"Name: {requirement.name}\nVersion: {pins[0].version}\n")))
+            found.append((name, CoreMetadata(raw={"name": requirement.name, "version": pins[0].version}, unparsed={})))
     return found
 
 
-def _vendored_metadata(archive: zipfile.ZipFile, where: str, name: str) -> Message:
-    metadata: Final[Message] = parse_metadata_file(read_member(archive, name, where).decode("utf-8"))
+def _vendored_metadata(archive: zipfile.ZipFile, where: str, name: str) -> CoreMetadata:
+    metadata: Final[CoreMetadata] = parse_metadata(read_member(archive, name, where).decode("utf-8"))
     _check_named(metadata, where, name)
     return metadata
 

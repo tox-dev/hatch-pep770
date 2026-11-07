@@ -77,8 +77,6 @@ nitpick_ignore: Final[list[tuple[str, str]]] = [
     ("py:class", "hatchling.builders.hooks.plugin.interface.BuildHookInterface"),
     ("py:class", "hatchling.metadata.core.ProjectMetadata"),
     ("py:class", "hatchling.bridge.app.Application"),
-    # the Python documentation describes the protocol without a reference target
-    ("py:class", "importlib.metadata._meta.PackageMetadata"),
 ]
 
 

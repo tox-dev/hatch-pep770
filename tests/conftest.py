@@ -5,7 +5,6 @@ import hashlib
 import shutil
 import subprocess
 import zipfile
-from email import message_from_string
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -15,6 +14,7 @@ from python_sbom import ContentProvider, ProviderContext
 from python_sbom._generate._pipeline import build_sbom
 from python_sbom._model._identity import project_identity
 from python_sbom._model._inputs import BuildFacts, Interpreter, SbomRequest, Settings, SourceTree
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -149,7 +149,7 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
     ) -> Document:
         request = SbomRequest(
             root=Path(),
-            metadata=message_from_string(f"Name: Example\nVersion: 1.0\n{metadata}"),
+            metadata=parse_metadata(f"Name: Example\nVersion: 1.0\n{metadata}"),
             wheel_name="example-1.0-py3-none-any.whl",
             settings=settings,
             build_scripts=(),
@@ -174,7 +174,7 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
 @pytest.fixture
 def context_for(settings: Settings) -> ContextFor:
     def context(root: Path, artifact: Path) -> ProviderContext:
-        identity = project_identity(message_from_string("Name: Example\nVersion: 1.0\n"), settings)
+        identity = project_identity(parse_metadata("Name: Example\nVersion: 1.0\n"), settings)
         return ProviderContext(root=root, settings=settings, identity=identity, artifact=artifact)
 
     return context

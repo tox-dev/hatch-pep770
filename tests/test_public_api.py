@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import collections.abc
-import email.message
 import importlib
-import importlib.metadata
 import inspect
 import pathlib
 import pkgutil
@@ -87,5 +85,4 @@ def _names() -> dict[str, object]:  # simplint: ignore[SMP602] # see above
         typing,
         *(importlib.import_module(found.name) for found in pkgutil.walk_packages(python_sbom.__path__, "python_sbom.")),
     ]
-    names = dict(member for module in modules for member in inspect.getmembers(module))
-    return {**names, "Message": email.message.Message, "PackageMetadata": importlib.metadata.PackageMetadata}
+    return dict(member for module in modules for member in inspect.getmembers(module))

@@ -3,7 +3,6 @@ from __future__ import annotations
 import dataclasses
 import json
 import uuid
-from email import message_from_string
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 
@@ -11,6 +10,7 @@ import pytest
 
 from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
 from python_sbom._model._inputs import BuildScript, BundledWheel, Revision, SourceTree
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from conftest import Describe
@@ -243,9 +243,9 @@ def test_bundled_wheel_and_its_vendored_packages(describe: Describe) -> None:
         path="src/pip-1.0-py3-none-any.whl",
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        metadata=parse_metadata("Name: pip\nVersion: 1.0\n"),
         files=[],
-        vendored=[("pip/_vendor/vendor.txt", message_from_string("Name: urllib3\nVersion: 1.26.4\n"))],
+        vendored=[("pip/_vendor/vendor.txt", parse_metadata("Name: urllib3\nVersion: 1.26.4\n"))],
     )
 
     class Seeded(ContentProvider):
@@ -354,7 +354,7 @@ def test_bundled_wheel_supplier_is_the_projects_choice(
         path="src/pip-1.0-py3-none-any.whl",
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=message_from_string("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
+        metadata=parse_metadata("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
         files=[],
         vendored=[],
     )

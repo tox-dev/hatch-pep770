@@ -44,7 +44,7 @@ def describe(
         # hatchling repeats a Requires-Dist when a hook re-adds a dependency, and each bom-ref must be unique
         *(
             _declared_dependency(text, requirement, project.property_prefix)
-            for text in dict.fromkeys(request.metadata.get_all("Requires-Dist", []))
+            for text in dict.fromkeys(request.metadata.values("requires_dist"))
             if applies_without_extras(requirement := Requirement(text))
         ),
         *contributions.components,
@@ -55,7 +55,7 @@ def describe(
             script_tool(
                 script.path,
                 script.sha256,
-                request.metadata["Version"],
+                request.metadata.version,
                 _file_link(project, request.settings, str(script.path)),
             )
             for script in source.build_scripts
@@ -85,7 +85,7 @@ def _root_component(
     request: SbomRequest, source: SourceTree, facts: BuildFacts, project: ProjectIdentity, contributions: Contributions
 ) -> Component:
     metadata, settings = request.metadata, request.settings
-    name, version = metadata["Name"], metadata["Version"]
+    name, version = metadata.name, metadata.version
     root = component_from_metadata(metadata)
     root["type"] = "application"
     if settings.supplier is not None:
@@ -102,7 +102,7 @@ def _root_component(
             {"type": "security-contact", "url": f"{project.repository}/security/policy"},
             {"type": "advisories", "url": f"{project.repository}/security/advisories"},
         ])
-    if (license_files := metadata.get_all("License-File", [])) and (
+    if (license_files := metadata.values("license_files")) and (
         link := _file_link(project, settings, license_files[0])
     ):
         references.append({"type": "license", "url": link})
@@ -163,7 +163,7 @@ def _metadata(
         metadata["licenses"] = root["licenses"]
     properties: Final[list[Property]] = [
         {"name": sbom_property(project.property_prefix, "sbom:scope"), "value": _scope(settings)},
-        {"name": sbom_property(project.property_prefix, SBOM_FILE), "value": sbom_file_name(request.metadata["Name"])},
+        {"name": sbom_property(project.property_prefix, SBOM_FILE), "value": sbom_file_name(request.metadata.name)},
     ]
     if project.repository is not None:
         properties.append({

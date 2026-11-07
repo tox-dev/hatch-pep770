@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-from email import message_from_string
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 
@@ -14,6 +13,7 @@ from python_sbom._model._components import (
     script_tool,
 )
 from python_sbom._model._inputs import BundledWheel, RecordRow
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from python_sbom import Component, Property
@@ -23,7 +23,7 @@ _WHEEL: Final[str] = "src/example/wheels/pip-1.0-py3-none-any.whl"
 
 
 def test_component_from_metadata() -> None:
-    metadata = message_from_string(
+    metadata = parse_metadata(
         "Name: Example\nVersion: 1.0\nSummary: an example\nMaintainer-email: Maintainer <maintainer@example.com>\n"
         "License-Expression: MIT\nRequires-Python: >=3.11\nRequires-Dist: packaging>=24\nProvides-Extra: cli\n"
         "Classifier: Programming Language :: Python :: 3\nKeywords: sample,demo\n"
@@ -66,11 +66,11 @@ def test_component_from_metadata() -> None:
     ],
 )
 def test_component_authors(fields: str, expected: list[dict[str, str]]) -> None:
-    assert component_from_metadata(message_from_string(f"Name: a\nVersion: 1\n{fields}"))["authors"] == expected
+    assert component_from_metadata(parse_metadata(f"Name: a\nVersion: 1\n{fields}"))["authors"] == expected
 
 
 def test_component_without_authors_has_no_key() -> None:
-    assert "authors" not in component_from_metadata(message_from_string("Name: a\nVersion: 1\n"))
+    assert "authors" not in component_from_metadata(parse_metadata("Name: a\nVersion: 1\n"))
 
 
 @pytest.mark.parametrize(
@@ -127,11 +127,11 @@ def test_component_without_authors_has_no_key() -> None:
     ],
 )
 def test_component_licenses(fields: str, expected: list[License]) -> None:
-    assert component_from_metadata(message_from_string(f"Name: a\nVersion: 1\n{fields}"))["licenses"] == expected
+    assert component_from_metadata(parse_metadata(f"Name: a\nVersion: 1\n{fields}"))["licenses"] == expected
 
 
 def test_component_ignores_license_text() -> None:
-    metadata = message_from_string("Name: a\nVersion: 1\nLicense: Copyright\n        the full text\n")
+    metadata = parse_metadata("Name: a\nVersion: 1\nLicense: Copyright\n        the full text\n")
     assert "licenses" not in component_from_metadata(metadata)
 
 
@@ -186,7 +186,7 @@ def test_component_ignores_license_text() -> None:
     ],
 )
 def test_component_references(fields: str, expected: list[dict[str, str]]) -> None:
-    component = component_from_metadata(message_from_string(f"Name: a\nVersion: 1\n{fields}"))
+    component = component_from_metadata(parse_metadata(f"Name: a\nVersion: 1\n{fields}"))
     assert component["externalReferences"] == expected
 
 
@@ -195,7 +195,7 @@ def test_bundled_wheel_component() -> None:
         path=_WHEEL,
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        metadata=parse_metadata("Name: pip\nVersion: 1.0\n"),
         files=[RecordRow(path="pip/__init__.py", algorithm="SHA-256", digest="cd" * 32, size="0")],
         vendored=[],
     )
@@ -249,11 +249,11 @@ def test_bundled_wheel_vendored_metadata_wins_over_manifest() -> None:
         path=_WHEEL,
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        metadata=parse_metadata("Name: pip\nVersion: 1.0\n"),
         files=[],
         vendored=[
-            (manifest, message_from_string("Name: urllib3\nVersion: 1.26.4\n")),
-            (dist_info, message_from_string("Name: urllib3\nVersion: 1.26.4\nLicense-Expression: MIT\n")),
+            (manifest, parse_metadata("Name: urllib3\nVersion: 1.26.4\n")),
+            (dist_info, parse_metadata("Name: urllib3\nVersion: 1.26.4\nLicense-Expression: MIT\n")),
         ],
     )
     component = bundled_wheel_component(wheel, "example", [], None)
@@ -286,7 +286,7 @@ def test_bundled_wheel_component_ref_tells_copies_apart() -> None:
             path=path,
             sha256="ab" * 32,
             metadata_name="pip-1.0.dist-info/METADATA",
-            metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+            metadata=parse_metadata("Name: pip\nVersion: 1.0\n"),
             files=[],
             vendored=[],
         )
@@ -301,7 +301,7 @@ def test_bundled_wheel_supplier_never_comes_from_the_wheel() -> None:
         path=_WHEEL,
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=message_from_string("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
+        metadata=parse_metadata("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
         files=[],
         vendored=[],
     )
@@ -340,13 +340,13 @@ def test_vendored_spellings_of_one_package_merge() -> None:
         path=_WHEEL,
         sha256="ab" * 32,
         metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        metadata=parse_metadata("Name: pip\nVersion: 1.0\n"),
         files=[],
         vendored=[
-            ("pip/_vendor/vendor.txt", message_from_string("Name: jaraco.text\nVersion: 4.0\n")),
+            ("pip/_vendor/vendor.txt", parse_metadata("Name: jaraco.text\nVersion: 4.0\n")),
             (
                 "pip/_vendor/jaraco_text-4.0.dist-info/METADATA",
-                message_from_string("Name: jaraco_text\nVersion: 4.0\n"),
+                parse_metadata("Name: jaraco_text\nVersion: 4.0\n"),
             ),
         ],
     )
@@ -355,5 +355,5 @@ def test_vendored_spellings_of_one_package_merge() -> None:
 
 
 def test_pypi_purl_keeps_dots() -> None:
-    component = component_from_metadata(message_from_string("Name: zope.interface\nVersion: 7.0\n"))
+    component = component_from_metadata(parse_metadata("Name: zope.interface\nVersion: 7.0\n"))
     assert component["purl"] == "pkg:pypi/zope.interface@7.0"

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import dataclasses
-from email import message_from_string
 from typing import TYPE_CHECKING
 
 from python_sbom._model._inputs import InstalledDistribution, RecordRow
+from python_sbom._model._metadata import parse_metadata
 from python_sbom._model._tools import tool_components
 
 if TYPE_CHECKING:
@@ -15,10 +15,10 @@ def test_tools_list_interpreter_then_distributions_by_name(facts: BuildFacts) ->
     row = RecordRow(path="zeta/__init__.py", algorithm="SHA-256", digest="ab" * 32, size="0")
     distributions = [
         InstalledDistribution(
-            name="zeta", metadata=message_from_string("Name: Zeta\nVersion: 2\n"), files=[row], depends_on=[]
+            name="zeta", metadata=parse_metadata("Name: Zeta\nVersion: 2\n"), files=[row], depends_on=[]
         ),
         InstalledDistribution(
-            name="alpha", metadata=message_from_string("Name: alpha\nVersion: 1\n"), files=[], depends_on=["zeta"]
+            name="alpha", metadata=parse_metadata("Name: alpha\nVersion: 1\n"), files=[], depends_on=["zeta"]
         ),
     ]
     tools, dependencies = tool_components(dataclasses.replace(facts, distributions=distributions))

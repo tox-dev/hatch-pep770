@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
 
-from installer.utils import parse_metadata_file
 from packageurl import PackageURL
 
 from python_sbom._collect._content import load_content_provider, provider_script
@@ -23,6 +22,7 @@ from python_sbom._model._components import (
 from python_sbom._model._content import ProviderContext
 from python_sbom._model._document import contributed_properties, formulation, timestamp, with_header
 from python_sbom._model._identity import project_identity
+from python_sbom._model._metadata import parse_metadata
 from python_sbom._model._names import SBOM_FILE, sbom_property
 from python_sbom._model._tools import tool_components
 from python_sbom._model._types import Dependency
@@ -30,11 +30,11 @@ from python_sbom._wheel._archive import open_archive
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from email.message import Message
 
     from python_sbom._model._content import ContentProvider
     from python_sbom._model._identity import ProjectIdentity
     from python_sbom._model._inputs import BuildFacts, Settings
+    from python_sbom._model._metadata import CoreMetadata
     from python_sbom._model._types import Component, Document, Metadata
 
 
@@ -115,7 +115,7 @@ def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings,
         handle.extractall(unpacked)
     # each distribution by the directory that holds its .dist-info, the project's own at the top level
     metadata = {
-        f"{name.rsplit('/', 2)[0]}/" if name.count("/") > 1 else "": parse_metadata_file(
+        f"{name.rsplit('/', 2)[0]}/" if name.count("/") > 1 else "": parse_metadata(
             (unpacked / name).read_text(encoding="utf-8")
         )
         for name in members
@@ -142,7 +142,7 @@ def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings,
         content=content,
         context=ProviderContext(root=root, settings=settings, identity=project, artifact=unpacked),
     )
-    version = metadata[""]["Version"]
+    version = metadata[""].version
     ref = PackageURL(type="generic", name=archive.name, version=version).to_string()
     return _Held(
         reader=reader,
@@ -168,7 +168,7 @@ class _Reader:
     content: ContentProvider
     context: ProviderContext
 
-    def distribution(self, prefix: str, metadata: Message, names: list[str]) -> Component:
+    def distribution(self, prefix: str, metadata: CoreMetadata, names: list[str]) -> Component:
         component = component_from_metadata(metadata)
         if prefix:
             # a wheel bundled unpacked: the directory tells copies of one release apart, as the path does for a .whl

@@ -73,7 +73,7 @@ def test_revision_reads_root(tmp_path: Path) -> None:
 
 def test_default_path_is_this_interpreter(tmp_path: Path) -> None:
     names = {
-        distribution.metadata["Name"]
+        distribution.metadata.name
         for distribution in collect_facts(tmp_path, no_revision, default_epoch=0).distributions
     }
     assert "pytest" in names
@@ -163,7 +163,7 @@ def test_first_distribution_on_path_wins(tmp_path: Path, install: Install) -> No
     (distribution,) = collect_facts(
         tmp_path, no_revision, path=[str(first), str(second)], default_epoch=0
     ).distributions
-    assert distribution.metadata["Version"] == "1.0"
+    assert distribution.metadata.version == "1.0"
 
 
 def test_depends_on_installed_requirements_that_apply(tmp_path: Path, install: Install) -> None:
@@ -175,7 +175,7 @@ def test_depends_on_installed_requirements_that_apply(tmp_path: Path, install: I
     )
     for name in ("beta", "gamma", "delta"):
         install(tmp_path, f"Name: {name}\nVersion: 1.0\n", {})
-    by_name = {distribution.metadata["Name"]: distribution for distribution in facts_from(tmp_path).distributions}
+    by_name = {distribution.metadata.name: distribution for distribution in facts_from(tmp_path).distributions}
     assert by_name["alpha"].depends_on == ["beta"]
 
 
@@ -183,7 +183,7 @@ def test_egg_info_distribution(tmp_path: Path) -> None:
     (egg_info := tmp_path / "legacy-1.0-py3.14.egg-info").mkdir()
     (egg_info / "PKG-INFO").write_text("Metadata-Version: 2.1\nName: Legacy\nVersion: 1.0\n", encoding="utf-8")
     (distribution,) = facts_from(tmp_path).distributions
-    assert (distribution.name, distribution.metadata["Version"], distribution.files) == ("legacy", "1.0", [])
+    assert (distribution.name, distribution.metadata.version, distribution.files) == ("legacy", "1.0", [])
 
 
 def test_recorded_file_missing_on_disk_is_listed(tmp_path: Path, install: Install) -> None:

@@ -4,10 +4,9 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from email.message import Message
-    from importlib.metadata import PackageMetadata
     from pathlib import Path, PurePosixPath
 
+    from ._metadata import CoreMetadata
     from ._types import Component, Dependency, OrganizationalEntity, Property
 
 
@@ -29,7 +28,7 @@ class Interpreter:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class InstalledDistribution:
     name: str
-    metadata: PackageMetadata | Message
+    metadata: CoreMetadata
     files: list[RecordRow]
     depends_on: list[str]
 
@@ -73,7 +72,7 @@ class Settings:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SbomRequest:
     root: Path
-    metadata: Message
+    metadata: CoreMetadata
     wheel_name: str
     settings: Settings
     build_scripts: tuple[PurePosixPath, ...]
@@ -84,9 +83,9 @@ class BundledWheel:
     path: str
     sha256: str
     metadata_name: str
-    metadata: Message
+    metadata: CoreMetadata
     files: list[RecordRow]
-    vendored: list[tuple[str, Message]]
+    vendored: list[tuple[str, CoreMetadata]]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

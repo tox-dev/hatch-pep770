@@ -26,7 +26,7 @@ def tool_components(facts: BuildFacts) -> tuple[list[Component], list[Dependency
         }
     ]
     refs: Final[dict[str, str]] = {
-        distribution.name: tool_ref(purl(distribution.name, distribution.metadata["Version"]))
+        distribution.name: tool_ref(purl(distribution.name, distribution.metadata.version))
         for distribution in facts.distributions
     }
     dependencies: Final[list[Dependency]] = []

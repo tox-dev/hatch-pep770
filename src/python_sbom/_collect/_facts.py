@@ -21,12 +21,15 @@ from packaging.utils import canonicalize_name
 
 from python_sbom._errors import SettingsError
 from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, RecordRow, Revision
+from python_sbom._model._metadata import parse_metadata
 from python_sbom._wheel._record import decode_digest
 
 if TYPE_CHECKING:
     from collections.abc import Container, Sequence
-    from importlib.metadata import Distribution, PackageMetadata
+    from importlib.metadata import Distribution
     from pathlib import Path
+
+    from python_sbom._model._metadata import CoreMetadata
 
 #: the file an sdist carries its source revision in, as ``node: <commit>``, for the wheel built from it
 REVISION_FILE: Final[str] = ".python-sbom-revision"
@@ -62,22 +65,19 @@ def collect_facts(
 
 
 def _installed(path: Sequence[str] | None) -> list[InstalledDistribution]:
-    found: Final[dict[str, tuple[Distribution, PackageMetadata]]] = {}
+    found: Final[dict[str, tuple[Distribution, CoreMetadata]]] = {}
     for distribution in distributions(path=list(path)) if path is not None else distributions():
-        try:
-            metadata = distribution.metadata
-        # a .dist-info without METADATA, which newer Pythons refuse to read
-        except FileNotFoundError:  # pragma: >=3.15 cover
-            continue
+        # where Distribution.metadata looks, a .dist-info's METADATA, then an .egg-info's PKG-INFO or the file itself
+        text = distribution.read_text("METADATA") or distribution.read_text("PKG-INFO") or distribution.read_text("")
         # the first on the path is the one imports load, so a shadowed copy further down is left out
-        if "Name" in metadata and "Version" in metadata:
-            found.setdefault(canonicalize_name(metadata["Name"]), (distribution, metadata))
+        if (metadata := parse_metadata(text or "")).name and metadata.version:
+            found.setdefault(canonicalize_name(metadata.name), (distribution, metadata))
     return [
         InstalledDistribution(
             name=name,
             metadata=metadata,
             files=_recorded_files(distribution),
-            depends_on=_depends_on(name, distribution, found),
+            depends_on=_depends_on(name, distribution, metadata, found),
         )
         for name, (distribution, metadata) in found.items()
     ]
@@ -131,9 +131,10 @@ def _describes_distribution(path: str) -> bool:
     )
 
 
-def _depends_on(name: str, distribution: Distribution, installed: Container[str]) -> list[str]:
+def _depends_on(name: str, distribution: Distribution, metadata: CoreMetadata, installed: Container[str]) -> list[str]:
     names: Final[set[str]] = set()
-    for line in distribution.requires or []:
+    # an .egg-info states its requirements in requires.txt, which Distribution.requires reads
+    for line in metadata.values("requires_dist") or distribution.requires or []:
         try:
             requirement = Requirement(line)
         except InvalidRequirement as error:

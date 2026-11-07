@@ -5,7 +5,6 @@ import dataclasses
 import hashlib
 import re
 import zipfile
-from email import message_from_string
 from itertools import starmap
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
@@ -15,6 +14,7 @@ import pytest
 from python_sbom._collect._source import read_bundled_wheel, read_source_tree, wheel_request
 from python_sbom._errors import SettingsError, WheelError
 from python_sbom._model._inputs import BuildScript, RecordRow, SbomRequest
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -60,7 +60,7 @@ def test_copyright(tmp_path: Path, settings: Settings, files: Mapping[str, str],
 def request(root: Path, settings: Settings, metadata: str = "", scripts: tuple[PurePosixPath, ...] = ()) -> SbomRequest:
     return SbomRequest(
         root=root,
-        metadata=message_from_string(f"Name: example\nVersion: 1.0\n{metadata}"),
+        metadata=parse_metadata(f"Name: example\nVersion: 1.0\n{metadata}"),
         wheel_name="example-1.0-py3-none-any.whl",
         settings=settings,
         build_scripts=scripts,
@@ -119,16 +119,16 @@ def test_bundled_wheel(tmp_path: Path, write_wheel: WriteWheel) -> None:
         },
     )
     bundled = read_bundled_wheel(wheel.read_bytes(), "src/pip-1.0-py3-none-any.whl")
-    assert (bundled.path, bundled.sha256, bundled.metadata_name, bundled.metadata["Name"], bundled.files[0]) == (
+    assert (bundled.path, bundled.sha256, bundled.metadata_name, bundled.metadata.name, bundled.files[0]) == (
         "src/pip-1.0-py3-none-any.whl",
         hashlib.sha256(wheel.read_bytes()).hexdigest(),
         "pip-1.0.dist-info/METADATA",
         "pip",
         RecordRow(path="pip/__init__.py", algorithm="SHA-256", digest=hashlib.sha256(b"").hexdigest(), size="0"),
     )
-    assert [(source, str(metadata)) for source, metadata in bundled.vendored] == [
-        ("pip/_vendor/vendor.txt", "Name: urllib3\nVersion: 1.26.4\n\n"),
-        ("pip/_vendor/rich-13.0.dist-info/METADATA", "Name: rich\nVersion: 13.0\n\n"),
+    assert [(source, metadata.raw) for source, metadata in bundled.vendored] == [
+        ("pip/_vendor/vendor.txt", {"name": "urllib3", "version": "1.26.4"}),
+        ("pip/_vendor/rich-13.0.dist-info/METADATA", {"name": "rich", "version": "13.0"}),
     ]
 
 
@@ -337,7 +337,7 @@ def test_vendor_manifest_needs_exact_pins(
 def test_wheel_request(tmp_path: Path, settings: Settings, write_wheel: WriteWheel) -> None:
     wheel = write_wheel(tmp_path / "native-1.0-py3-none-any.whl", {"native-1.0.dist-info/METADATA": b"Name: native\n"})
     request = wheel_request(wheel, tmp_path, settings, (PurePosixPath("build.py"),))
-    assert (request.root, request.metadata["Name"], request.wheel_name, request.settings, request.build_scripts) == (
+    assert (request.root, request.metadata.name, request.wheel_name, request.settings, request.build_scripts) == (
         tmp_path,
         "native",
         "native-1.0-py3-none-any.whl",

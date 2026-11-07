@@ -18,7 +18,7 @@ def build_sbom(
     request: SbomRequest, source: SourceTree, facts: BuildFacts, content: ContentProvider, context: ProviderContext
 ) -> Sbom:
     return Sbom(
-        file_name=sbom_file_name(request.metadata["Name"]),
+        file_name=sbom_file_name(request.metadata.name),
         document=describe(
             request,
             source,

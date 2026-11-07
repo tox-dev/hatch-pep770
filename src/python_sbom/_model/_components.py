@@ -9,15 +9,14 @@ from urllib.parse import urlsplit
 
 from ._inputs import RecordRow
 from ._licenses import licenses
-from ._names import project_urls, property_prefix, purl, pypi_url, reference_type, tool_ref
+from ._names import property_prefix, purl, pypi_url, reference_type, tool_ref
 from ._types import Dependency
 
 if TYPE_CHECKING:
-    from email.message import Message
-    from importlib.metadata import PackageMetadata
     from pathlib import PurePosixPath
 
     from ._inputs import BundledWheel
+    from ._metadata import CoreMetadata
     from ._types import Component, Contact, ExternalReference, Identity, OrganizationalEntity, Property
 
 
@@ -32,7 +31,7 @@ def bundled_wheel_component(
     component["hashes"] = [{"alg": "SHA-256", "content": wheel.sha256}]
     component["externalReferences"] = [
         *component["externalReferences"],
-        {"type": "distribution", "url": pypi_url(wheel.metadata["Name"], wheel.metadata["Version"])},
+        {"type": "distribution", "url": pypi_url(wheel.metadata.name, wheel.metadata.version)},
     ]
     component["properties"] = [
         {"name": f"{namespace}:bundled-wheel", "value": wheel.path},
@@ -61,19 +60,17 @@ def bundled_wheel_component(
     return component
 
 
-def component_from_metadata(metadata: PackageMetadata | Message) -> Component:
-    name, version = metadata["Name"], metadata["Version"]
+def component_from_metadata(metadata: CoreMetadata) -> Component:
+    name, version = metadata.name, metadata.version
     component: Final[Component] = {"type": "library", "bom-ref": purl(name, version), "name": name, "version": version}
     component["purl"] = component["bom-ref"]
-    if summary := metadata.get("Summary"):
+    if summary := metadata.first("summary"):
         component["description"] = summary
     # maintainers are who users reach today, so they win over the original authors when both are named
-    for names, addresses in (("Maintainer", "Maintainer-email"), ("Author", "Author-email")):
-        named = (_contact(name, "") for name in metadata.get_all(names, []))
+    for names, addresses in (("maintainer", "maintainer_email"), ("author", "author_email")):
+        named = (_contact(name, "") for name in metadata.values(names))
         if people := [
-            contact
-            for contact in (*named, *starmap(_contact, getaddresses(metadata.get_all(addresses, []))))
-            if contact
+            contact for contact in (*named, *starmap(_contact, getaddresses(metadata.values(addresses)))) if contact
         ]:
             component["authors"] = people
             break
@@ -82,9 +79,15 @@ def component_from_metadata(metadata: PackageMetadata | Message) -> Component:
     component["externalReferences"] = _project_references(metadata)
     # core metadata headers copied verbatim, so a reader sees what the distribution declared
     component["properties"] = [
-        {"name": f"python:{header.lower()}", "value": value}
-        for header in ("Requires-Python", "Requires-Dist", "Provides-Extra", "Classifier", "Keywords")
-        for value in metadata.get_all(header, [])
+        {"name": f"python:{header}", "value": value}
+        for header, values in (
+            ("requires-python", metadata.values("requires_python")),
+            ("requires-dist", metadata.values("requires_dist")),
+            ("provides-extra", metadata.values("provides_extra")),
+            ("classifier", metadata.values("classifiers")),
+            ("keywords", metadata.keywords()),
+        )
+        for value in values
     ]
     return component
 
@@ -101,14 +104,14 @@ def _contact(name: str, email: str) -> Contact:
     return contact
 
 
-def _project_references(metadata: PackageMetadata | Message) -> list[ExternalReference]:
+def _project_references(metadata: CoreMetadata) -> list[ExternalReference]:
     # a home page that is not an http(s) URL, such as UNKNOWN, is left out
     references: Final[list[ExternalReference]] = []
-    if (home_page := metadata.get("Home-page")) and urlsplit(home_page).scheme in {"http", "https"}:
+    if (home_page := metadata.first("home_page")) and urlsplit(home_page).scheme in {"http", "https"}:
         references.append({"type": "website", "url": home_page})
     references.extend(
         {"type": reference_type(label), "url": url, "comment": f"Project-URL: {label}"}
-        for label, url in project_urls(metadata)
+        for label, url in metadata.project_urls()
     )
     return references
 

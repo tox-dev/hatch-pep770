@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from email import message_from_string
 from typing import TYPE_CHECKING
 
 import pytest
 
 from python_sbom._model._licenses import licenses
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from python_sbom import License
@@ -25,4 +25,4 @@ if TYPE_CHECKING:
     ],
 )
 def test_license_expression(expression: str, expected: list[License]) -> None:
-    assert licenses(message_from_string(f"License-Expression: {expression}\n")) == expected
+    assert licenses(parse_metadata(f"License-Expression: {expression}\n")) == expected

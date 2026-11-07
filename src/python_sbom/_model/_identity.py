@@ -4,18 +4,17 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ._names import project_urls, property_prefix, reference_type
+from ._names import property_prefix, reference_type
 
 if TYPE_CHECKING:
-    from email.message import Message
-
     from ._inputs import Settings
+    from ._metadata import CoreMetadata
 
 
-def project_identity(metadata: Message, settings: Settings) -> ProjectIdentity:
-    project = property_prefix(metadata["Name"])
+def project_identity(metadata: CoreMetadata, settings: Settings) -> ProjectIdentity:
+    project = property_prefix(metadata.name)
     repository = settings.repository or next(
-        (url.rstrip("/") for label, url in project_urls(metadata) if reference_type(label) == "vcs"), None
+        (url.rstrip("/") for label, url in metadata.project_urls() if reference_type(label) == "vcs"), None
     )
     base = repository or f"https://pypi.org/project/{project}"
     return ProjectIdentity(

@@ -6,25 +6,21 @@ from typing import TYPE_CHECKING, Final
 from packaging.licenses import InvalidLicenseExpression, canonicalize_license_expression
 
 if TYPE_CHECKING:
-    from email.message import Message
-    from importlib.metadata import PackageMetadata
-
+    from ._metadata import CoreMetadata
     from ._types import License
 
 
-def licenses(metadata: PackageMetadata | Message) -> list[License]:
+def licenses(metadata: CoreMetadata) -> list[License]:
     # a License-Expression is taken as declared; otherwise each License field and License classifier name is
     # declared, and the SPDX ids they map to are added as concluded
-    if expression := metadata.get("License-Expression"):
+    if expression := metadata.first("license_expression"):
         try:
             return [{"expression": canonicalize_license_expression(expression), "acknowledgement": "declared"}]
         except InvalidLicenseExpression:
             # an expression SPDX rejects, such as "MIT WITH GPL-3.0-only", stays as the name the metadata gives
             return [{"license": {"name": expression, "acknowledgement": "declared"}}]
-    names = [
-        entry.rsplit(" :: ", 1)[-1] for entry in metadata.get_all("Classifier", []) if entry.startswith("License :: ")
-    ]
-    if (declared := metadata.get("License")) and "\n" not in declared:
+    names = [entry.rsplit(" :: ", 1)[-1] for entry in metadata.values("classifiers") if entry.startswith("License :: ")]
+    if (declared := metadata.first("license")) and "\n" not in declared:
         names.append(declared)
     found: Final[list[License]] = [{"license": {"name": name, "acknowledgement": "declared"}} for name in names]
     # a license policy judges SPDX ids only, so the names stay bare when any one of them does not resolve, and the
