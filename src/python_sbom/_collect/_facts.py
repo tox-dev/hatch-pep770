@@ -10,8 +10,10 @@ import sys
 import time
 import warnings
 from importlib.metadata import distributions
+from itertools import starmap
 from typing import TYPE_CHECKING, Final, Protocol
 
+from installer.records import InvalidRecordEntry, RecordEntry, parse_record_file
 from installer.utils import parse_metadata_file
 from packaging.direct_url import DirectUrl, DirectUrlValidationError
 from packaging.requirements import InvalidRequirement, Requirement
@@ -88,12 +90,21 @@ def _recorded_files(distribution: Distribution) -> list[RecordRow]:
         distribution
     ):
         return []
+    # RECORD read once and as written: Distribution.files would stat every row to drop files missing on disk, and
+    # build a path object for each, while the SBOM lists what the install recorded
+    try:
+        entries: Final[list[RecordEntry]] = list(
+            starmap(RecordEntry.from_elements, parse_record_file((distribution.read_text("RECORD") or "").splitlines()))
+        )
+    except InvalidRecordEntry as error:
+        warnings.warn(f"listed no files of {distribution.name}, its RECORD is malformed: {error}", stacklevel=2)
+        return []
     rows: Final[list[RecordRow]] = []
-    for file in distribution.files or []:
-        if file.hash is None or not _describes_distribution(file.as_posix(), file.parent.suffix, file.name):
+    for entry in entries:
+        if entry.hash_ is None or not _describes_distribution(entry.path):
             continue
-        algorithm, digest = decode_digest(f"{file.hash.mode}={file.hash.value}", file.as_posix())
-        rows.append(RecordRow(path=file.as_posix(), algorithm=algorithm, digest=digest, size=str(file.size)))
+        algorithm, digest = decode_digest(str(entry.hash_), entry.path)
+        rows.append(RecordRow(path=entry.path, algorithm=algorithm, digest=digest, size=str(entry.size)))
     return rows
 
 
@@ -109,12 +120,13 @@ def _editable(distribution: Distribution) -> bool:
     return dir_info is not None and dir_info.editable is True
 
 
-def _describes_distribution(path: str, parent_suffix: str, name: str) -> bool:
+def _describes_distribution(path: str) -> bool:
     # console-script launchers live outside site-packages and embed the environment's interpreter path; the installer
     # metadata names the frontend; uv's cache files hold paths and times; none of them says anything about the package
+    directory, _, name = path.rpartition("/")
     return not (
         path.startswith("../")
-        or (parent_suffix == ".dist-info" and name in {"INSTALLER", "REQUESTED", "direct_url.json"})
+        or (directory.endswith(".dist-info") and name in {"INSTALLER", "REQUESTED", "direct_url.json"})
         or re.fullmatch(r"uv_.*\.json", name)
     )
 

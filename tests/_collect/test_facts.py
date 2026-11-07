@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import platform
+import re
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -183,6 +184,32 @@ def test_egg_info_distribution(tmp_path: Path) -> None:
     (egg_info / "PKG-INFO").write_text("Metadata-Version: 2.1\nName: Legacy\nVersion: 1.0\n", encoding="utf-8")
     (distribution,) = facts_from(tmp_path).distributions
     assert (distribution.name, distribution.metadata["Version"], distribution.files) == ("legacy", "1.0", [])
+
+
+def test_recorded_file_missing_on_disk_is_listed(tmp_path: Path, install: Install) -> None:
+    # the install recorded it, and Python 3.11 lists such a file too, where later versions' Distribution.files drop it
+    install(tmp_path, "Name: alpha\nVersion: 1.0\n", {"alpha.py": b"x = 1\n"})
+    (tmp_path / "alpha.py").unlink()
+    assert [row.path for row in facts_from(tmp_path).distributions[0].files] == [
+        "alpha.py",
+        "alpha-1.0.dist-info/METADATA",
+        "alpha-1.0.dist-info/WHEEL",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("row", "issue"),
+    [
+        pytest.param("alpha.py,sha256=x", "expected 3 elements, got 2", id="two-columns"),
+        pytest.param("alpha.py,sha256=x,big", "`size` cannot be non-integer", id="size-not-integer"),
+        pytest.param("alpha.py,nohash,1", "`hash` does not follow the required format", id="hash-without-name"),
+    ],
+)
+def test_malformed_record_lists_no_files(tmp_path: Path, install: Install, row: str, issue: str) -> None:
+    install(tmp_path, "Name: alpha\nVersion: 1.0\n", {})
+    (tmp_path / "alpha-1.0.dist-info" / "RECORD").write_bytes(f"{row}\n".encode())
+    with pytest.warns(UserWarning, match=f"listed no files of alpha, its RECORD is malformed: .*{re.escape(issue)}"):
+        assert facts_from(tmp_path).distributions[0].files == []
 
 
 @pytest.mark.parametrize(
