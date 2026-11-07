@@ -53,7 +53,8 @@ class ContentProvider:
 
     """
 
-    def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:  # ruff: ignore[unused-method-argument, no-self-use] # the no-op default
+    # ruff: disable[unused-method-argument, no-self-use] # the defaults add nothing, whatever they are given
+    def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:
         """
         Describe what the project does with a wheel it bundles, as a file or unpacked into a directory.
 
@@ -64,7 +65,7 @@ class ContentProvider:
         """
         return BundledWheelInfo()
 
-    def contributions(self, context: ProviderContext) -> Contributions:  # ruff: ignore[unused-method-argument, no-self-use] # the no-op default
+    def contributions(self, context: ProviderContext) -> Contributions:
         """
         Add components, their dependencies, root properties and build tools, before references and the serial derive.
 
@@ -73,6 +74,8 @@ class ContentProvider:
 
         """
         return Contributions()
+
+    # ruff: enable[unused-method-argument, no-self-use]
 
 
 __all__ = [
