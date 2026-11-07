@@ -232,3 +232,17 @@ def test_archive_without_project_distribution(tmp_path: Path) -> None:
         describe_archive(
             tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)), provider=None, build_scripts=()
         )
+
+
+def test_archive_asks_provider_in_component_order(project: Path, archive: Path) -> None:
+    asked: Final[list[str]] = []
+
+    class Recording(ContentProvider):
+        def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:
+            asked.append(str(wheel))
+            return super().bundled_wheel(context, wheel)
+
+    describe_archive(
+        project, archive, facts=collect_facts(project, revision_reader(None)), provider=Recording(), build_scripts=()
+    )
+    assert asked == [_WHEEL, _LIBRARY]

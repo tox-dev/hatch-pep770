@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from ._types import Component
 
 
-def archive_artifact(  # ruff: ignore[too-many-arguments] # what the edge read from the project, keyword-only
+def archive_artifact(  # ruff: ignore[too-many-arguments] # keyword-only, each a separate fact the edge read
     name: str,
     tree: ArchiveTree,
     *,
@@ -96,10 +96,15 @@ def _directory(prefix: str) -> PurePosixPath:
 
 
 def bundled_paths(tree: ArchiveTree) -> list[PurePosixPath]:
-    # what a content provider is asked about: each wheel bundled unpacked, by its directory, and each .whl member
+    # what a content provider is asked about, in the order the components list them: each wheel bundled unpacked, by its
+    # directory, followed by the .whl members it holds
     return [
-        *(_directory(prefix) for prefix in sorted(tree.metadata) if prefix),
-        *map(PurePosixPath, sorted(tree.bundled)),
+        path
+        for prefix in sorted(tree.metadata)
+        for path in (
+            *([_directory(prefix)] if prefix else []),
+            *(PurePosixPath(name) for name in tree.owned[prefix] if name.endswith(".whl")),
+        )
     ]
 
 

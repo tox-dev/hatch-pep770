@@ -145,6 +145,11 @@ def _bundled(key: str) -> Callable[[dict[str, str], Path], Step]:
     def make(fixtures: dict[str, str], scratch: Path) -> Step:  # ruff: ignore[unused-function-argument] # one signature
         from python_sbom._collect import _source  # ruff: ignore[import-outside-top-level] # see _validate
 
+        try:
+            from python_sbom._wheel import _bundled as bundled  # ruff: ignore[import-outside-top-level] # see _validate
+        except ImportError:  # revisions before the move keep the reader in _collect._source
+            bundled = _source
+
         wheel = Path(fixtures[key])
         data = wheel.read_bytes()
         # revisions before the batch reader take one wheel's bytes; later ones a list and a way to open each
@@ -154,7 +159,7 @@ def _bundled(key: str) -> Callable[[dict[str, str], Path], Step]:
             if single is not None:
                 single(data, wheel.name)
             else:
-                _source.read_bundled_wheels([wheel.name], lambda _name: io.BytesIO(data))
+                bundled.read_bundled_wheels([wheel.name], lambda _name: io.BytesIO(data))
 
         return Step(run=run)
 

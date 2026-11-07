@@ -148,8 +148,7 @@ def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _M
     return bytes(content)
 
 
-def wheel_members(wheel: Path) -> dict[str, str]:
-    # the .whl members an artifact holds, by their sha256
+def bundled_wheels_by_digest(wheel: Path) -> dict[str, str]:
     with open_archive(wheel, str(wheel)) as archive:
         return {member_digest(archive, name, "sha256"): name for name in archive.namelist() if name.endswith(".whl")}
 
@@ -174,10 +173,10 @@ def append_member(archive: Path, name: str, content: bytes, epoch: int) -> None:
 
 __all__ = [
     "append_member",
+    "bundled_wheels_by_digest",
     "member_digest",
     "open_archive",
     "read_member",
     "read_wheel_metadata",
-    "wheel_members",
     "write_sbom",
 ]

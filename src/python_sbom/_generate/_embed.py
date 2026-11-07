@@ -16,7 +16,7 @@ from python_sbom._model._content import ProviderContext
 from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
 from python_sbom._model._names import sbom_file_name
-from python_sbom._wheel._archive import wheel_members, write_sbom
+from python_sbom._wheel._archive import bundled_wheels_by_digest, write_sbom
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -46,7 +46,7 @@ def embed_sbom(
 
 
 def embed_into(wheel: Path, request: SbomRequest, content: ContentProvider, facts: BuildFacts) -> str:
-    source = read_source_tree(request, inside=wheel_members(wheel))
+    source = read_source_tree(request, inside=bundled_wheels_by_digest(wheel))
     project = project_identity(request.metadata, request.settings)
     context = ProviderContext(root=request.root, settings=request.settings, identity=project, read=member_reader(wheel))
     sbom = build_sbom(request, source, facts, content, context)
