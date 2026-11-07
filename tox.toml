@@ -117,7 +117,7 @@ commands = [
 [env.type]
 description = "run type check on code base"
 dependency_groups = [ "type" ]
-commands = [ [ "ty", "check", "--output-format", "concise", "--error-on-warning", "." ] ]
+commands = [ [ "ty", "check", "--output-format", "concise", "--error-on-warning", "--python-platform", "all", "." ] ]
 
 [env.dev]
 description = "dev environment with all deps at {envdir}"
