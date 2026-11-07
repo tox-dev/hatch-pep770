@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import dataclasses
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -17,7 +16,7 @@ from python_sbom._model._content import ProviderContext
 from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
 from python_sbom._model._names import sbom_file_name
-from python_sbom._wheel._archive import member_digest, open_archive, write_sbom
+from python_sbom._wheel._archive import wheel_members, write_sbom
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,17 +46,7 @@ def embed_sbom(
 
 
 def embed_into(wheel: Path, request: SbomRequest, content: ContentProvider, facts: BuildFacts) -> str:
-    source = read_source_tree(request)
-    with open_archive(wheel, str(wheel)) as archive:
-        inside = {member_digest(archive, name, "sha256"): name for name in archive.namelist() if name.endswith(".whl")}
-    # a bundled wheel the built wheel holds is named by its path in there, as an archive SBOM names it, so both
-    # documents give one wheel the same identity
-    source = dataclasses.replace(
-        source,
-        bundled=[
-            dataclasses.replace(bundled, path=inside.get(bundled.sha256, bundled.path)) for bundled in source.bundled
-        ],
-    )
+    source = read_source_tree(request, inside=wheel_members(wheel))
     project = project_identity(request.metadata, request.settings)
     context = ProviderContext(root=request.root, settings=request.settings, identity=project, read=member_reader(wheel))
     sbom = build_sbom(request, source, facts, content, context)

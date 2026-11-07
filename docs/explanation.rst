@@ -28,7 +28,7 @@ that command runs.
         collect[_collect<br/>settings, facts, revision, source tree, archives, providers]
         validate[_validate<br/>limits, schema, references, licenses]
         formats[_formats<br/>CycloneDX JSON, SPDX 2.3]
-        wheel[_wheel<br/>RECORD rows, member reads, rewrite]
+        wheel[_wheel<br/>RECORD rows, member reads, bundled wheel checks, rewrite]
         model[_model<br/>inputs, types, identity, document building]
         errors[_errors<br/>SbomError]
         version[version]
@@ -36,10 +36,8 @@ that command runs.
         hook -. lazy .-> generate
         hook -. types .-> model
         cli --> generate
-        cli --> collect
         cli --> validate
         cli --> formats
-        cli --> wheel
         cli -. types .-> model
         api --> cli
         api --> model

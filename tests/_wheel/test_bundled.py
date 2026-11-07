@@ -6,7 +6,6 @@ import re
 import zipfile
 from io import BytesIO
 from itertools import starmap
-from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 import pytest
@@ -17,6 +16,7 @@ from python_sbom._wheel._bundled import read_bundled_wheels
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+    from pathlib import Path
 
     from conftest import WriteWheel
 

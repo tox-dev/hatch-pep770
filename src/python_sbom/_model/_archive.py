@@ -12,8 +12,9 @@ from ._inputs import Artifact
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from ._content import BundledWheelInfo
     from ._identity import ProjectIdentity
-    from ._inputs import ArchiveTree, BuildScript, BundledWheelInfo
+    from ._inputs import ArchiveTree, BuildScript
     from ._types import Component
 
 

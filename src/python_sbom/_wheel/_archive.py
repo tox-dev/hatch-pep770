@@ -148,6 +148,12 @@ def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _M
     return bytes(content)
 
 
+def wheel_members(wheel: Path) -> dict[str, str]:
+    # the .whl members an artifact holds, by their sha256
+    with open_archive(wheel, str(wheel)) as archive:
+        return {member_digest(archive, name, "sha256"): name for name in archive.namelist() if name.endswith(".whl")}
+
+
 def member_digest(archive: zipfile.ZipFile, name: str | zipfile.ZipInfo, algorithm: str) -> str:
     digest: Final = hashlib.new(algorithm)
     with archive.open(name) as member:
@@ -172,5 +178,6 @@ __all__ = [
     "open_archive",
     "read_member",
     "read_wheel_metadata",
+    "wheel_members",
     "write_sbom",
 ]

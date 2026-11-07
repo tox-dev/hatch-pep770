@@ -38,7 +38,7 @@ _PIP: Final[dict[str, bytes]] = {"pip/__init__.py": b"", "pip-1.0.dist-info/META
 def test_copyright(tmp_path: Path, settings: Settings, files: Mapping[str, str], expected: str | None) -> None:
     for name, text in files.items():
         (tmp_path / name).write_text(text, encoding="utf-8")
-    source = read_source_tree(request(tmp_path, settings, "License-File: LICENSE\nLicense-File: NOTICE\n"))
+    source = read_source_tree(request(tmp_path, settings, "License-File: LICENSE\nLicense-File: NOTICE\n"), inside={})
     assert source.copyright == expected
 
 
@@ -56,7 +56,7 @@ def test_bundled_wheels_sorted_once(tmp_path: Path, settings: Settings, write_wh
     for directory in ("b", "a"):
         write_wheel(tmp_path / "src" / directory / "pip-1.0-py3-none-any.whl", _PIP)
     settings = dataclasses.replace(settings, bundled_wheels=("src/*/*.whl", "src/a/*.whl"))
-    paths = [wheel.path for wheel in read_source_tree(request(tmp_path, settings)).bundled]
+    paths = [wheel.path for wheel in read_source_tree(request(tmp_path, settings), inside={}).bundled]
     assert paths == ["src/a/pip-1.0-py3-none-any.whl", "src/b/pip-1.0-py3-none-any.whl"]
 
 
@@ -76,13 +76,13 @@ def test_bundled_wheel_pattern_outside_project(
     pattern = pattern.replace("ROOT", tmp_path.as_posix())
     settings = dataclasses.replace(settings, bundled_wheels=(pattern,))
     with pytest.raises(SbomError, match=f"`bundled-wheels` pattern {re.escape(repr(pattern))} must be relative"):
-        read_source_tree(request(project.parent, settings))
+        read_source_tree(request(project.parent, settings), inside={})
 
 
 def test_build_scripts_hashed(tmp_path: Path, settings: Settings) -> None:
     (tmp_path / "hatch_build.py").write_bytes(b"hook = 1\n")
     script = PurePosixPath("hatch_build.py")
-    source = read_source_tree(request(tmp_path, settings, scripts=(script,)))
+    source = read_source_tree(request(tmp_path, settings, scripts=(script,)), inside={})
     assert source.build_scripts == [BuildScript(path=script, sha256=hashlib.sha256(b"hook = 1\n").hexdigest())]
 
 
@@ -90,7 +90,7 @@ def test_build_script_outside_project(tmp_path: Path, settings: Settings) -> Non
     # a custom hook path may be absolute, which on Windows carries a drive the join with the root must keep
     (tmp_path / "hatch_build.py").write_bytes(b"hook = 1\n")
     script = PurePosixPath((tmp_path / "hatch_build.py").as_posix())
-    source = read_source_tree(request(tmp_path / "project", settings, scripts=(script,)))
+    source = read_source_tree(request(tmp_path / "project", settings, scripts=(script,)), inside={})
     assert source.build_scripts == [BuildScript(path=script, sha256=hashlib.sha256(b"hook = 1\n").hexdigest())]
 
 
