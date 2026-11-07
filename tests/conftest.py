@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 
 
 class WriteWheel(Protocol):
-    def __call__(self, wheel: Path, files: Mapping[str, bytes], *, record: bool = True) -> Path: ...
+    def __call__(
+        self, wheel: Path, files: Mapping[str, bytes], *, record: bool = True, compression: int = ...
+    ) -> Path: ...
 
 
 class Install(Protocol):
@@ -54,7 +56,9 @@ class Describe(Protocol):
 
 @pytest.fixture
 def write_wheel() -> WriteWheel:
-    def write(wheel: Path, files: Mapping[str, bytes], *, record: bool = True) -> Path:
+    def write(
+        wheel: Path, files: Mapping[str, bytes], *, record: bool = True, compression: int = zipfile.ZIP_DEFLATED
+    ) -> Path:
         members = dict(files)
         if record:
             dist_info = next(name.split("/")[0] for name in files if name.endswith(".dist-info/METADATA"))
@@ -63,7 +67,9 @@ def write_wheel() -> WriteWheel:
         wheel.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(wheel, "w", zipfile.ZIP_DEFLATED) as archive:
             for name, content in members.items():
-                archive.writestr(zipfile.ZipInfo(name, (2024, 1, 1, 0, 0, 0)), content, zipfile.ZIP_DEFLATED)
+                # Unix, the default everywhere but Windows, so the bytes match across operating systems
+                (info := zipfile.ZipInfo(name, (2024, 1, 1, 0, 0, 0))).create_system = 3
+                archive.writestr(info, content, compression)
         return wheel
 
     return write

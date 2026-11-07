@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import platform
 import zipfile
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Final
 
 from python_sbom import BundledWheelInfo, ContentProvider, ProviderContext
 from python_sbom._generate._embed import embed_sbom
 
 if TYPE_CHECKING:
-    from pathlib import Path, PurePosixPath
+    from pathlib import PurePosixPath
 
-    from conftest import WriteWheel
+    import pytest
+    from conftest import Install, WriteWheel
+
+_PINNED: Final[Path] = Path(__file__).parent / "pinned"
 
 
 def test_bundled_wheel_named_by_its_path_inside_the_wheel(tmp_path: Path, write_wheel: WriteWheel) -> None:
@@ -47,3 +53,75 @@ class Table(ContentProvider):
         # the table sits next to the wheel inside the built wheel
         value = context.read(wheel.parent / self._name).decode().strip()
         return BundledWheelInfo(properties=[{"name": f"{context.identity.property_prefix}:table", "value": value}])
+
+
+def test_embed_output_is_pinned(
+    tmp_path: Path, write_wheel: WriteWheel, install: Install, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # every input fixed, down to the interpreter's version, so the SBOM and the wheel's members must not change by a
+    # byte; a change that means to alter them updates the pinned files with it
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
+    monkeypatch.setattr(platform, "python_version", lambda: "3.14.0")
+    metadata = b"""\
+Metadata-Version: 2.4
+Name: Pkg.Name
+Version: 1.0
+Summary: a pinned example
+Keywords: sbom,pinned
+Author: Author Name
+Author-email: Author <author@example.com>, plain@example.com
+Maintainer-email: not-an-email
+License-Expression: MIT OR Apache-2.0
+License-File: LICENSE
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Project-URL: Source, https://github.com/example/pkg
+Project-URL: Source, https://gitlab.com/example/pkg
+Project-URL: Documentation, https://pkg.readthedocs.io
+Project-URL: Bug Tracker, https://github.com/example/pkg/issues
+Requires-Dist: alpha>=1
+Requires-Dist: beta; extra == "cli"
+Requires-Dist: gamma; python_version < "3"
+Requires-Dist: delta; extra in "a,b"
+Provides-Extra: cli
+"""
+    (root := tmp_path / "project").mkdir()
+    (root / "pyproject.toml").write_bytes(
+        b"[tool.python-sbom]\nsupplier = { name = 'Example Org', url = ['https://example.org'] }\n"
+        b"bundled-wheels = ['src/pkg/wheels/*.whl']\n"
+    )
+    pip = {
+        "pip/__init__.py": b"",
+        "pip/_vendor/vendor.txt": b"urllib3==1.26.4\nidna==3.7\n",
+        "pip-1.0.dist-info/METADATA": b"Metadata-Version: 2.4\nName: pip\nVersion: 1.0\nLicense-Expression: MIT\n",
+    }
+    # stored, as deflate output differs between zlib builds and the SBOM records the bundled wheel's hash
+    bundled = write_wheel(root / "src" / "pkg" / "wheels" / "pip-1.0-py3-none-any.whl", pip, compression=0)
+    site = tmp_path / "site-packages"
+    install(site, "Name: alpha\nVersion: 1.0\nRequires-Dist: beta\n", {"alpha.py": b"", "../../bin/alpha": b""})
+    install(site, "Name: beta\nVersion: 2.0\n", {"beta.so": b"\x7fELF"}, purelib=False)
+    install(site, "Name: gamma\nVersion: 3.0\n", {}, direct_url='{"url": "file:///c", "dir_info": {"editable": true}}')
+    wheel = write_wheel(
+        tmp_path / "dist" / "pkg_name-1.0-py3-none-any.whl",
+        {
+            "pkg_name/__init__.py": b"x = 1\n",
+            "pkg_name/wheels/pip-1.0-py3-none-any.whl": bundled.read_bytes(),
+            "pkg_name-1.0.dist-info/METADATA": metadata,
+            "pkg_name-1.0.dist-info/licenses/LICENSE": b"MIT terms\n",
+            "pkg_name-1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+        },
+        compression=0,
+    )
+    written = embed_sbom(wheel, root, content=None, commit="a" * 40, build_env=[str(site)])
+    with zipfile.ZipFile(wheel) as archive:
+        sbom = archive.read(written)
+        members = [
+            [info.filename, list(info.date_time), info.compress_type, info.external_attr, _sha256(archive.read(info))]
+            for info in archive.infolist()
+        ]
+    assert sbom == (_PINNED / "embed.cdx.json").read_bytes()
+    assert members == json.loads((_PINNED / "embed-members.json").read_bytes())
+
+
+def _sha256(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()

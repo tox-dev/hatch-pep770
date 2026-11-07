@@ -1,0 +1,583 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:d3cce085-f38d-5e88-a7b1-b1b95274c6f3",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2023-11-14T22:13:20+00:00",
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "tools": {
+      "components": [
+        {
+          "type": "platform",
+          "bom-ref": "tool:pkg:generic/cpython@3.14.0",
+          "name": "cpython",
+          "version": "3.14.0",
+          "purl": "pkg:generic/cpython@3.14.0",
+          "properties": [
+            {
+              "name": "python:implementation",
+              "value": "CPython"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "bom-ref": "tool:pkg:pypi/alpha@1.0",
+          "name": "alpha",
+          "version": "1.0",
+          "purl": "pkg:pypi/alpha@1.0",
+          "externalReferences": [],
+          "properties": [
+            {
+              "name": "python:requires-dist",
+              "value": "beta"
+            }
+          ],
+          "components": [
+            {
+              "type": "file",
+              "bom-ref": "tool:pkg:pypi/alpha@1.0#alpha.py",
+              "name": "alpha.py",
+              "hashes": [
+                {
+                  "alg": "SHA-256",
+                  "content": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                }
+              ],
+              "properties": [
+                {
+                  "name": "size",
+                  "value": "0"
+                }
+              ]
+            },
+            {
+              "type": "file",
+              "bom-ref": "tool:pkg:pypi/alpha@1.0#alpha-1.0.dist-info/METADATA",
+              "name": "alpha-1.0.dist-info/METADATA",
+              "hashes": [
+                {
+                  "alg": "SHA-256",
+                  "content": "84fff1197cd817e092c798eaadecbb239d6076bda206362533d29a5151059eb1"
+                }
+              ],
+              "properties": [
+                {
+                  "name": "size",
+                  "value": "45"
+                }
+              ]
+            },
+            {
+              "type": "file",
+              "bom-ref": "tool:pkg:pypi/alpha@1.0#alpha-1.0.dist-info/WHEEL",
+              "name": "alpha-1.0.dist-info/WHEEL",
+              "hashes": [
+                {
+                  "alg": "SHA-256",
+                  "content": "a4e0b653593a8427ffbe465eee1dac9c6456c7e0b6d178ee7376b4d8a427d8e6"
+                }
+              ],
+              "properties": [
+                {
+                  "name": "size",
+                  "value": "41"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "bom-ref": "tool:pkg:pypi/beta@2.0",
+          "name": "beta",
+          "version": "2.0",
+          "purl": "pkg:pypi/beta@2.0",
+          "externalReferences": [],
+          "properties": []
+        },
+        {
+          "type": "library",
+          "bom-ref": "tool:pkg:pypi/gamma@3.0",
+          "name": "gamma",
+          "version": "3.0",
+          "purl": "pkg:pypi/gamma@3.0",
+          "externalReferences": [],
+          "properties": []
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:pypi/pkg.name@1.0",
+      "name": "Pkg.Name",
+      "version": "1.0",
+      "purl": "pkg:pypi/pkg.name@1.0",
+      "description": "a pinned example",
+      "authors": [
+        {
+          "name": "not-an-email"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0",
+          "acknowledgement": "declared"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/example/pkg",
+          "comment": "Project-URL: Source"
+        },
+        {
+          "type": "vcs",
+          "url": "https://gitlab.com/example/pkg",
+          "comment": "Project-URL: Source"
+        },
+        {
+          "type": "documentation",
+          "url": "https://pkg.readthedocs.io",
+          "comment": "Project-URL: Documentation"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/example/pkg/issues",
+          "comment": "Project-URL: Bug Tracker"
+        },
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/Pkg.Name/1.0/"
+        },
+        {
+          "type": "attestation",
+          "url": "https://pypi.org/integrity/Pkg.Name/1.0/pkg_name-1.0-py3-none-any.whl/provenance"
+        },
+        {
+          "type": "security-contact",
+          "url": "https://github.com/example/pkg/security/policy"
+        },
+        {
+          "type": "advisories",
+          "url": "https://github.com/example/pkg/security/advisories"
+        },
+        {
+          "type": "license",
+          "url": "https://github.com/example/pkg/blob/main/LICENSE"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/example/pkg/tree/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "comment": "exact source revision"
+        }
+      ],
+      "properties": [
+        {
+          "name": "python:requires-dist",
+          "value": "alpha>=1"
+        },
+        {
+          "name": "python:requires-dist",
+          "value": "beta; extra == \"cli\""
+        },
+        {
+          "name": "python:requires-dist",
+          "value": "gamma; python_version < \"3\""
+        },
+        {
+          "name": "python:requires-dist",
+          "value": "delta; extra in \"a,b\""
+        },
+        {
+          "name": "python:provides-extra",
+          "value": "cli"
+        },
+        {
+          "name": "python:classifier",
+          "value": "License :: OSI Approved :: MIT License"
+        },
+        {
+          "name": "python:classifier",
+          "value": "Programming Language :: Python :: 3"
+        },
+        {
+          "name": "python:keywords",
+          "value": "sbom,pinned"
+        },
+        {
+          "name": "pkg-name:vcs-commit",
+          "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ],
+      "supplier": {
+        "name": "Example Org",
+        "url": [
+          "https://example.org"
+        ]
+      }
+    },
+    "manufacturer": {
+      "name": "Example Org",
+      "url": [
+        "https://example.org"
+      ]
+    },
+    "supplier": {
+      "name": "Example Org",
+      "url": [
+        "https://example.org"
+      ]
+    },
+    "authors": [
+      {
+        "name": "not-an-email"
+      }
+    ],
+    "licenses": [
+      {
+        "expression": "MIT OR Apache-2.0",
+        "acknowledgement": "declared"
+      }
+    ],
+    "properties": [
+      {
+        "name": "pkg-name:sbom:scope",
+        "value": "Components are the wheels bundled as data files under src/pkg/wheels and the direct runtime dependencies declared in the wheel's core metadata, which carry no version because the installer resolves them."
+      },
+      {
+        "name": "pkg-name:sbom:file",
+        "value": "pkg-name.cdx.json"
+      },
+      {
+        "name": "pkg-name:sbom:repository",
+        "value": "https://github.com/example/pkg"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl",
+      "name": "pip",
+      "version": "1.0",
+      "purl": "pkg:pypi/pip@1.0",
+      "licenses": [
+        {
+          "expression": "MIT",
+          "acknowledgement": "declared"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/pip/1.0/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "pkg-name:bundled-wheel",
+          "value": "pkg_name/wheels/pip-1.0-py3-none-any.whl"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a64ff1b762e23c4eb0a3b4a8fb85fe12d18de3dce86ea6471f3f546285976734"
+        }
+      ],
+      "evidence": {
+        "identity": [
+          {
+            "field": "purl",
+            "confidence": 1,
+            "methods": [
+              {
+                "technique": "manifest-analysis",
+                "confidence": 1,
+                "value": "pip-1.0.dist-info/METADATA"
+              }
+            ]
+          },
+          {
+            "field": "hash",
+            "confidence": 1,
+            "methods": [
+              {
+                "technique": "hash-comparison",
+                "confidence": 1,
+                "value": "a64ff1b762e23c4eb0a3b4a8fb85fe12d18de3dce86ea6471f3f546285976734"
+              }
+            ]
+          }
+        ]
+      },
+      "components": [
+        {
+          "type": "file",
+          "bom-ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#pip/__init__.py",
+          "name": "pip/__init__.py",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            }
+          ],
+          "properties": [
+            {
+              "name": "size",
+              "value": "0"
+            }
+          ]
+        },
+        {
+          "type": "file",
+          "bom-ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#pip/_vendor/vendor.txt",
+          "name": "pip/_vendor/vendor.txt",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "26c04392ab4b025968e4dbdaca5fcc4ec977c70607bb02d4ae7bc724d4ba92ea"
+            }
+          ],
+          "properties": [
+            {
+              "name": "size",
+              "value": "26"
+            }
+          ]
+        },
+        {
+          "type": "file",
+          "bom-ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#pip-1.0.dist-info/METADATA",
+          "name": "pip-1.0.dist-info/METADATA",
+          "hashes": [
+            {
+              "alg": "SHA-256",
+              "content": "3ea62ee2e6d4513f0a06630188f10dbeace9ed76fd29897bf76edd496d948e37"
+            }
+          ],
+          "properties": [
+            {
+              "name": "size",
+              "value": "69"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "bom-ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#vendored/pkg:pypi/idna@3.7",
+          "name": "idna",
+          "version": "3.7",
+          "purl": "pkg:pypi/idna@3.7",
+          "externalReferences": [],
+          "properties": [
+            {
+              "name": "pkg-name:vendored-manifest",
+              "value": "pip/_vendor/vendor.txt"
+            }
+          ],
+          "evidence": {
+            "identity": [
+              {
+                "field": "purl",
+                "confidence": 1,
+                "methods": [
+                  {
+                    "technique": "manifest-analysis",
+                    "confidence": 1,
+                    "value": "pip/_vendor/vendor.txt"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "library",
+          "bom-ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#vendored/pkg:pypi/urllib3@1.26.4",
+          "name": "urllib3",
+          "version": "1.26.4",
+          "purl": "pkg:pypi/urllib3@1.26.4",
+          "externalReferences": [],
+          "properties": [
+            {
+              "name": "pkg-name:vendored-manifest",
+              "value": "pip/_vendor/vendor.txt"
+            }
+          ],
+          "evidence": {
+            "identity": [
+              {
+                "field": "purl",
+                "confidence": 1,
+                "methods": [
+                  {
+                    "technique": "manifest-analysis",
+                    "confidence": 1,
+                    "value": "pip/_vendor/vendor.txt"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "requires-dist:alpha>=1",
+      "name": "alpha",
+      "purl": "pkg:pypi/alpha",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/alpha/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "pkg-name:requires-dist",
+          "value": "alpha>=1"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "requires-dist:gamma; python_version < \"3\"",
+      "name": "gamma",
+      "purl": "pkg:pypi/gamma",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/gamma/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "pkg-name:requires-dist",
+          "value": "gamma; python_version < \"3\""
+        },
+        {
+          "name": "pkg-name:environment-marker",
+          "value": "python_version < \"3\""
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "requires-dist:delta; extra in \"a,b\"",
+      "name": "delta",
+      "purl": "pkg:pypi/delta",
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/delta/"
+        }
+      ],
+      "properties": [
+        {
+          "name": "pkg-name:requires-dist",
+          "value": "delta; extra in \"a,b\""
+        },
+        {
+          "name": "pkg-name:environment-marker",
+          "value": "extra in \"a,b\""
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:pypi/pkg.name@1.0",
+      "dependsOn": [
+        "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl",
+        "requires-dist:alpha>=1",
+        "requires-dist:gamma; python_version < \"3\"",
+        "requires-dist:delta; extra in \"a,b\""
+      ]
+    },
+    {
+      "ref": "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl",
+      "dependsOn": [
+        "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#vendored/pkg:pypi/idna@3.7",
+        "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl#vendored/pkg:pypi/urllib3@1.26.4"
+      ]
+    },
+    {
+      "ref": "tool:pkg:pypi/alpha@1.0",
+      "dependsOn": [
+        "tool:pkg:pypi/beta@2.0"
+      ]
+    },
+    {
+      "ref": "tool:pkg:pypi/beta@2.0",
+      "dependsOn": []
+    },
+    {
+      "ref": "tool:pkg:pypi/gamma@3.0",
+      "dependsOn": []
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "incomplete",
+      "dependencies": [
+        "pkg:pypi/pkg.name@1.0"
+      ]
+    }
+  ],
+  "formulation": [
+    {
+      "bom-ref": "formula:wheel-build",
+      "workflows": [
+        {
+          "bom-ref": "workflow:wheel-build",
+          "uid": "wheel-build",
+          "name": "build the wheel and this SBOM",
+          "taskTypes": [
+            "build"
+          ],
+          "resourceReferences": [
+            {
+              "ref": "tool:pkg:generic/cpython@3.14.0"
+            },
+            {
+              "ref": "tool:pkg:pypi/alpha@1.0"
+            },
+            {
+              "ref": "tool:pkg:pypi/beta@2.0"
+            },
+            {
+              "ref": "tool:pkg:pypi/gamma@3.0"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "artifact",
+              "resource": {
+                "ref": "pkg:pypi/pkg.name@1.0"
+              }
+            }
+          ],
+          "inputs": [
+            {
+              "environmentVars": [
+                {
+                  "name": "SOURCE_DATE_EPOCH",
+                  "value": "1700000000"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
