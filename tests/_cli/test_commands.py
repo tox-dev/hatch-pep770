@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import runpy
+import struct
 import subprocess
 import sys
 import zipfile
+import zlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
@@ -206,11 +208,41 @@ def test_archive_embeds_sbom(project: Path, zipapp: Path, tmp_path: Path) -> Non
         "--embed",
     ])
     entry = zipfile.ZipFile(zipapp).getinfo("app.pyz.cdx.json")
-    assert (entry.create_system, entry.external_attr, zipfile.ZipFile(zipapp).read(entry)) == (
+    assert (entry.create_system, entry.external_attr, entry.compress_type, zipfile.ZipFile(zipapp).read(entry)) == (
         3,
         0o644 << 16,
+        zipfile.ZIP_STORED,
         (tmp_path / "out.json").read_bytes(),
     )
+
+
+@pytest.mark.parametrize(
+    ("flags", "level"),
+    [
+        pytest.param(0b000, zlib.Z_DEFAULT_COMPRESSION, id="normal"),
+        pytest.param(0b010, 9, id="maximum"),
+        pytest.param(0b100, 2, id="fast"),
+        pytest.param(0b110, 1, id="super-fast"),
+    ],
+)
+def test_archive_embeds_sbom_compressed_as_its_members(project: Path, tmp_path: Path, flags: int, level: int) -> None:
+    with zipfile.ZipFile(app := tmp_path / "app.pyz", "w", zipfile.ZIP_DEFLATED) as handle:
+        handle.writestr("__main__.py", "import app\n")
+        handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\n")
+    # zipfile clears the option bits it writes, so they go straight into the central directory, where readers take them
+    data = bytearray(app.read_bytes())
+    for at in (index for index in range(len(data)) if data[index : index + 4] == b"PK\x01\x02"):
+        struct.pack_into("<H", data, at + 8, struct.unpack_from("<H", data, at + 8)[0] | flags)
+    app.write_bytes(data)
+    main(["archive", str(app), "--root", str(project), "--build-env", str(project), "--embed"])
+    with zipfile.ZipFile(app) as handle:
+        entry = handle.getinfo("app.pyz.cdx.json")
+        content = handle.read(entry)
+    data = app.read_bytes()
+    name_length, extra_length = struct.unpack("<HH", data[entry.header_offset + 26 : entry.header_offset + 30])
+    start = entry.header_offset + 30 + name_length + extra_length
+    compressor = zlib.compressobj(level, zlib.DEFLATED, -zlib.MAX_WBITS)
+    assert data[start : start + entry.compress_size] == compressor.compress(content) + compressor.flush()
 
 
 def test_archive_refuses_second_embed(project: Path, zipapp: Path, capsys: pytest.CaptureFixture[str]) -> None:
