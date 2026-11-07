@@ -12,7 +12,7 @@ import pytest
 
 from python_sbom import ContentProvider, ProviderContext
 from python_sbom._collect._archive import member_reader
-from python_sbom._generate._pipeline import build_sbom
+from python_sbom._generate._embed import build_sbom
 from python_sbom._model._identity import project_identity
 from python_sbom._model._inputs import BuildFacts, Interpreter, SbomRequest, Settings, SourceTree
 from python_sbom._model._metadata import parse_metadata

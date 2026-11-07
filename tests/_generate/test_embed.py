@@ -7,14 +7,19 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from python_sbom import BundledWheelInfo, ContentProvider, ProviderContext
-from python_sbom._generate._embed import embed_sbom
+from python_sbom._formats._json import dumps
+from python_sbom._generate._embed import build_sbom, embed_sbom
+from python_sbom._model._inputs import SbomRequest, SourceTree
+from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
     import pytest
-    from conftest import Install, WriteWheel
+    from conftest import ContextFor, Install, WriteWheel
     from pytest_mock import MockerFixture
+
+    from python_sbom._model._inputs import BuildFacts, Settings
 
 _PINNED: Final[Path] = Path(__file__).parent / "pinned"
 
@@ -125,3 +130,18 @@ Provides-Extra: cli
 
 def _sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def test_sbom_file_name_and_content(settings: Settings, facts: BuildFacts, context_for: ContextFor) -> None:
+    request = SbomRequest(
+        root=Path(),
+        metadata=parse_metadata("Name: My.Project\nVersion: 1.0\n"),
+        wheel_name="my_project-1.0-py3-none-any.whl",
+        settings=settings,
+        build_scripts=(),
+    )
+    context = context_for(Path(), Path())
+    sbom = build_sbom(
+        request, SourceTree(copyright=None, bundled=[], build_scripts=[]), facts, ContentProvider(), context
+    )
+    assert (sbom.file_name, sbom.content) == ("my-project.cdx.json", dumps(sbom.document))
