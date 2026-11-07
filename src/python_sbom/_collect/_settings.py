@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tomllib
-from typing import TYPE_CHECKING, TypeAlias, TypeIs
+from typing import TYPE_CHECKING, TypeAlias
 
 from python_sbom._errors import SettingsError
 from python_sbom._model._inputs import Settings
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from datetime import date, datetime, time
     from pathlib import Path
+    from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
     from python_sbom._model._types import OrganizationalEntity
 
