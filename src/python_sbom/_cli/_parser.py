@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from argparse import ArgumentParser, _SubParsersAction
+from argparse import ArgumentParser, ArgumentTypeError, _SubParsersAction
 from pathlib import Path
 from typing import Protocol
 
@@ -113,12 +113,20 @@ def _add_validate(commands: _SubParsersAction[ArgumentParser]) -> None:
     )
     parser.add_argument(
         "--max-components",
-        type=int,
+        type=_positive_int,
         default=MAX_COMPONENTS,
         metavar="N",
         help="reject an SBOM listing more than N components, nested ones included, without checking it further, which"
         f" bounds the work an untrusted SBOM can ask for (default: {MAX_COMPONENTS})",
     )
+
+
+def _positive_int(text: str) -> int:
+    # argparse reports the error through parser.error, with the usage, like any other bad argument
+    if text.isdecimal() and (number := int(text)) > 0:
+        return number
+    msg = f"must be a positive integer, got {text!r}"
+    raise ArgumentTypeError(msg)
 
 
 class BuildOptions(Protocol):
