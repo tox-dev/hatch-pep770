@@ -54,8 +54,8 @@ that command runs.
         validate --> model
         formats --> model
         formats --> version
-        wheel --> model
         model --> errors
+        wheel --> model
         classDef edge fill:#cfe4ff,stroke:#1f6feb,color:#0b1f3a;
         classDef core fill:#d8f3dc,stroke:#2d6a4f,color:#081c15;
         class hook,cli,collect,api edge;

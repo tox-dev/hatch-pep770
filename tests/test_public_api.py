@@ -7,7 +7,7 @@ import inspect
 import pathlib
 import pkgutil
 import typing
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import pytest
 
@@ -17,7 +17,7 @@ from python_sbom import Settings
 from python_sbom._model._inputs import RecordRow
 from python_sbom._model._metadata import CoreMetadata
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 _Hint = object  # simplint: ignore[SMP602] # hints are arbitrary typing objects
