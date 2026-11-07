@@ -1,0 +1,210 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatch-vcs>=0.5",
+  "hatchling>=1.32.4",
+]
+
+[project]
+name = "hatch-pep770"
+import-names = [ "hatch_pep770" ]
+description = "Hatchling build hook that embeds a PEP 770 CycloneDX SBOM in the wheel."
+readme = "README.md"
+keywords = [
+  "cyclonedx",
+  "hatch",
+  "pep770",
+  "sbom",
+  "spdx",
+]
+license = "MIT"
+maintainers = [
+  { name = "Bernát Gábor", email = "gaborjbernat@gmail.com" },
+]
+requires-python = ">=3.9"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Hatch",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: Security",
+  "Topic :: Software Development :: Build Tools",
+]
+dynamic = [
+  "version",
+]
+dependencies = [
+  "hatchling>=1.27",
+  "packaging>=24.2",
+]
+optional-dependencies.validate = [
+  "cyclonedx-python-lib[json-validation]>=11",
+  "spdx-tools>=0.8.3",
+]
+urls.Changelog = "https://github.com/tox-dev/hatch-pep770/blob/main/CHANGELOG.md"
+urls.Documentation = "https://github.com/tox-dev/hatch-pep770#hatch-pep770"
+urls.Homepage = "https://github.com/tox-dev/hatch-pep770"
+urls.Source = "https://github.com/tox-dev/hatch-pep770"
+urls.Tracker = "https://github.com/tox-dev/hatch-pep770/issues"
+scripts.hatch-pep770 = "hatch_pep770.__main__:main"
+entry-points.hatch.pep770 = "hatch_pep770.hooks"
+
+[dependency-groups]
+test = [
+  "covdefaults>=2.3",
+  "cyclonedx-python-lib[json-validation]>=11",
+  "pytest>=8.4.2",
+  "pytest-cov>=7.1",
+  "pytest-mock>=3.15.1",
+  "spdx-tools>=0.8.3",
+]
+type = [
+  "ty>=0.0.84",
+  { include-group = "test" },
+]
+build = [
+  "hatch-vcs>=0.5",
+  "hatchling>=1.32.4",
+]
+pkg-meta = [
+  "check-wheel-contents>=0.6.3",
+  "twine>=7",
+  "uv>=0.12.22",
+]
+release = [
+  "prek>=0.5",
+  "release-creator>=4.4",
+  "towncrier>=26.9",
+]
+release-news = [
+  "release-creator>=4.4",
+  "towncrier>=26.9",
+]
+release-notes = [
+  "release-creator>=4.4",
+]
+release-prepare = [
+  "prek>=0.5",
+  "release-creator>=4.4",
+  "towncrier>=26.9",
+]
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/hatch_pep770/version.py"
+build.targets.sdist.include = [
+  "/src",
+  "/tests",
+]
+
+[tool.uv]
+dependency-groups.release = { requires-python = ">=3.15" }
+dependency-groups.release-news = { requires-python = ">=3.15" }
+dependency-groups.release-notes = { requires-python = ">=3.15" }
+dependency-groups.release-prepare = { requires-python = ">=3.15" }
+
+[tool.ruff]
+line-length = 120
+format.preview = true
+format.docstring-code-line-length = 100
+format.docstring-code-format = true
+lint.select = [
+  "ALL",
+]
+lint.ignore = [
+  "CPY",                                       # No copyright statements
+  "D1",                                        # docstrings only on the public API, enforced in review
+  "DOC",                                       # not supported
+  "incorrect-blank-line-before-class",         # `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
+  "missing-trailing-comma",                    # Conflict with formatter
+  "multi-line-summary-first-line",             # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
+  "single-line-implicit-string-concatenation", # Conflict with formatter
+  "subprocess-without-shell-equals-true",      # subprocess calls are fine
+  "suspicious-subprocess-import",              # Using subprocess is alright
+]
+lint.per-file-ignores."tests/**/*.py" = [
+  "assert",                               # asserts allowed in tests
+  "D",                                    # don't care about documentation in tests
+  "FBT",                                  # don't care about booleans as positional arguments in tests
+  "implicit-namespace-package",           # no implicit namespace
+  "magic-value-comparison",               # Magic value used in comparison, consider replacing with a constant variable
+  "pytest-fixture-autouse",               # shared setup fixtures are meant to apply to every test
+  "start-process-with-partial-path",      # partial executable path is fine in tests
+  "subprocess-without-shell-equals-true", # `subprocess` call: check for execution of untrusted input
+  "too-many-arguments",                   # fixtures arrive as arguments
+  "too-many-positional-arguments",        # fixtures arrive as arguments
+]
+lint.isort = { known-first-party = [
+  "hatch_pep770",
+  "tests",
+], required-imports = [
+  "from __future__ import annotations",
+] }
+lint.preview = true
+
+[tool.codespell]
+builtin = "clear,usage,en-GB_to_en-US"
+ignore-words-list = "acknowledgement"
+write-changes = true
+count = true
+
+[tool.pyproject-fmt]
+max_supported_python = "3.15"
+
+[tool.ty]
+environment.python-version = "3.15"
+
+[tool.coverage]
+run.parallel = true
+run.plugins = [
+  "covdefaults",
+]
+paths.source = [
+  "src",
+  ".tox*/*/lib/python*/site-packages",
+  ".tox*/pypy*/site-packages",
+  ".tox*\\*\\Lib\\site-packages",
+  "*/src",
+  "*\\src",
+]
+html.show_contexts = true
+html.skip_covered = false
+
+[tool.towncrier]
+name = "hatch-pep770"
+directory = "changelog.d"
+filename = "CHANGELOG.md"
+template = "release_creator.fragments:template.jinja2"
+title_format = false
+type = [
+  { directory = "feature", name = "Added", showcontent = true },
+  { directory = "change", name = "Changes", showcontent = true },
+  { directory = "bugfix", name = "Fixed", showcontent = true },
+  { directory = "doc", name = "Documentation", showcontent = true },
+  { directory = "breaking", name = "Breaking changes", showcontent = true },
+  { directory = "security", name = "Security", showcontent = true },
+  { directory = "performance", name = "Performance", showcontent = true },
+  { directory = "deprecation", name = "Deprecated", showcontent = true },
+  { directory = "removal", name = "Removed", showcontent = true },
+  { directory = "packaging", name = "Packaging", showcontent = true },
+]
+
+[tool.nab]
+mode = "universal"
+base-group = "project-runtime"
+uploaded-prior-to = "P7D"
+decision-order = "stable"
+matrix.python = ">=3.15,<3.16"
+matrix.platforms = [ "linux_x86_64", "macos_arm64", "windows_amd64" ]
+# release-creator 4.4.0 needs a seven-day cutoff exception.
+# expires 2026-11-09
+packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z

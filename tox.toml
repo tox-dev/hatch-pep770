@@ -1,0 +1,72 @@
+requires = [ "tox>=4.64.7", "tox-uv>=1.36.1" ]
+env_list = [ "3.15", "3.14", "3.13", "3.12", "3.11", "3.10", "3.9", "3.15t", "fix", "pkg_meta", "type" ]
+skip_missing_interpreters = true
+
+[env_run_base]
+description = "run the tests with pytest under {env_name}"
+default_base_python = [ "3.15" ]
+package = "wheel"
+wheel_build_env = ".pkg"
+dependency_groups = [ "test" ]
+pass_env = [ "PYTEST_*" ]
+set_env.COVERAGE_FILE = { replace = "env", name = "COVERAGE_FILE", default = "{work_dir}{/}.coverage.{env_name}" }
+commands = [
+  [
+    "pytest",
+    { replace = "posargs", default = [
+      "--durations",
+      "5",
+      "--junitxml",
+      "{work_dir}{/}junit.{env_name}.xml",
+      "--no-cov-on-fail",
+      "--cov",
+      "{env_site_packages_dir}{/}hatch_pep770",
+      "--cov",
+      "{tox_root}{/}tests",
+      "--cov-config",
+      "{tox_root}{/}pyproject.toml",
+      "--cov-context",
+      "test",
+      "--cov-report",
+      "term-missing:skip-covered",
+      "--cov-report",
+      "html:{env_tmp_dir}{/}htmlcov",
+      "--cov-report",
+      "xml:{work_dir}{/}coverage.{env_name}.xml",
+      "--cov-fail-under=100",
+      "tests",
+    ], extend = true },
+  ],
+]
+
+[env_pkg_base]
+default_base_python = [ "3.15" ]
+
+[env.fix]
+description = "format the code base to adhere to our styles, and complain about what we cannot do automatically"
+skip_install = true
+deps = [ "pre-commit-uv>=4.3" ]
+pass_env = [ { replace = "ref", of = [ "env_run_base", "pass_env" ], extend = true }, "PROGRAMDATA" ]
+commands = [ [ "pre-commit", "run", "--all-files", "--show-diff-on-failure", { replace = "posargs", extend = true } ] ]
+
+[env.pkg_meta]
+description = "check that the long description is valid"
+skip_install = true
+dependency_groups = [ "pkg-meta" ]
+commands = [
+  [ "uv", "build", "--sdist", "--wheel", "--out-dir", "{env_tmp_dir}", "." ],
+  [ "twine", "check", "{env_tmp_dir}{/}*" ],
+  [ "check-wheel-contents", "--no-config", "{env_tmp_dir}" ],
+]
+
+[env.type]
+description = "run type check on code base"
+dependency_groups = [ "type" ]
+commands = [ [ "ty", "check", "--output-format", "concise", "--error-on-warning", "." ] ]
+
+[env.dev]
+description = "dev environment with all deps at {envdir}"
+package = "editable"
+deps = [ { replace = "ref", of = [ "requires" ], extend = true } ]
+dependency_groups = [ "release", "type" ]
+commands = [ [ "uv", "pip", "tree" ], [ "python", "-c", 'print(r"{env_python}")' ] ]
