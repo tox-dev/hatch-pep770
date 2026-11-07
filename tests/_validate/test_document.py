@@ -289,6 +289,10 @@ def test_non_finite_numbers_are_rejected(constant: str) -> None:
     assert validate_document(raw, None) == [f"holds {float(constant)}, which is not a JSON number"]
 
 
+def test_non_finite_document_is_rejected() -> None:
+    assert validate_document(b"NaN", None) == ["holds nan, which is not a JSON number"]
+
+
 def test_license_policy(describe: Describe) -> None:
     raw = with_components(describe(), shipped([{"expression": "MIT AND GPL-3.0-only"}]))
     assert validate_document(raw, frozenset({"MIT"})) == [

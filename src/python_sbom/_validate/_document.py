@@ -15,6 +15,7 @@ from python_sbom._model._names import SBOM_FILE
 from ._limits import MAX_COMPONENTS, byte_limit
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
     from python_sbom._model._types import Component, Document
@@ -116,30 +117,41 @@ def _census_problems(document: Json, max_components: int) -> list[str]:
     # components array, and one array may hold them all, so only the total bounds its work
     components = 0
     refs: Final[Counter[str]] = Counter()
-    pending: Final[list[tuple[Json, int]]] = [(document, 1)]
+    # only lists and objects go on the stack, every other value is judged where its container is read, so a scalar
+    # nests too deep when its container already sits at the limit; the document starts out as the one item of a list
+    pending: Final[list[tuple[list[Json] | dict[str, Json], int]]] = [([document], 0)]
     while pending:
         node, depth = pending.pop()
-        if depth > _MAX_DEPTH:
-            return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
-        if isinstance(node, list):
-            pending.extend((item, depth + 1) for item in node)
-        elif isinstance(node, dict):
+        if isinstance(node, dict):
             if isinstance(ref := node.get("bom-ref"), str):
                 refs[ref] += 1
-            if isinstance(listed := node.get("components"), list):
-                components += len(listed)
-            pending.extend((item, depth + 1) for item in node.values())
-        elif isinstance(node, float) and not math.isfinite(node):
-            # json.loads takes NaN and Infinity, which RFC 8259 leaves out of JSON and the schema check reads as null
-            return [f"holds {node}, which is not a JSON number"]
+            components += len(listed) if isinstance(listed := node.get("components"), list) else 0
         if components > max_components:
-            problem = (
-                f"lists more than {max_components} components, nested ones included;"
-                " pass a higher --max-components to check it"
-            )
-            return [problem]
+            return [
+                (
+                    f"lists more than {max_components} components, nested ones included;"
+                    " pass a higher --max-components to check it"
+                )
+            ]
+        children = node.values() if isinstance(node, dict) else node
+        if children and depth >= _MAX_DEPTH:
+            return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
+        if problem := _push_containers(children, depth + 1, pending):
+            return problem
     if duplicates := sorted(ref for ref, count in refs.items() if count > 1):
         return [f"bom-ref values are not unique: {duplicates}"]
+    return []
+
+
+def _push_containers(
+    children: Iterable[Json], depth: int, pending: list[tuple[list[Json] | dict[str, Json], int]]
+) -> list[str]:
+    for child in children:
+        if isinstance(child, (list, dict)):
+            pending.append((child, depth))
+        elif isinstance(child, float) and not math.isfinite(child):
+            # json.loads takes NaN and Infinity, which RFC 8259 leaves out of JSON and the schema reads as null
+            return [f"holds {child}, which is not a JSON number"]
     return []
 
 
