@@ -15,7 +15,7 @@ from python_sbom._formats._spdx import to_spdx
 from python_sbom._generate._archive import describe_archive
 from python_sbom._generate._embed import embed_sbom, revision_reader
 from python_sbom._validate._artifact import validate as validate_artifact
-from python_sbom._validate._document import is_document
+from python_sbom._validate._document import MAX_COMPONENTS, is_document
 
 if TYPE_CHECKING:
     from argparse import ArgumentParser, _SubParsersAction
@@ -158,6 +158,14 @@ def add_validate(commands: _SubParsersAction[ArgumentParser]) -> None:
         metavar="SPDX-ID",
         help="SPDX license id shipped components may use; repeat it per id, leave it out to skip the license policy",
     )
+    parser.add_argument(
+        "--max-components",
+        type=int,
+        default=MAX_COMPONENTS,
+        metavar="N",
+        help="reject an SBOM listing more than N components, nested ones included, without checking it further, since"
+        f" the schema check slows with the square of the count (default: {MAX_COMPONENTS})",
+    )
 
 
 def _validate(options: Options) -> bool:
@@ -171,7 +179,7 @@ def _validate(options: Options) -> bool:
         return False
     valid = True
     for artifact in artifacts:
-        for problem in (problems := validate_artifact(artifact, allowed)):
+        for problem in (problems := validate_artifact(artifact, allowed, options.max_components)):
             sys.stderr.write(f"SBOM invalid: {artifact.name}: {problem}\n")
         if problems:
             valid = False

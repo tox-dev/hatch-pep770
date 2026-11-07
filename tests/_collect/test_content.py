@@ -23,12 +23,23 @@ class Content(ContentProvider):
 
 instance = Content()
 other = object()
+
+
+class Holder:
+    nested = instance
 """
     (tmp_path / "tools" / f"{tmp_path.name}.py").write_text(provider, encoding="utf-8")
     return f"tools.{tmp_path.name}"
 
 
-@pytest.mark.parametrize("attribute", [pytest.param("Content", id="class"), pytest.param("instance", id="instance")])
+@pytest.mark.parametrize(
+    "attribute",
+    [
+        pytest.param("Content", id="class"),
+        pytest.param("instance", id="instance"),
+        pytest.param("Holder.nested", id="dotted-attribute"),
+    ],
+)
 def test_load_from_project(tmp_path: Path, module: str, attribute: str) -> None:
     provider = load_content_provider(f"{module}:{attribute}", tmp_path)
     assert (type(provider).__name__, provider_script(provider, tmp_path)) == (
@@ -54,9 +65,10 @@ def test_provider_class_outside_project_is_no_tool(tmp_path: Path) -> None:
     [
         pytest.param("tools", "must be `module:attribute`", id="no-attribute"),
         pytest.param(":Content", "must be `module:attribute`", id="no-module"),
-        pytest.param("not_a_module_anywhere:Content", "does not import from", id="import-fails"),
+        pytest.param("tools:Content:x", "does not load from .*: invalid format", id="two-colons"),
+        pytest.param("not_a_module_anywhere:Content", "does not load from .*: No module named", id="import-fails"),
         pytest.param("MODULE:other", "is not a ContentProvider subclass or instance", id="not-a-provider"),
-        pytest.param("MODULE:missing", "is not a ContentProvider subclass or instance", id="missing-attribute"),
+        pytest.param("MODULE:missing", "does not load from .*: .* has no attribute 'missing'", id="missing-attribute"),
     ],
 )
 def test_load_refuses(tmp_path: Path, module: str, spec: str, message: str) -> None:

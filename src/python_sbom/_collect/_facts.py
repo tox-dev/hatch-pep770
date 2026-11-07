@@ -13,6 +13,7 @@ from email.parser import Parser
 from importlib.metadata import distributions
 from typing import TYPE_CHECKING, Final, Protocol
 
+from packaging.direct_url import DirectUrl, DirectUrlValidationError
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
@@ -83,9 +84,7 @@ def _installed(path: Sequence[str] | None) -> list[InstalledDistribution]:
 def _recorded_files(distribution: Distribution) -> list[RecordRow]:
     # a platform wheel's files are built for this machine's OS and architecture, and an editable install's point at a
     # checkout, so listing either would tie the document to one machine
-    if Parser().parsestr(distribution.read_text("WHEEL") or "")["Root-Is-Purelib"] != "true" or (
-        json.loads(distribution.read_text("direct_url.json") or "{}").get("dir_info", {}).get("editable")
-    ):
+    if Parser().parsestr(distribution.read_text("WHEEL") or "")["Root-Is-Purelib"] != "true" or _editable(distribution):
         return []
     rows: Final[list[RecordRow]] = []
     for file in distribution.files or []:
@@ -94,6 +93,18 @@ def _recorded_files(distribution: Distribution) -> list[RecordRow]:
         algorithm, digest = decode_digest(f"{file.hash.mode}={file.hash.value}", file.as_posix())
         rows.append(RecordRow(path=file.as_posix(), algorithm=algorithm, digest=digest, size=str(file.size)))
     return rows
+
+
+def _editable(distribution: Distribution) -> bool:
+    if (text := distribution.read_text("direct_url.json")) is None:
+        return False
+    try:
+        dir_info = DirectUrl.from_dict(json.loads(text)).dir_info
+    # an installer that wrote the file wrong breaks no build: its files get listed, as for any other install
+    except (ValueError, DirectUrlValidationError) as error:
+        warnings.warn(f"read the direct_url.json of {distribution.name} as not editable: {error}", stacklevel=2)
+        return False
+    return dir_info is not None and dir_info.editable is True
 
 
 def _describes_distribution(path: str, parent_suffix: str, name: str) -> bool:

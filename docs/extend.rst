@@ -1,9 +1,8 @@
 Extend it
 =========
 
-The options cover what every project shares. A project that knows more than its metadata says adds it through a
-content provider, and the same provider serves the wheel's SBOM and the SBOM of any other archive the project
-publishes.
+The options cover what every project shares. A project that knows more than its metadata says adds it through a content
+provider, and the same provider serves the wheel's SBOM and the SBOM of any other archive the project publishes.
 
 Add content with a provider
 ---------------------------
@@ -22,10 +21,9 @@ it adds.
   the root's dependencies and the serial number derive from it. The build fails when a ``bom-ref`` repeats, a
   dependency names one that no component has, or a root property uses the project's own prefix.
 
-Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and
-the hook, ``python-sbom embed`` and ``python-sbom archive`` all load it. When the provider's class lives in the
-project, the SBOM lists its module among the build tools, hashed, because it shapes the document a rebuild has to
-reproduce:
+Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and the
+hook, ``python-sbom embed`` and ``python-sbom archive`` all load it. When the provider's class lives in the project, the
+SBOM lists its module among the build tools, hashed, because it shapes the document a rebuild has to reproduce:
 
 .. code-block:: python
 
@@ -84,8 +82,7 @@ suite builds a project with virtualenv's layout with the same provider, handed o
     :language: python
     :pyobject: BundleSupport
 
-The pip component then carries these properties,
-in this order:
+The pip component then carries these properties, in this order:
 
 .. list-table::
     :header-rows: 1

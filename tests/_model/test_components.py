@@ -333,3 +333,27 @@ def test_script_tool_with_link() -> None:
 
 def test_script_tool_without_link() -> None:
     assert "externalReferences" not in script_tool(PurePosixPath("hook.py"), "ef" * 32, "1.0", None)
+
+
+def test_vendored_spellings_of_one_package_merge() -> None:
+    wheel = BundledWheel(
+        path=_WHEEL,
+        sha256="ab" * 32,
+        metadata_name="pip-1.0.dist-info/METADATA",
+        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        files=[],
+        vendored=[
+            ("pip/_vendor/vendor.txt", message_from_string("Name: jaraco.text\nVersion: 4.0\n")),
+            (
+                "pip/_vendor/jaraco_text-4.0.dist-info/METADATA",
+                message_from_string("Name: jaraco_text\nVersion: 4.0\n"),
+            ),
+        ],
+    )
+    component = bundled_wheel_component(wheel, "example", [], None)
+    assert [child["name"] for child in component.get("components", [])] == ["jaraco_text"]
+
+
+def test_pypi_purl_keeps_dots() -> None:
+    component = component_from_metadata(message_from_string("Name: zope.interface\nVersion: 7.0\n"))
+    assert component["purl"] == "pkg:pypi/zope.interface@7.0"

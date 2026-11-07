@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
+from packageurl import PackageURL
+
 from ._components import component_from_metadata, file_component
 from ._names import purl, tool_ref
 
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
 
 def tool_components(facts: BuildFacts) -> tuple[list[Component], list[Dependency]]:
     interpreter = facts.interpreter
-    package = f"pkg:generic/{interpreter.name}@{interpreter.version}"
+    package = PackageURL(type="generic", name=interpreter.name, version=interpreter.version).to_string()
     tools: Final[list[Component]] = [
         {
             "type": "platform",

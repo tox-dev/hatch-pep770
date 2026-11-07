@@ -56,13 +56,27 @@ def test_oversized_document_is_not_parsed() -> None:
     ]
 
 
-def test_long_components_array_skips_the_schema() -> None:
-    # the schema compares every pair of array items, which takes minutes at this length
-    components = [{"type": "library", "bom-ref": f"ref-{index}", "name": "many"} for index in range(10_001)]
-    raw = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": components})
-    assert validate_document(raw, None) == [
-        "lists 10001 components in one array, over the 10000 the schema check can take"
+def test_component_cap_counts_nested_components() -> None:
+    assert validate_document(many_components(), None) == [
+        "lists more than 5000 components, nested ones included; pass a higher --max-components to check it"
     ]
+
+
+def many_components() -> str:
+    # 100 groups of 50 parts, 5,100 components in all, yet no array long enough to slow the schema check
+    groups = [
+        {
+            "type": "library",
+            "name": f"group-{group}",
+            "components": [{"type": "library", "name": f"part-{part}"} for part in range(50)],
+        }
+        for group in range(100)
+    ]
+    return json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": groups})
+
+
+def test_component_cap_can_be_raised() -> None:
+    assert validate_document(many_components(), None, max_components=5_100) == []
 
 
 def test_missing_fields(describe: Describe) -> None:

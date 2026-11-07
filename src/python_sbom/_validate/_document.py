@@ -10,8 +10,6 @@ from python_sbom._formats._spdx import render_spdx
 from python_sbom._model._names import SBOM_FILE
 from python_sbom.version import __version__
 
-from ._licenses import license_problems
-
 if TYPE_CHECKING:
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
@@ -31,18 +29,21 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
 _SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 # the archive reader stops at the same size
 _MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
-# the schema's uniqueItems compares every pair of items, so an array this long already takes half a minute
-_MAX_ITEMS: Final[int] = 10_000
+# the schema's uniqueItems compares every pair of items in an array, so a document whose components share one array
+# takes about ten seconds to check at this count and four times that at twice it
+MAX_COMPONENTS: Final[int] = 5_000
 # an exception's message can quote the hostile value that caused it
 _MAX_TEXT: Final[int] = 200
 
 
-def validate_document(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
+def validate_document(
+    raw: str, allowed_licenses: frozenset[str] | None, max_components: int = MAX_COMPONENTS
+) -> list[str]:
     if len(raw) > _MAX_CHARACTERS:
         return [f"is {len(raw)} characters long, over the {_MAX_CHARACTERS} character limit"]
     # one document's problem never stops the others from being checked, so whatever the checks raise is reported
     try:
-        return _problems(raw, allowed_licenses)
+        return _problems(raw, allowed_licenses, max_components)
     except MissingExtraError:
         raise
     except json.JSONDecodeError as error:
@@ -54,13 +55,14 @@ def validate_document(raw: str, allowed_licenses: frozenset[str] | None) -> list
         return [f"could not be checked, {type(error).__name__}: {str(error)[:_MAX_TEXT]}"]
 
 
-def _problems(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
+def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
     # every document must conform to the CycloneDX 1.6 schema; one python-sbom wrote must also carry the urn:uuid serial
     # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy
+    from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # parses with the optional extra
     from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra loads on first use
 
     loaded: Final = json.loads(raw)
-    if census := _census_problems(loaded):
+    if census := _census_problems(loaded, max_components):
         return census
     if error := schema_error(raw):
         return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
@@ -85,10 +87,11 @@ def _problems(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
     return problems
 
 
-def _census_problems(document: _Json) -> list[str]:
-    # counts the longest components array and every bom-ref before the schema vouches for any shape; iterative, so
-    # deep nesting cannot exhaust the stack
-    largest = 0
+def _census_problems(document: _Json, max_components: int) -> list[str]:
+    # counts the components and bom-refs in one linear pass before the schema vouches for any shape; iterative, so deep
+    # nesting cannot exhaust the stack. Nested components count too: the schema checks every components array, and
+    # one array may hold them all, so only the total bounds its work
+    components = 0
     refs: Final[Counter[str]] = Counter()
     pending: Final[list[_Json]] = [document]
     while pending:
@@ -98,11 +101,15 @@ def _census_problems(document: _Json) -> list[str]:
         elif isinstance(node, dict):
             if isinstance(ref := node.get("bom-ref"), str):
                 refs[ref] += 1
-            if isinstance(components := node.get("components"), list):
-                largest = max(largest, len(components))
+            if isinstance(listed := node.get("components"), list):
+                components += len(listed)
             pending.extend(node.values())
-    if largest > _MAX_ITEMS:
-        return [f"lists {largest} components in one array, over the {_MAX_ITEMS} the schema check can take"]
+        if components > max_components:
+            problem = (
+                f"lists more than {max_components} components, nested ones included;"
+                " pass a higher --max-components to check it"
+            )
+            return [problem]
     if duplicates := sorted(ref for ref, count in refs.items() if count > 1):
         return [f"bom-ref values are not unique: {duplicates}"]
     return []
@@ -163,6 +170,7 @@ def _walk(components: list[Component]) -> list[Component]:
 
 
 __all__ = [
+    "MAX_COMPONENTS",
     "is_document",
     "validate_document",
 ]

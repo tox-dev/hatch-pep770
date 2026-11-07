@@ -119,7 +119,16 @@ def test_embed_keeps_wheel_permissions(wheel: Path) -> None:  # pragma: win32 no
 @pytest.mark.parametrize(
     ("files", "message"),
     [
-        pytest.param({"native/__init__.py": b""}, "has no .dist-info/METADATA, so it is not a wheel", id="no-metadata"),
+        pytest.param(
+            {"native/__init__.py": b""},
+            r"is not a wheel: Wheel doesn't contain exactly one \.dist-info directory",
+            id="no-dist-info",
+        ),
+        pytest.param(
+            {"native-1.0.dist-info/RECORD": b""},
+            "has no native-1.0.dist-info/METADATA",
+            id="no-metadata",
+        ),
         pytest.param(
             {"native-1.0.dist-info/METADATA": b"Name: native\n"},
             "has no native-1.0.dist-info/RECORD",
@@ -128,7 +137,7 @@ def test_embed_keeps_wheel_permissions(wheel: Path) -> None:  # pragma: win32 no
     ],
 )
 def test_embed_refuses_non_wheel(tmp_path: Path, files: dict[str, bytes], message: str) -> None:
-    with zipfile.ZipFile(archive := tmp_path / "native.whl", "w") as handle:
+    with zipfile.ZipFile(archive := tmp_path / "native-1.0-py3-none-any.whl", "w") as handle:
         for name, content in files.items():
             handle.writestr(name, content)
     with pytest.raises(WheelError, match=message):
@@ -230,5 +239,6 @@ def test_wheel_with_two_dist_info_directories(tmp_path: Path, write_wheel: Write
         },
         record=False,
     )
-    with pytest.raises(WheelError, match=r"holds 2 \.dist-info directories, aaa-0\.dist-info, native-1\.0\.dist-info"):
+    message = r"Wheel doesn't contain exactly one \.dist-info directory .*'aaa-0\.dist-info', 'native-1\.0\.dist-info'"
+    with pytest.raises(WheelError, match=message):
         write_sbom(wheel, "native.cdx.json", b"{}\n", 0)

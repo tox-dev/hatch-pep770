@@ -127,6 +127,35 @@ def test_editable_distribution_lists_no_files(tmp_path: Path, install: Install) 
     assert facts_from(tmp_path).distributions[0].files == []
 
 
+def test_directory_install_not_editable_lists_files(tmp_path: Path, install: Install) -> None:
+    install(tmp_path, "Name: local\nVersion: 1.0\n", {}, direct_url='{"url": "file:///checkout", "dir_info": {}}')
+    assert [row.path for row in facts_from(tmp_path).distributions[0].files] == [
+        "local-1.0.dist-info/METADATA",
+        "local-1.0.dist-info/WHEEL",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("direct_url", "message"),
+    [
+        pytest.param("{", "Expecting property name", id="not-json"),
+        pytest.param('{"dir_info": {"editable": true}}', "Missing required value in 'url'", id="no-url"),
+        pytest.param(
+            '{"url": "file:///checkout", "dir_info": {"editable": "yes"}}',
+            r"Unexpected type str \(expected bool\) in 'dir_info.editable'",
+            id="editable-not-bool",
+        ),
+    ],
+)
+def test_malformed_direct_url_reads_as_not_editable(
+    tmp_path: Path, install: Install, direct_url: str, message: str
+) -> None:
+    install(tmp_path, "Name: local\nVersion: 1.0\n", {}, direct_url=direct_url)
+    with pytest.warns(UserWarning, match=f"read the direct_url.json of local as not editable: {message}"):
+        files = facts_from(tmp_path).distributions[0].files
+    assert len(files) == 2
+
+
 def test_first_distribution_on_path_wins(tmp_path: Path, install: Install) -> None:
     install(first := tmp_path / "first", "Name: alpha\nVersion: 1.0\n", {})
     install(second := tmp_path / "second", "Name: Alpha\nVersion: 2.0\n", {})

@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
-from urllib.parse import quote
+
+from packageurl import PackageURL
 
 from python_sbom._collect._content import load_content_provider, provider_script
 from python_sbom._collect._settings import settings_from_pyproject
@@ -142,7 +143,7 @@ def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings,
         context=ProviderContext(root=root, settings=settings, identity=project, artifact=unpacked),
     )
     version = metadata[""]["Version"]
-    ref = f"pkg:generic/{quote(archive.name, safe='')}@{quote(version, safe='')}"
+    ref = PackageURL(type="generic", name=archive.name, version=version).to_string()
     return _Held(
         reader=reader,
         project=reader.project,

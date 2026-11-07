@@ -24,6 +24,7 @@ class Options(Namespace):
     target: Path
     paths: list[Path]
     allowed_licenses: list[str] | None
+    max_components: int
 
 
 __all__ = [

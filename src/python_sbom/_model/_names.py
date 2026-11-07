@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Final
 
+from packageurl import PackageURL
 from packaging.utils import canonicalize_name
 
 if TYPE_CHECKING:
@@ -56,7 +57,7 @@ def property_prefix(name: str) -> str:
 
 
 def purl(name: str, version: str | None = None) -> str:
-    return f"pkg:pypi/{property_prefix(name)}@{version}" if version else f"pkg:pypi/{property_prefix(name)}"
+    return PackageURL(type="pypi", name=name, version=version).to_string()
 
 
 def pypi_url(name: str, version: str | None = None) -> str:

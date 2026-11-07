@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Final
 
 from python_sbom._wheel._archive import open_archive, read_member
 
-from ._document import validate_document
+from ._document import MAX_COMPONENTS, validate_document
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,9 +15,9 @@ if TYPE_CHECKING:
 _SBOM_LIMIT: Final[int] = 64 * 1024 * 1024
 
 
-def validate(path: Path, allowed_licenses: frozenset[str] | None) -> list[str]:
+def validate(path: Path, allowed_licenses: frozenset[str] | None, max_components: int = MAX_COMPONENTS) -> list[str]:
     if not zipfile.is_zipfile(path):
-        return validate_document(path.read_text(encoding="utf-8"), allowed_licenses)
+        return validate_document(path.read_text(encoding="utf-8"), allowed_licenses, max_components)
     with open_archive(path, path.name) as archive:
         found: Final[dict[str, str]] = {
             name: read_member(archive, name, path.name, _SBOM_LIMIT).decode("utf-8")
@@ -26,7 +26,11 @@ def validate(path: Path, allowed_licenses: frozenset[str] | None) -> list[str]:
         }
     if not found:
         return [f"no SBOM found in {path.name}"]
-    return [f"{name}: {problem}" for name, raw in found.items() for problem in validate_document(raw, allowed_licenses)]
+    return [
+        f"{name}: {problem}"
+        for name, raw in found.items()
+        for problem in validate_document(raw, allowed_licenses, max_components)
+    ]
 
 
 def _is_sbom(name: str) -> bool:

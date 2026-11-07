@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import os
 import stat
@@ -9,16 +10,18 @@ import zipfile
 import zlib
 from collections import Counter
 from contextlib import contextmanager
-from email.parser import Parser
+from io import BytesIO, StringIO
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Final
 
+from installer.records import Hash, RecordEntry
+from installer.sources import WheelFile
+from installer.utils import copyfileobj_with_hashing, parse_metadata_file
+
 from python_sbom._errors import WheelError
 
-from ._record import record_line
-
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable
+    from collections.abc import Generator
     from email.message import Message
 
 # metadata files beyond this size are refused, so a hostile wheel cannot exhaust memory
@@ -28,15 +31,13 @@ _CHUNK: Final[int] = 1024 * 1024
 
 def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
     with open_archive(wheel, str(wheel)) as archive:
+        _, dist_info = _wheel_source(archive, str(wheel))
         entries: Final[list[tuple[zipfile.ZipInfo, bytes]]] = [
             (info, archive.read(info)) for info in archive.infolist()
         ]
-    if (dist_info := _find_dist_info(info.filename for info, _ in entries)) is None:
-        msg = f"{wheel} has no .dist-info/METADATA, so it is not a wheel"
-        raise WheelError(msg)
     record: Final[str] = f"{dist_info}/RECORD"
-    if record not in {info.filename for info, _ in entries}:
-        msg = f"{wheel} has no {record}"
+    if missing := sorted({f"{dist_info}/METADATA", record} - {info.filename for info, _ in entries}):
+        msg = f"{wheel} has no {', '.join(missing)}"
         raise WheelError(msg)
     sbom: Final[str] = f"{dist_info}/sboms/{name}"
     # zip timestamps start at 1980
@@ -71,25 +72,30 @@ def open_archive(file: Path | IO[bytes], where: str) -> Generator[zipfile.ZipFil
     try:
         with zipfile.ZipFile(file) as archive:
             # installers extract the first of two same-named members and zipfile reads the last, and a file system that
-            # ignores case merges names that differ only by case, so such names would hide what gets installed
+            # ignores case merges names that differ only by case, so such names would hide what gets installed;
+            # installer's WheelFile accepts names that differ only by case
             if clashes := sorted(
                 name for name, count in Counter(name.casefold() for name in archive.namelist()).items() if count > 1
             ):
                 msg = f"{where} holds more than one member named {', '.join(clashes)}, ignoring case"
                 raise WheelError(msg)
             yield archive
+    # zipfile raises these as late as a member's last read, inside installer's checks too, which let them through
     except (zipfile.BadZipFile, zlib.error) as error:
         msg = f"{where} is not a valid zip archive: {error}"
         raise WheelError(msg) from error
 
 
-def _find_dist_info(names: Iterable[str]) -> str | None:
-    found = [name.split("/")[0] for name in names if name.count("/") == 1 and name.endswith(".dist-info/METADATA")]
-    # a wheel holds one .dist-info; a second one is a decoy that could otherwise decide whose metadata counts
-    if len(found) > 1:
-        msg = f"the archive holds {len(found)} .dist-info directories, {', '.join(sorted(found))}, not one"
-        raise WheelError(msg)
-    return next(iter(found), None)
+def _wheel_source(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, str]:
+    # installer refuses a wheel whose file name does not parse, or that holds other than one top-level .dist-info,
+    # since a second one is a decoy that could decide whose metadata counts
+    try:
+        wheel = WheelFile(archive)
+        dist_info = wheel.dist_info_dir
+    except ValueError as error:
+        msg = f"{where} is not a wheel: {error}"
+        raise WheelError(msg) from error
+    return wheel, dist_info
 
 
 def _rewritten_record(record: bytes, name: str, sbom: str, content: bytes) -> bytes:
@@ -99,15 +105,18 @@ def _rewritten_record(record: bytes, name: str, sbom: str, content: bytes) -> by
     newline: Final[str] = "\r\n" if lines and lines[0].endswith("\r\n") else "\n"
     # the row of RECORD itself stays last
     at: Final[int] = next((index for index, line in enumerate(lines) if line.startswith(f"{name},")), len(lines))
-    lines.insert(at, f"{record_line(sbom, content)}{newline}")
+    # installer's helper hashes as it copies; the copy is thrown away
+    digest, size = copyfileobj_with_hashing(BytesIO(content), BytesIO(), "sha256")
+    row: Final[StringIO] = StringIO()
+    csv.writer(row, lineterminator=newline).writerow(RecordEntry(sbom, Hash("sha256", digest), size).to_row())
+    lines.insert(at, row.getvalue())
     return "".join(lines).encode()
 
 
-def read_wheel_metadata(archive: zipfile.ZipFile, where: str) -> tuple[str, Message]:
-    if (dist_info := _find_dist_info(archive.namelist())) is None:
-        msg = f"{where} has no .dist-info/METADATA, so it is not a wheel"
-        raise WheelError(msg)
-    return dist_info, Parser().parsestr(read_member(archive, f"{dist_info}/METADATA", where).decode("utf-8"))
+def read_wheel_metadata(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, Message]:
+    wheel, dist_info = _wheel_source(archive, where)
+    # read capped, as installer's read_dist_info decompresses the member whole
+    return wheel, parse_metadata_file(read_member(archive, f"{dist_info}/METADATA", where).decode("utf-8"))
 
 
 def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _METADATA_LIMIT) -> bytes:

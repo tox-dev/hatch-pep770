@@ -93,3 +93,11 @@ def test_corrupt_archive(tmp_path: Path) -> None:
 def test_json_file(tmp_path: Path, describe: Describe) -> None:
     (sbom := tmp_path / "example.cdx.json").write_bytes(dumps(describe()))
     assert validate(sbom, frozenset({"MIT"})) == []
+
+
+def test_json_file_component_cap(tmp_path: Path) -> None:
+    components = [{"type": "library", "name": name} for name in ("one", "two", "three")]
+    (sbom := tmp_path / "example.cdx.json").write_text(json.dumps({"components": components}), encoding="utf-8")
+    assert validate(sbom, None, max_components=2) == [
+        "lists more than 2 components, nested ones included; pass a higher --max-components to check it"
+    ]

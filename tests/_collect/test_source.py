@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import dataclasses
 import hashlib
+import re
 import zipfile
 from email import message_from_string
 from itertools import starmap
@@ -12,7 +13,7 @@ from typing import TYPE_CHECKING, Final
 import pytest
 
 from python_sbom._collect._source import read_bundled_wheel, read_source_tree, wheel_request
-from python_sbom._errors import WheelError
+from python_sbom._errors import SettingsError, WheelError
 from python_sbom._model._inputs import BuildScript, RecordRow, SbomRequest
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ def row(path: str, content: bytes, algorithm: str = "sha256", *, encoded: str = 
 
 
 _METADATA_ROW: Final[str] = row(_METADATA, _PIP[_METADATA])
+_RECORD_ROW: Final[str] = "pip-1.0.dist-info/RECORD,,\n"
 
 
 @pytest.mark.parametrize(
@@ -71,6 +73,25 @@ def test_bundled_wheels_sorted_once(tmp_path: Path, settings: Settings, write_wh
     settings = dataclasses.replace(settings, bundled_wheels=("src/*/*.whl", "src/a/*.whl"))
     paths = [wheel.path for wheel in read_source_tree(request(tmp_path, settings)).bundled]
     assert paths == ["src/a/pip-1.0-py3-none-any.whl", "src/b/pip-1.0-py3-none-any.whl"]
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        pytest.param("../outside/*.whl", id="parent"),
+        pytest.param("src/../../outside/*.whl", id="parent-after-directory"),
+        pytest.param("ROOT/outside/*.whl", id="absolute"),
+    ],
+)
+def test_bundled_wheel_pattern_outside_project(
+    tmp_path: Path, settings: Settings, write_wheel: WriteWheel, pattern: str
+) -> None:
+    write_wheel(tmp_path / "outside" / "pip-1.0-py3-none-any.whl", _PIP)
+    (project := tmp_path / "project" / "src").mkdir(parents=True)
+    pattern = pattern.replace("ROOT", tmp_path.as_posix())
+    settings = dataclasses.replace(settings, bundled_wheels=(pattern,))
+    with pytest.raises(SettingsError, match=f"`bundled-wheels` pattern {re.escape(repr(pattern))} must be relative"):
+        read_source_tree(request(project.parent, settings))
 
 
 def test_build_scripts_hashed(tmp_path: Path, settings: Settings) -> None:
@@ -114,7 +135,17 @@ def test_bundled_wheel(tmp_path: Path, write_wheel: WriteWheel) -> None:
 @pytest.mark.parametrize(
     ("files", "message"),
     [
-        pytest.param({"pip/__init__.py": b""}, "has no .dist-info/METADATA", id="no-metadata"),
+        pytest.param(
+            {"pip/__init__.py": b""},
+            r"is not a wheel: Wheel doesn't contain exactly one \.dist-info directory",
+            id="no-dist-info",
+        ),
+        pytest.param({"pip-1.0.dist-info/WHEEL": b""}, "has no pip-1.0.dist-info/METADATA", id="no-metadata"),
+        pytest.param(
+            {"aaa-0.dist-info/METADATA": b"Name: aaa\nVersion: 0\n", **_PIP},
+            r"is not a wheel: Wheel doesn't contain exactly one \.dist-info directory",
+            id="two-dist-info",
+        ),
         pytest.param({"pip-1.0.dist-info/METADATA": b"Name: pip\n"}, "METADATA lacks Name or Version", id="no-version"),
         pytest.param(
             {"pip-1.0.dist-info/METADATA": _PIP["pip-1.0.dist-info/METADATA"]},
@@ -126,6 +157,11 @@ def test_bundled_wheel(tmp_path: Path, write_wheel: WriteWheel) -> None:
             "METADATA is over the 16777216 byte limit",
             id="oversized-metadata",
         ),
+        pytest.param(
+            {**_PIP, "pip-1.0.dist-info/RECORD": b"\n" * (16 * 1024 * 1024 + 1)},
+            "RECORD is over the 16777216 byte limit",
+            id="oversized-record",
+        ),
     ],
 )
 def test_malformed_bundled_wheel(
@@ -134,6 +170,23 @@ def test_malformed_bundled_wheel(
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     with pytest.raises(WheelError, match=message):
         read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+
+
+@pytest.mark.parametrize(
+    ("name", "message"),
+    [
+        pytest.param("pip.whl", "Not a valid wheel filename: pip.whl", id="unparsable"),
+        pytest.param(
+            "other-1.0-py3-none-any.whl", r"Wheel \.dist-info directory doesn't match wheel filename", id="other"
+        ),
+    ],
+)
+def test_bundled_wheel_file_name_names_the_project(
+    tmp_path: Path, write_wheel: WriteWheel, name: str, message: str
+) -> None:
+    wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", _PIP)
+    with pytest.raises(WheelError, match=f"bundled wheel {name} is not a wheel: {message}"):
+        read_bundled_wheel(wheel.read_bytes(), name)
 
 
 def test_corrupt_bundled_wheel() -> None:
@@ -162,7 +215,7 @@ def test_bundled_wheel_with_duplicate_member(tmp_path: Path) -> None:
     ],
 )
 def test_bundled_wheel_record_algorithm(tmp_path: Path, write_wheel: WriteWheel, algorithm: str, expected: str) -> None:
-    record = "".join(row(path, content, algorithm) for path, content in _PIP.items())
+    record = "".join(row(path, content, algorithm) for path, content in _PIP.items()) + _RECORD_ROW
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode()}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     assert [
@@ -174,8 +227,29 @@ def test_bundled_wheel_record_algorithm(tmp_path: Path, write_wheel: WriteWheel,
 @pytest.mark.parametrize(
     ("record", "message"),
     [
-        pytest.param(f"{_INIT},sha256=x\n", "RECORD row 1 has 2 columns, not 3", id="columns"),
-        pytest.param(f"{_INIT},,0\n", f"RECORD row 1 gives no digest for {_INIT}", id="no-digest"),
+        pytest.param(
+            f"{_INIT},sha256=x\n", "RECORD does not parse: Row Index 0: expected 3 elements, got 2", id="columns"
+        ),
+        pytest.param(
+            f"{_METADATA_ROW}\n{_RECORD_ROW}",
+            "RECORD does not parse: Row Index 1: expected 3 elements, got 0",
+            id="blank-line",
+        ),
+        pytest.param(
+            f"{_INIT},,0\n{_METADATA_ROW}{_RECORD_ROW}",
+            f"RECORD disagrees with the wheel: hash / size of {_INIT} is not included in RECORD",
+            id="no-digest",
+        ),
+        pytest.param(
+            f"{row(_INIT, b'')}{_METADATA_ROW}",
+            "RECORD disagrees with the wheel: pip-1.0.dist-info/RECORD is not mentioned in RECORD",
+            id="record-not-recorded",
+        ),
+        pytest.param(
+            f"{row(_INIT, b'', 'sha224')}{_METADATA_ROW}{_RECORD_ROW}",
+            f"RECORD row for {_INIT}: unknown hash algorithm 'sha224'",
+            id="algorithm-cyclonedx-lacks",
+        ),
         pytest.param(_METADATA_ROW, f"RECORD lacks a digest for {_INIT}", id="member-not-recorded"),
         pytest.param(
             f"{row(_INIT, b'', encoded='A' * 43)}{row(_INIT, b'')}{_METADATA_ROW}",
@@ -193,13 +267,13 @@ def test_bundled_wheel_record_algorithm(tmp_path: Path, write_wheel: WriteWheel,
             id="recorded-not-member",
         ),
         pytest.param(
-            f"{row(_INIT, b'', size=999999)}{_METADATA_ROW}",
-            f"the size in RECORD differs from the size of {_INIT}",
+            f"{row(_INIT, b'', size=999999)}{_METADATA_ROW}{_RECORD_ROW}",
+            f"RECORD disagrees with the wheel: hash / size of {_INIT} didn't match RECORD",
             id="size-mismatch",
         ),
         pytest.param(
-            f"{row(_INIT, b'', 'sha512', encoded='A' * 86)}{_METADATA_ROW}",
-            f"the digest in RECORD differs from the content of {_INIT}",
+            f"{row(_INIT, b'', 'sha512', encoded='A' * 86)}{_METADATA_ROW}{_RECORD_ROW}",
+            f"RECORD disagrees with the wheel: hash / size of {_INIT} didn't match RECORD",
             id="digest-mismatch",
         ),
     ],
@@ -212,12 +286,28 @@ def test_record_disagrees_with_wheel(tmp_path: Path, write_wheel: WriteWheel, re
 
 
 def test_record_signatures_need_no_row(tmp_path: Path, write_wheel: WriteWheel) -> None:
-    record = "".join(starmap(row, _PIP.items()))
+    record = "".join(starmap(row, _PIP.items())) + _RECORD_ROW
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode(), "pip-1.0.dist-info/RECORD.jws": b"{}"}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     assert [file.path for file in read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl").files] == list(
         _PIP
     )
+
+
+@pytest.mark.parametrize(
+    "signature",
+    [
+        pytest.param("pip-1.0.dist-info/sub/RECORD.jws", id="nested"),
+        pytest.param("pip-1.0.dist-info/../pip/RECORD.p7s", id="parent"),
+    ],
+)
+def test_signature_away_from_record_needs_a_row(tmp_path: Path, write_wheel: WriteWheel, signature: str) -> None:
+    # installer lets these go unlisted, though a signature only sits beside RECORD
+    record = "".join(starmap(row, _PIP.items())) + _RECORD_ROW
+    files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode(), signature: b"import os\n"}
+    wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
+    with pytest.raises(WheelError, match=f"RECORD lacks a digest for {re.escape(signature)}"):
+        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 def test_vendored_metadata_needs_name_and_version(tmp_path: Path, write_wheel: WriteWheel) -> None:
@@ -256,7 +346,20 @@ def test_wheel_request(tmp_path: Path, settings: Settings, write_wheel: WriteWhe
     )
 
 
-def test_wheel_request_needs_a_wheel(tmp_path: Path, settings: Settings, write_wheel: WriteWheel) -> None:
-    archive = write_wheel(tmp_path / "native.whl", {"native/__init__.py": b""}, record=False)
-    with pytest.raises(WheelError, match=r"has no \.dist-info/METADATA, so it is not a wheel"):
+@pytest.mark.parametrize(
+    ("name", "message"),
+    [
+        pytest.param("native.whl", "is not a wheel: Not a valid wheel filename", id="file-name"),
+        pytest.param(
+            "native-1.0-py3-none-any.whl",
+            r"is not a wheel: Wheel doesn't contain exactly one \.dist-info directory",
+            id="no-dist-info",
+        ),
+    ],
+)
+def test_wheel_request_needs_a_wheel(
+    tmp_path: Path, settings: Settings, write_wheel: WriteWheel, name: str, message: str
+) -> None:
+    archive = write_wheel(tmp_path / name, {"native/__init__.py": b""}, record=False)
+    with pytest.raises(WheelError, match=message):
         wheel_request(archive, Path(), settings, ())

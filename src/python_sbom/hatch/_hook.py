@@ -60,9 +60,10 @@ class SbomBuildHook(BuildHookInterface):
         # a dirty checkout has no commit that reproduces the sdist, so a wheel built from it names none
         if self.target_name != "sdist" or (revision := default_revision(Path(self.root))) is None or revision.dirty:
             return
-        # outside the project, so the build leaves nothing behind in it
+        # outside the project, so the build leaves nothing behind in it; bytes, so the sdist holds the same LF line on
+        # every OS
         written = Path(tempfile.mkdtemp()) / REVISION_FILE
-        written.write_text(f"node: {revision.commit}\n", encoding="utf-8")
+        written.write_bytes(f"node: {revision.commit}\n".encode())
         build_data["force_include"][str(written)] = REVISION_FILE
 
     def finalize(

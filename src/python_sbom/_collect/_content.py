@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import inspect
+import pkgutil
 import sys
 from pathlib import Path, PurePosixPath
 
@@ -12,19 +12,20 @@ from python_sbom._model._content import ContentProvider
 def load_content_provider(spec: str | None, root: Path) -> ContentProvider:
     if spec is None:
         return ContentProvider()
+    # resolve_name also takes a bare module, which is no provider
     module_name, _, attribute = spec.partition(":")
     if not (module_name and attribute):
         msg = f"content provider {spec!r} must be `module:attribute`"
         raise SettingsError(msg)
     sys.path.insert(0, str(root))
     try:
-        module = importlib.import_module(module_name)
-    except ImportError as error:
-        msg = f"content provider {spec!r} does not import from {root}: {error}"
+        provider = pkgutil.resolve_name(spec)
+    # ValueError: a name resolve_name cannot parse, such as a second colon
+    except (ImportError, AttributeError, ValueError) as error:
+        msg = f"content provider {spec!r} does not load from {root}: {error}"
         raise SettingsError(msg) from error
     finally:
         sys.path.remove(str(root))
-    provider = getattr(module, attribute, None)
     if isinstance(provider, type) and issubclass(provider, ContentProvider):
         provider = provider()
     if not isinstance(provider, ContentProvider):

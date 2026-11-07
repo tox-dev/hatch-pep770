@@ -51,40 +51,82 @@ def shipped(licenses: list[License]) -> Component:
             id="names",
         ),
         pytest.param([], "declares no license", id="none"),
-        pytest.param([{"expression": "MIT AND"}], "license expression 'MIT AND' is malformed: it ends early", id="end"),
-        pytest.param([{"expression": "(MIT"}], "license expression '(MIT' is malformed: it ends early", id="open"),
+        pytest.param(
+            [{"expression": "MIT AND"}],
+            "license expression 'MIT AND' is malformed: AND requires two or more licenses as in: MIT AND BSD",
+            id="end",
+        ),
+        pytest.param([{"expression": "(MIT"}], "license expression '(MIT' is malformed: Invalid expression", id="open"),
         pytest.param(
             [{"expression": "(MIT ISC)"}],
-            "license expression '(MIT ISC)' is malformed: expected ')', got 'ISC'",
+            "license expression '(MIT ISC)' is malformed: Invalid symbols sequence such as (A B) for token: \"ISC\" at"
+            " position: 5",
             id="pair",
         ),
-        pytest.param([{"expression": "MIT)"}], "license expression 'MIT)' is malformed: unexpected ')'", id="close"),
         pytest.param(
-            [{"expression": "AND MIT"}], "license expression 'AND MIT' is malformed: unexpected 'AND'", id="op"
+            [{"expression": "MIT)"}],
+            "license expression 'MIT)' is malformed: Unbalanced parenthesis for token: \")\" at position: 3",
+            id="close",
         ),
         pytest.param(
-            [{"expression": "MIT WITH OR"}], "license expression 'MIT WITH OR' is malformed: unexpected 'OR'", id="with"
+            [{"expression": "AND MIT"}],
+            "license expression 'AND MIT' is malformed: Invalid operator sequence without symbols such as AND OR or OR"
+            ' OR for token: "AND"',
+            id="op",
         ),
+        pytest.param(
+            [{"expression": "MIT WITH OR"}],
+            "license expression 'MIT WITH OR' is malformed: Invalid expression for token: \"WITH\" at position: 4",
+            id="with",
+        ),
+        pytest.param([{"expression": " "}], "license expression ' ' is malformed: it is empty", id="empty"),
+        pytest.param(
+            [{"expression": "( OR MIT"}],
+            "license expression '( OR MIT' is malformed: it does not parse",
+            id="assertion",
+        ),
+        pytest.param([{"expression": "()"}], "license expression '()' is malformed: it does not parse", id="no-group"),
     ],
 )
 def test_reports(licenses: list[License], problem: str) -> None:
     assert license_problems([shipped(licenses)], _ALLOWED) == [f"bundled:lib.whl: {problem}"]
 
 
-def test_deep_nesting_is_malformed() -> None:
-    # each level costs the parser stack frames, so this deep a nesting would exhaust the stack
-    expression = f"{'(' * 5000}MIT{')' * 5000}"
+@pytest.mark.parametrize(
+    "expression",
+    [
+        pytest.param(f"{'(' * 5000}MIT{')' * 5000}", id="parentheses"),
+        pytest.param(
+            f"{''.join(f'MIT {operator} (' for operator in ('AND', 'OR') * 2500)}MIT{')' * 5000}", id="operators"
+        ),
+    ],
+)
+def test_deep_nesting_is_allowed(expression: str) -> None:
+    # a recursive walk would exhaust the stack this deep
+    assert license_problems([shipped([{"expression": expression}])], _ALLOWED) == []
+
+
+def test_deep_nesting_is_denied() -> None:
+    expression = f"{'MIT AND (' * 5000}GPL-3.0-only{')' * 5000}"
     assert license_problems([shipped([{"expression": expression}])], _ALLOWED) == [
-        (
-            f"bundled:lib.whl: license expression {expression!r} is malformed: it nests 5000 levels deep, over the 32"
-            " level limit"
-        )
+        f"bundled:lib.whl: license {expression} is outside the allowed licenses ['BSD-3-Clause', 'GPL-2.0-only', 'MIT']"
     ]
 
 
-def test_nesting_up_to_the_limit_parses() -> None:
-    expression = f"{'(' * 32}MIT{')' * 32}"
-    assert license_problems([shipped([{"expression": expression}])], _ALLOWED) == []
+@pytest.mark.parametrize(
+    ("expression", "allowed", "problems"),
+    [
+        pytest.param(
+            "LicenseRef-Apache",
+            frozenset({"Apache-2.0"}),
+            ["bundled:lib.whl: license LicenseRef-Apache is outside the allowed licenses ['Apache-2.0']"],
+            id="license-ref-is-not-apache",
+        ),
+        pytest.param("Net-SNMP", frozenset({"Net-SNMP"}), [], id="spdx-id-is-kept"),
+    ],
+)
+def test_judges_the_declared_id_not_an_alias(expression: str, allowed: frozenset[str], problems: list[str]) -> None:
+    assert license_problems([shipped([{"expression": expression}])], allowed) == problems
 
 
 def test_judges_only_shipped_components() -> None:

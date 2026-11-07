@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 from ._inputs import RecordRow
 from ._licenses import licenses
-from ._names import project_urls, purl, pypi_url, reference_type, tool_ref
+from ._names import project_urls, property_prefix, purl, pypi_url, reference_type, tool_ref
 from ._types import Dependency
 
 if TYPE_CHECKING:
@@ -51,8 +51,9 @@ def bundled_wheel_component(
         child["bom-ref"] = f"{component['bom-ref']}#vendored/{child['bom-ref']}"
         child["properties"] = [*child["properties"], {"name": f"{namespace}:vendored-manifest", "value": source}]
         child["evidence"] = {"identity": [_evidence("purl", "manifest-analysis", source)]}
-        # a vendored .dist-info comes after pip's manifest line naming the same package, so its metadata wins
-        vendored[purl(child["name"], child["version"])] = child
+        # a vendored .dist-info comes after pip's manifest line naming the same package, so its metadata wins; keyed on
+        # the PEP 503 name, since the manifest and the .dist-info may spell it differently
+        vendored[f"{property_prefix(child['name'])}=={child['version']}"] = child
     component["components"] = [
         *(file_component(component["bom-ref"], row) for row in wheel.files),
         *(vendored[key] for key in sorted(vendored)),
