@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections import Counter
 from typing import TYPE_CHECKING, Final, TypeAlias
@@ -34,6 +35,9 @@ _MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
 MAX_COMPONENTS: Final[int] = 5_000
 # an exception's message can quote the hostile value that caused it
 _MAX_TEXT: Final[int] = 200
+# the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread
+# stack; the SBOMs python-sbom and other tools write nest about a dozen levels deep
+_MAX_DEPTH: Final[int] = 128
 
 
 def validate_document(
@@ -49,8 +53,8 @@ def validate_document(
     except json.JSONDecodeError as error:
         return [f"is not JSON: {error}"]
     except RecursionError:
-        # the JSON parser and the schema validator recurse once per level, how deep depends on the Python version
-        return ["does not conform to the CycloneDX 1.6 schema: it nests too deeply to check"]
+        # the JSON parser recurses once per level, how deep it gets depends on the Python version
+        return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
     except Exception as error:  # ruff: ignore[blind-except] # a hostile document may trip any check, see above
         return [f"could not be checked, {type(error).__name__}: {str(error)[:_MAX_TEXT]}"]
 
@@ -88,22 +92,27 @@ def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components:
 
 
 def _census_problems(document: _Json, max_components: int) -> list[str]:
-    # counts the components and bom-refs in one linear pass before the schema vouches for any shape; iterative, so deep
-    # nesting cannot exhaust the stack. Nested components count too: the schema checks every components array, and
-    # one array may hold them all, so only the total bounds its work
+    # counts the components and bom-refs and measures the depth in one linear pass before the schema vouches for any
+    # shape; iterative, so deep nesting cannot exhaust the stack. Nested components count too: the schema checks every
+    # components array, and one array may hold them all, so only the total bounds its work
     components = 0
     refs: Final[Counter[str]] = Counter()
-    pending: Final[list[_Json]] = [document]
+    pending: Final[list[tuple[_Json, int]]] = [(document, 1)]
     while pending:
-        node = pending.pop()
+        node, depth = pending.pop()
+        if depth > _MAX_DEPTH:
+            return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
         if isinstance(node, list):
-            pending.extend(node)
+            pending.extend((item, depth + 1) for item in node)
         elif isinstance(node, dict):
             if isinstance(ref := node.get("bom-ref"), str):
                 refs[ref] += 1
             if isinstance(listed := node.get("components"), list):
                 components += len(listed)
-            pending.extend(node.values())
+            pending.extend((item, depth + 1) for item in node.values())
+        elif isinstance(node, float) and not math.isfinite(node):
+            # json.loads takes NaN and Infinity, which RFC 8259 leaves out of JSON and the schema check reads as null
+            return [f"holds {node}, which is not a JSON number"]
         if components > max_components:
             problem = (
                 f"lists more than {max_components} components, nested ones included;"

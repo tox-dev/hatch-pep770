@@ -43,7 +43,7 @@ def test_not_json() -> None:
 
 def test_schema_violation() -> None:
     (problem,) = validate_document(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}), None)
-    assert problem == "does not conform to the CycloneDX 1.6 schema: 'one' is not of type 'integer' at $.version"
+    assert problem == 'does not conform to the CycloneDX 1.6 schema: "one" is not of type "integer" at $.version'
 
 
 def test_other_tools_documents_get_the_schema_check_alone() -> None:
@@ -208,14 +208,28 @@ def shipped(licenses: list[License]) -> Component:
 
 
 def test_deep_nesting_is_reported(describe: Describe) -> None:
+    # two levels per component, deep enough to refuse and shallow enough for any Python's JSON parser
     nested = "".join(
-        f'{{"type": "library", "bom-ref": "deep-{level}", "name": "deep", "components": [' for level in range(500)
+        f'{{"type": "library", "bom-ref": "deep-{level}", "name": "deep", "components": [' for level in range(100)
     )
-    nested += "]}" * 500
+    nested += "]}" * 100
     raw = json.dumps(describe()).replace('"components": []', f'"components": [{nested}]', 1)
-    assert validate_document(raw, None) == [
-        "does not conform to the CycloneDX 1.6 schema: it nests too deeply to check"
+    assert validate_document(raw, None) == ["nests more than 128 levels deep, too deep to check"]
+
+
+def test_nesting_too_deep_to_parse_is_reported() -> None:
+    assert validate_document("[" * 1_000_000 + "]" * 1_000_000, None) == [
+        "nests more than 128 levels deep, too deep to check"
     ]
+
+
+@pytest.mark.parametrize(
+    "constant",
+    [pytest.param("NaN", id="nan"), pytest.param("Infinity", id="infinity"), pytest.param("-Infinity", id="minus")],
+)
+def test_non_finite_numbers_are_rejected(constant: str) -> None:
+    raw = f'{{"bomFormat": "CycloneDX", "specVersion": "1.6", "version": {constant}}}'
+    assert validate_document(raw, None) == [f"holds {float(constant)}, which is not a JSON number"]
 
 
 def test_license_policy(describe: Describe) -> None:
