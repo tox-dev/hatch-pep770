@@ -1,14 +1,6 @@
-/magic
-.idea
+*.pyc
 *.egg-info
+dist/
 .tox/
-/.venv
-.coverage*
-coverage.xml
-.*_cache
-__pycache__
-**.pyc
-/build
-dist
-src/python_sbom/version.py
+/src/python_sbom/version.py
 /uv.lock
