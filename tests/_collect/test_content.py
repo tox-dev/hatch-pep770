@@ -68,6 +68,7 @@ def test_given_instance_wins_over_option(tmp_path: Path, settings: Settings) -> 
             return 0
 
     given = Empty()
+    assert not given
     configured = dataclasses.replace(settings, content_provider="not_a_module_anywhere:Content")
     assert resolve_provider(given, configured, tmp_path) == (given, ())
 
