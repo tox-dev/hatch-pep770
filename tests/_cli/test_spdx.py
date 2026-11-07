@@ -45,7 +45,7 @@ def test_spdx_refuses_malformed_document(tmp_path: Path, capsys: pytest.CaptureF
             b"{", "is not JSON: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)", id="json"
         ),
         pytest.param(b'{"name": "\xff"}', "is not UTF-8: invalid start byte at byte 10", id="utf-8"),
-        pytest.param(b"[" * 100_000, "nests too deep for the JSON parser to read", id="nesting"),
+        pytest.param(b"[" * 1_000_000 + b"]" * 1_000_000, "nests too deep for the JSON parser to read", id="nesting"),
     ],
 )
 def test_spdx_refuses_unreadable_source(
