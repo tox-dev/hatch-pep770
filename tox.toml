@@ -125,6 +125,20 @@ commands = [
   tool in tools), f'hatch_build.py missing from {sbom}'\
   """,
   ],
+  [
+    "python",
+    "-c",
+    # the built wheel validates its own SBOM, so a schema file or validator dependency left out of it fails here
+    """\
+  import glob, pathlib, subprocess, sys; (wheel,) = glob.glob(r'{env_tmp_dir}{/}*.whl'); subprocess.check_call(['uv', \
+  'pip', 'install', '--python', sys.executable, f'python-sbom[validate] @ {pathlib.Path(wheel).as_uri()}'])\
+  """,
+  ],
+  [
+    "python-sbom",
+    "validate",
+    "{env_tmp_dir}",
+  ],
 ]
 
 [env.type]
