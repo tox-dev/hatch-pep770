@@ -1,1 +1,1 @@
-"""The build pipeline: backends that adapt a build system, the content seam, and assembling the SBOM."""
+"""The pipelines that build a wheel's and an archive's SBOM from what _collect gathers, and write it."""

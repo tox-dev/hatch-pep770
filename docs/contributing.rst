@@ -11,8 +11,9 @@ It hands them, with a content provider, to the pipeline, which builds the docume
 :doc:`explanation` draws the packages and their imports.
 
 To record a new field, read it at the edge into ``_model/_inputs.py`` and write it in ``_model``; to add a subcommand,
-add a registration function and a handler next to the others in ``_cli/_commands.py`` and list the registration in
-``_cli/_parser.py``. Tests mirror the source: ``tests/<package>/test_<module>.py``.
+write a ``run`` function in a new ``_cli/_<command>.py`` and register its arguments and the
+``"python_sbom._cli._<command>:run"`` handler in ``_cli/_parser.py``, which loads the module only when the command runs.
+Tests mirror the source: ``tests/<package>/test_<module>.py``.
 
 Updating the schemas
 --------------------

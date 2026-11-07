@@ -6,12 +6,15 @@ Architecture
 
 Each concern has its own subpackage, and only the adapters know a build system or the command line. The hatchling hook
 and the ``embed`` and ``archive`` commands gather what the edge knows: the request (core metadata, file name, options,
-build scripts), the source tree, and the build facts (time, revision, toolchain). They hand those, with a
-:class:`~python_sbom.ContentProvider` and its :class:`~python_sbom.ProviderContext`, to one pipeline, and the model
-turns them into the document with pure functions.
+build scripts), the source tree or the archive's members, and the build facts (time, revision, toolchain). They hand
+those, with a :class:`~python_sbom.ContentProvider` and its :class:`~python_sbom.ProviderContext`, to the pipeline for
+their artifact. Each pipeline maps what it read to components, and one function of the model adds what every artifact
+of the project shares: supplier, source links, revision, tools, dependencies and formulation.
 
-The diagram follows the imports between the subpackages: an arrow points at what a package imports, and a dashed arrow
-at what it imports only for type annotations.
+The diagram follows the imports between the subpackages: a solid arrow points at what a package imports when it loads, a
+dotted arrow labeled *lazy* at what it imports only once a function needs it, and a dotted arrow labeled *types* at
+what it imports only for type annotations. The command line loads each command's module, and what it imports, only when
+that command runs.
 
 .. mermaid::
 
@@ -20,20 +23,25 @@ at what it imports only for type annotations.
             hook[hatch<br/>hatchling build hook]
             cli[_cli<br/>embed, archive, spdx, validate]
         end
-        api[python_sbom<br/>provider API]
+        api[python_sbom<br/>provider API, __main__]
         generate[_generate<br/>wheel and archive pipelines]
-        collect[_collect<br/>settings, facts, source tree, provider loading]
-        validate[_validate<br/>schema, references, licenses]
+        collect[_collect<br/>settings, facts, revision, source tree, archives, providers]
+        validate[_validate<br/>limits, schema, references, licenses]
         formats[_formats<br/>CycloneDX JSON, SPDX 2.3]
-        wheel[_wheel<br/>RECORD rows, archive reads and rewrite]
+        wheel[_wheel<br/>RECORD rows, member reads, rewrite]
         model[_model<br/>inputs, types, identity, document building]
-        hook --> generate
+        errors[_errors<br/>SbomError]
+        version[version]
         hook --> collect
-        hook -.-> model
+        hook -. lazy .-> generate
+        hook -. types .-> model
         cli --> generate
         cli --> collect
         cli --> validate
         cli --> formats
+        cli --> wheel
+        cli -. types .-> model
+        api --> cli
         api --> model
         generate --> collect
         generate --> formats
@@ -45,15 +53,17 @@ at what it imports only for type annotations.
         validate --> wheel
         validate --> model
         formats --> model
+        formats --> version
         wheel --> model
+        model --> errors
         classDef edge fill:#cfe4ff,stroke:#1f6feb,color:#0b1f3a;
         classDef core fill:#d8f3dc,stroke:#2d6a4f,color:#081c15;
         class hook,cli,collect,api edge;
-        class generate,validate,formats,wheel,model core;
+        class generate,validate,formats,wheel,model,errors,version core;
 
-The model imports nothing else of the package but its errors, and only the hook imports hatchling, so the provider API
-and the command line work without it. Every package raises subclasses of :class:`~python_sbom.SbomError`, which the
-command line reports without a traceback.
+Every package raises :class:`~python_sbom.SbomError`, which the command line reports without a traceback; the diagram
+draws only the model's import of it, since the model imports nothing else of the package. Only the hook imports
+hatchling, so the provider API and the command line work without it.
 
 The one extension point is the :class:`~python_sbom.ContentProvider`, which every entry point loads from the
 ``content-provider`` option. A hatchling custom hook can override

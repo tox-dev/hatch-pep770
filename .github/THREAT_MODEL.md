@@ -40,11 +40,11 @@ An attacker who controls any of these already has what python-sbom could give th
 
 ## Untrusted inputs
 
-| Input                                   | Comes from                | What python-sbom guarantees                                                                                                                                   |
-| --------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Metadata and `RECORD` of bundled wheels | Upstream projects         | Read as text with capped sizes, copied as JSON strings; every member is checked against its `RECORD` row, duplicate members are refused, nothing is executed. |
-| `_vendor/vendor.txt` of bundled wheels  | Upstream projects         | Each line must pin one exact version, or the build fails.                                                                                                     |
-| SBOM files given to `spdx`, `validate`  | Whoever produced the file | Parsed as JSON only, with capped sizes and nesting; problems are reported, not raised; `spdx` writes the one file named on the command line.                  |
+| Input                                   | Comes from                | What python-sbom guarantees                                                                                                                                                                                                                                 |
+| --------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Metadata and `RECORD` of bundled wheels | Upstream projects         | Read as text with capped sizes, copied as JSON strings; every member is checked against its `RECORD` row, duplicate members are refused, nothing is executed.                                                                                               |
+| `_vendor/vendor.txt` of bundled wheels  | Upstream projects         | Each line must pin one exact version, or the build fails.                                                                                                                                                                                                   |
+| SBOM files given to `spdx`, `validate`  | Whoever produced the file | Parsed as JSON only, with sizes capped by the component cap; `validate` refuses nesting past 128 levels and reports problems instead of raising them; `spdx` reports input too deep to parse as an error and writes the one file named on the command line. |
 
 ## Threats and controls
 
