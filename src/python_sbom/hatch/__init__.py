@@ -1,4 +1,4 @@
-"""The hatchling build hook: the backend that writes the SBOM while hatchling builds the wheel."""
+"""The hatchling build hook, which writes the SBOM into every wheel hatchling builds."""
 
 from __future__ import annotations
 

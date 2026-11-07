@@ -4,7 +4,13 @@ from typing import NotRequired, TypedDict
 
 
 class OrganizationalEntity(TypedDict):
-    """An organization that supplies or makes a component."""
+    """
+    An organization that supplies or makes a component.
+
+    :ivar name: the organization's name
+    :ivar url: the organization's web sites
+
+    """
 
     name: str
     url: list[str]
@@ -21,7 +27,13 @@ class _Hash(TypedDict):
 
 
 class Property(TypedDict):
-    """A name and value pair; names this package writes start with the project name or ``python:``."""
+    """
+    A name and value pair attached to a component or the document.
+
+    :ivar name: the property's name; names this package writes start with the project name or ``python:``
+    :ivar value: the property's value
+
+    """
 
     name: str
     value: str
@@ -40,6 +52,15 @@ class LicenseInfo(TypedDict):
 
 
 class License(TypedDict):
+    """
+    One license entry: either a license by SPDX id or name, or an SPDX expression.
+
+    :ivar license: the license, by ``id`` or ``name``
+    :ivar expression: an SPDX license expression
+    :ivar acknowledgement: ``declared`` or ``concluded``, for an expression
+
+    """
+
     license: NotRequired[LicenseInfo]
     expression: NotRequired[str]
     acknowledgement: NotRequired[str]
@@ -51,14 +72,14 @@ class _Method(TypedDict):
     value: str
 
 
-class _Identity(TypedDict):
+class Identity(TypedDict):
     field: str
     confidence: int
     methods: list[_Method]
 
 
 class _Evidence(TypedDict):
-    identity: list[_Identity]
+    identity: list[Identity]
 
 
 #: A CycloneDX component: a distribution, an application, the interpreter or a file.
@@ -85,7 +106,13 @@ Component = TypedDict(
 
 
 class Dependency(TypedDict):
-    """The components one component depends on, by ``bom-ref``."""
+    """
+    The components one component depends on.
+
+    :ivar ref: the ``bom-ref`` of the dependent component
+    :ivar dependsOn: the ``bom-ref`` values of its dependencies
+
+    """
 
     ref: str
     dependsOn: NotRequired[list[str]]
@@ -113,12 +140,13 @@ _Workflow = TypedDict(
         "taskTypes": list[str],
         "resourceReferences": list[_Reference],
         "outputs": list[_Output],
-        "inputs": list[_Input],
+        "inputs": NotRequired[list[_Input]],
     },
 )
 
 
-_Formula = TypedDict("_Formula", {"bom-ref": str, "workflows": list[_Workflow]})
+#: How an artifact was built: one or more workflows, each with its tools, inputs and outputs.
+Formula = TypedDict("Formula", {"bom-ref": str, "workflows": list[_Workflow]})
 
 
 class Lifecycle(TypedDict):
@@ -147,13 +175,22 @@ class Composition(TypedDict):
 
 
 class Body(TypedDict):
-    """The content of a document, everything but the header :func:`document` adds."""
+    """
+    The content of a document, everything but the header :func:`~python_sbom.document` adds.
+
+    :ivar metadata: the document's metadata, with the described component at ``component``
+    :ivar components: the components the described component holds or depends on
+    :ivar dependencies: the dependency graph, by ``bom-ref``
+    :ivar compositions: how complete the inventory is
+    :ivar formulation: how the described component was built
+
+    """
 
     metadata: Metadata
     components: list[Component]
     dependencies: list[Dependency]
     compositions: NotRequired[list[Composition]]
-    formulation: NotRequired[list[_Formula]]
+    formulation: NotRequired[list[Formula]]
 
 
 #: A complete CycloneDX 1.6 JSON document.
@@ -169,7 +206,7 @@ Document = TypedDict(
         "components": list[Component],
         "dependencies": list[Dependency],
         "compositions": NotRequired[list[Composition]],
-        "formulation": NotRequired[list[_Formula]],
+        "formulation": NotRequired[list[Formula]],
     },
 )
 
@@ -182,6 +219,8 @@ __all__ = [
     "Dependency",
     "Document",
     "ExternalReference",
+    "Formula",
+    "Identity",
     "License",
     "LicenseInfo",
     "Lifecycle",

@@ -17,7 +17,12 @@ class SourceRevisionError(SbomError):
     """The project is a git checkout, but git cannot read its revision."""
 
 
+class MissingExtraError(SbomError, ImportError):
+    """A feature needs an optional extra that is not installed."""
+
+
 __all__ = [
+    "MissingExtraError",
     "SbomError",
     "SettingsError",
     "SourceRevisionError",

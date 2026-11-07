@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypeAlias
+import tomllib
+from typing import TYPE_CHECKING, TypeAlias, TypeIs
 
 from python_sbom._errors import SettingsError
+from python_sbom._model._inputs import Settings
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
     from datetime import date, datetime, time
+    from pathlib import Path
 
     from python_sbom._model._types import OrganizationalEntity
 
@@ -15,66 +17,85 @@ if TYPE_CHECKING:
 Toml: TypeAlias = "str | int | float | bool | datetime | date | time | list[Toml] | dict[str, Toml]"
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Settings:
+def settings_from_pyproject(root: Path, overrides: Mapping[str, Toml]) -> Settings:
     """
-    The options a project sets, in a hatchling hook's table or in ``[tool.python-sbom]``.
+    Read the options from ``[tool.python-sbom]`` of a project's ``pyproject.toml``.
 
-    :param supplier: the organization that supplies the project, or ``None`` to name none
-    :param repository: the repository URL, or ``None`` to take the first ``Source``, ``Repository`` or ``GitHub``
-        project URL of the metadata
-    :param default_branch: branch used in links to files in the repository
-    :param bundled_wheels: glob patterns, relative to the project root, of wheels the project ships as data files
+    :param root: the project directory
+    :param overrides: options that win over the table, such as a hatchling hook's own table
+    :returns: the settings
+    :raises SettingsError: when ``pyproject.toml`` is missing or not TOML, or an option is unknown or has the wrong type
 
     """
+    pyproject = root / "pyproject.toml"
+    try:
+        loaded = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        msg = f"{root} has no pyproject.toml to read [tool.python-sbom] from"
+        raise SettingsError(msg) from error
+    except tomllib.TOMLDecodeError as error:
+        msg = f"{pyproject} is not valid TOML: {error}"
+        raise SettingsError(msg) from error
+    table = loaded.get("tool", {}).get("python-sbom", {})
+    return settings_from_table({**table, **overrides}, f"[tool.python-sbom] of {pyproject}")
 
-    supplier: OrganizationalEntity | None
-    repository: str | None
-    default_branch: str
-    bundled_wheels: tuple[str, ...]
 
-    @classmethod
-    def from_table(cls, table: Mapping[str, Toml], where: str) -> Settings:
-        """
-        Read the options from a configuration table, ignoring keys it does not know.
+def settings_from_table(table: Mapping[str, Toml], where: str) -> Settings:
+    """
+    Read the options from a configuration table.
 
-        :param table: the table, with any of ``supplier``, ``repository``, ``default-branch`` and ``bundled-wheels``
-        :param where: where the table lives, named in error messages, such as ``[tool.python-sbom]``
-        :returns: the settings
-        :raises SettingsError: when an option has the wrong type
+    :param table: the table, with any of ``supplier``, ``repository``, ``default-branch``, ``bundled-wheels`` and
+        ``content-provider``
+    :param where: where the table lives, named in error messages
+    :returns: the settings
+    :raises SettingsError: when a key is unknown or an option has the wrong type
 
-        """
-        supplier = table.get("supplier")
-        if supplier is not None and not (
-            isinstance(supplier, dict)
-            and supplier.keys() <= {"name", "url"}
-            and isinstance(name := supplier.get("name"), str)
-            and isinstance(urls := supplier.get("url", []), list)
-            and all(isinstance(url, str) for url in urls)
-        ):
-            msg = f"`supplier` in {where} must be a table with a string `name` and an optional `url` string array"
-            raise SettingsError(msg)
-        if not isinstance(repository := table.get("repository"), str | None):
-            msg = f"`repository` in {where} must be a string"
-            raise SettingsError(msg)
-        if not isinstance(default_branch := table.get("default-branch", "main"), str):
-            msg = f"`default-branch` in {where} must be a string"
-            raise SettingsError(msg)
-        if not (
-            isinstance(patterns := table.get("bundled-wheels", []), list)
-            and all(isinstance(pattern, str) for pattern in patterns)
-        ):
-            msg = f"`bundled-wheels` in {where} must be an array of strings"
-            raise SettingsError(msg)
-        return cls(
-            supplier=None if supplier is None else {"name": name, "url": [str(url) for url in urls]},
-            repository=None if repository is None else repository.rstrip("/"),
-            default_branch=default_branch,
-            bundled_wheels=tuple(str(pattern) for pattern in patterns),
-        )
+    """
+    known = {"bundled-wheels", "content-provider", "default-branch", "repository", "supplier"}
+    if unknown := sorted(table.keys() - known):
+        msg = f"{where} has unknown option(s) {', '.join(unknown)}; known: {', '.join(sorted(known))}"
+        raise SettingsError(msg)
+    if not isinstance(repository := table.get("repository"), str | None):
+        msg = f"`repository` in {where} must be a string"
+        raise SettingsError(msg)
+    if not isinstance(default_branch := table.get("default-branch", "main"), str):
+        msg = f"`default-branch` in {where} must be a string"
+        raise SettingsError(msg)
+    if not _strings(patterns := table.get("bundled-wheels", [])):
+        msg = f"`bundled-wheels` in {where} must be an array of strings"
+        raise SettingsError(msg)
+    if not isinstance(content_provider := table.get("content-provider"), str | None):
+        msg = f"`content-provider` in {where} must be a string, `module:attribute`"
+        raise SettingsError(msg)
+    return Settings(
+        supplier=_supplier(table.get("supplier"), where),
+        repository=None if repository is None else repository.rstrip("/"),
+        default_branch=default_branch,
+        bundled_wheels=tuple(patterns),
+        content_provider=content_provider,
+    )
+
+
+def _strings(values: object) -> TypeIs[list[str]]:
+    return isinstance(values, list) and all(isinstance(value, str) for value in values)
+
+
+def _supplier(value: Toml | None, where: str) -> OrganizationalEntity | None:
+    if value is None:
+        return None
+    if (
+        isinstance(value, dict)
+        and value.keys() <= {"name", "url"}
+        and isinstance(name := value.get("name"), str)
+        and _strings(urls := value.get("url", []))
+    ):
+        return {"name": name, "url": urls}
+    msg = f"`supplier` in {where} must be a table with a string `name` and an optional `url` string array"
+    raise SettingsError(msg)
 
 
 __all__ = [
-    "Settings",
     "Toml",
+    "settings_from_pyproject",
+    "settings_from_table",
 ]

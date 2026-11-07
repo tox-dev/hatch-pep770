@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import base64
 import hashlib
-import json
 import re
-import uuid
 from email.utils import getaddresses
+from itertools import starmap
 from typing import TYPE_CHECKING, Final
+from urllib.parse import urlsplit
 
 from packaging.licenses import InvalidLicenseExpression, canonicalize_license_expression
 from packaging.utils import canonicalize_name
@@ -14,9 +13,10 @@ from packaging.utils import canonicalize_name
 if TYPE_CHECKING:
     from email.message import Message
     from importlib.metadata import PackageMetadata
+    from pathlib import PurePosixPath
 
-    from ._types import Body, Component, Contact, Document, ExternalReference, License
-
+    from ._inputs import BundledWheel, BundledWheelInfo, RecordRow
+    from ._types import Component, Contact, ExternalReference, Identity, License
 
 # the label normalization and mapping cyclonedx-py applies to Project-URL entries, plus "source", so the same metadata
 # yields the same reference types whichever generator produced the document
@@ -40,54 +40,88 @@ _URL_LABEL_TO_REFERENCE_TYPE: Final[dict[str, str]] = {
 }
 
 
-def document(body: Body, namespace: uuid.UUID) -> Document:
+def bundled_wheel_component(wheel: BundledWheel, namespace: str, info: BundledWheelInfo) -> Component:
     """
-    Add the CycloneDX 1.6 header to a document body.
+    Describe a wheel a project ships as a data file.
 
-    :param body: the metadata, components, dependencies and formulation
-    :param namespace: UUID namespace of the serial number, one per project
-    :returns: the document; its serial number derives from the body, so identical bodies share one
+    :param wheel: the wheel, as :func:`~python_sbom.read_bundled_wheel` read it
+    :param namespace: the project's normalized name, which prefixes the properties this package writes
+    :param info: what the project adds to the component
+    :returns: the component, with a file component per ``RECORD`` row and a component per vendored package
 
     """
-    return {
-        "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.6",
-        "serialNumber": f"urn:uuid:{uuid.uuid5(namespace, json.dumps(body, sort_keys=True))}",
-        "version": 1,
-        **body,
+    component = component_from_metadata(wheel.metadata)
+    # the purl names the package; the path tells apart copies of one release bundled in two places
+    component["bom-ref"] = f"bundled:{wheel.path}"
+    if info.supplier is not None:
+        component["supplier"] = info.supplier
+    component["hashes"] = [{"alg": "SHA-256", "content": wheel.sha256}]
+    component["externalReferences"] = [
+        *component["externalReferences"],
+        {"type": "distribution", "url": pypi_url(wheel.metadata["Name"], wheel.metadata["Version"])},
+    ]
+    component["properties"] = [
+        {"name": f"{namespace}:bundled-wheel", "value": wheel.path},
+        *info.properties,
+        *component["properties"],
+    ]
+    component["evidence"] = {
+        "identity": [
+            _identity("purl", "manifest-analysis", wheel.metadata_name),
+            _identity("hash", "hash-comparison", wheel.sha256),
+        ]
     }
+    vendored: Final[dict[str, Component]] = {}
+    for source, metadata in wheel.vendored:
+        child = component_from_metadata(metadata)
+        child["bom-ref"] = f"{component['bom-ref']}#vendored/{child['bom-ref']}"
+        child["properties"] = [*child["properties"], {"name": f"{namespace}:vendored-manifest", "value": source}]
+        child["evidence"] = {"identity": [_identity("purl", "manifest-analysis", source)]}
+        # a vendored .dist-info comes after pip's manifest line naming the same package, so its metadata wins
+        vendored[purl(child["name"], child["version"])] = child
+    component["components"] = [
+        *(file_component(component["bom-ref"], row) for row in wheel.files),
+        *(vendored[key] for key in sorted(vendored)),
+    ]
+    return component
 
 
-def component_from_metadata(metadata: PackageMetadata | Message, component_type: str) -> Component:
+def component_from_metadata(metadata: PackageMetadata | Message) -> Component:
     """
-    Describe a distribution from its core metadata.
+    Describe a distribution from its core metadata, as a ``library`` component.
 
     :param metadata: the distribution's ``METADATA``
-    :param component_type: the CycloneDX component type, such as ``library``
-    :returns: the component, with its purl as ``bom-ref``, licenses, Project-URL references and metadata properties
+    :returns: the component, with its purl as ``bom-ref``, authors, licenses, project URLs and metadata properties
 
     """
     name, version = metadata["Name"], metadata["Version"]
-    package = purl(name, version)
-    component: Final[Component] = {"type": component_type, "bom-ref": package, "name": name, "version": version}
-    component["purl"] = package
+    component: Final[Component] = {"type": "library", "bom-ref": purl(name, version), "name": name, "version": version}
+    component["purl"] = component["bom-ref"]
     if summary := metadata.get("Summary"):
         component["description"] = summary
-    if authors := contacts(
-        metadata.get_all("Author", []) + metadata.get_all("Maintainer", []),
-        metadata.get_all("Author-email", []) + metadata.get_all("Maintainer-email", []),
+    # maintainers are who users reach today, so they win over the original authors when both are named
+    if people := next(
+        (
+            found
+            for names, addresses in (("Maintainer", "Maintainer-email"), ("Author", "Author-email"))
+            if (
+                found := [
+                    contact
+                    for contact in (
+                        *(_contact(name, "") for name in metadata.get_all(names, [])),
+                        *starmap(_contact, getaddresses(metadata.get_all(addresses, []))),
+                    )
+                    if contact
+                ]
+            )
+        ),
+        None,
     ):
-        component["authors"] = authors
-    if licenses := _licenses(metadata):
-        component["licenses"] = licenses
-    component["externalReferences"] = [
-        external_reference(label.strip(), url.strip())
-        for label, url in (entry.split(",", 1) for entry in metadata.get_all("Project-URL", []))
-    ]
-    if home_page := metadata.get("Home-page"):
-        component["externalReferences"].insert(0, {"type": "website", "url": home_page})
-    # core metadata headers copied verbatim onto the component
+        component["authors"] = people
+    if declared := _licenses(metadata):
+        component["licenses"] = declared
+    component["externalReferences"] = _project_references(metadata)
+    # core metadata headers copied verbatim, so a reader sees what the distribution declared
     component["properties"] = [
         {"name": f"python:{header.lower()}", "value": value}
         for header in ("Requires-Python", "Requires-Dist", "Provides-Extra", "Classifier", "Keywords")
@@ -96,23 +130,21 @@ def component_from_metadata(metadata: PackageMetadata | Message, component_type:
     return component
 
 
-def purl(name: str, version: str | None = None) -> str:
-    return f"pkg:pypi/{canonicalize_name(name)}@{version}" if version else f"pkg:pypi/{canonicalize_name(name)}"
-
-
-def contacts(names: list[str], addresses: list[str]) -> list[Contact]:
-    found: Final[list[Contact]] = [{"name": name} for name in names]
-    for name, email in getaddresses(addresses):
-        contact: Contact = {}
-        if name:
-            contact["name"] = name
-        if email:
-            contact["email"] = email
-        found.append(contact)
-    return found
+def _contact(name: str, email: str) -> Contact:
+    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        # an address the schema rejects as an email, such as "jane at example.com", is kept as the name
+        return {"name": " ".join(part for part in (name, email) if part)}
+    contact: Final[Contact] = {}
+    if name:
+        contact["name"] = name
+    if email:
+        contact["email"] = email
+    return contact
 
 
 def _licenses(metadata: PackageMetadata | Message) -> list[License]:
+    # a License-Expression is taken as declared; otherwise each License field and License classifier name is
+    # declared, and the SPDX ids they map to are added as concluded
     if expression := metadata.get("License-Expression"):
         return [{"expression": expression, "acknowledgement": "declared"}]
     names = [
@@ -120,15 +152,15 @@ def _licenses(metadata: PackageMetadata | Message) -> list[License]:
     ]
     if (declared := metadata.get("License")) and "\n" not in declared:
         names.append(declared)
-    licenses: Final[list[License]] = [{"license": {"name": name, "acknowledgement": "declared"}} for name in names]
-    # a license policy judges SPDX ids only, so a component keeps its bare names when any one of them does not resolve,
-    # and the policy reports it instead of judging a partial set
-    identifiers: Final[list[str]] = [identifier for name in names if (identifier := _spdx_license(name)) is not None]
+    found: Final[list[License]] = [{"license": {"name": name, "acknowledgement": "declared"}} for name in names]
+    # a license policy judges SPDX ids only, so the names stay bare when any one of them does not resolve, and the
+    # policy reports that instead of judging a partial set
+    identifiers = [identifier for name in names if (identifier := _spdx_license(name)) is not None]
     if len(identifiers) == len(names):
-        licenses.extend(
+        found.extend(
             {"license": {"id": identifier, "acknowledgement": "concluded"}} for identifier in dict.fromkeys(identifiers)
         )
-    return licenses
+    return found
 
 
 def _spdx_license(name: str) -> str | None:
@@ -151,41 +183,112 @@ def _spdx_license(name: str) -> str | None:
     return canonical if re.fullmatch(r"[A-Za-z0-9.-]+", canonical) and not canonical.startswith("LicenseRef-") else None
 
 
-def external_reference(label: str, url: str) -> ExternalReference:
-    reference_type = _URL_LABEL_TO_REFERENCE_TYPE.get(re.sub(r"[^a-z]", "", label.lower()), "other")
-    return {"type": reference_type, "url": url, "comment": f"Project-URL: {label}"}
+def _project_references(metadata: PackageMetadata | Message) -> list[ExternalReference]:
+    # a home page that is not an http(s) URL, such as UNKNOWN, is left out
+    references: Final[list[ExternalReference]] = []
+    if (home_page := metadata.get("Home-page")) and urlsplit(home_page).scheme in {"http", "https"}:
+        references.append({"type": "website", "url": home_page})
+    references.extend(
+        {"type": reference_type(label), "url": url, "comment": f"Project-URL: {label}"}
+        for label, url in project_urls(metadata)
+    )
+    return references
 
 
-def file_component(parent_ref: str, path: str, digest: str, size: str) -> Component:
-    # RECORD stores "<algorithm>=<urlsafe base64 without padding>", CycloneDX wants lowercase hex
-    algorithm, _, encoded = digest.partition("=")
-    algorithms: Final[dict[str, str]] = {
-        "md5": "MD5",
-        "sha1": "SHA-1",
-        "sha256": "SHA-256",
-        "sha384": "SHA-384",
-        "sha512": "SHA-512",
-    }
-    raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+def reference_type(label: str) -> str:
+    return _URL_LABEL_TO_REFERENCE_TYPE.get(re.sub(r"[^a-z]", "", label.lower()), "other")
+
+
+def project_urls(metadata: PackageMetadata | Message) -> list[tuple[str, str]]:
+    return [
+        (label.strip(), url.strip())
+        for label, url in (entry.split(",", 1) for entry in metadata.get_all("Project-URL", []) if "," in entry)
+    ]
+
+
+def pypi_url(name: str, version: str | None = None) -> str:
+    return f"https://pypi.org/project/{name}/{version}/" if version else f"https://pypi.org/project/{name}/"
+
+
+def _identity(field: str, technique: str, value: str) -> Identity:
+    return {"field": field, "confidence": 1, "methods": [{"technique": technique, "confidence": 1, "value": value}]}
+
+
+def purl(name: str, version: str | None = None) -> str:
+    return f"pkg:pypi/{canonicalize_name(name)}@{version}" if version else f"pkg:pypi/{canonicalize_name(name)}"
+
+
+def file_component(parent_ref: str, row: RecordRow) -> Component:
     return {
         "type": "file",
-        "bom-ref": f"{parent_ref}#{path}",
-        "name": path,
-        "hashes": [{"alg": algorithms[algorithm], "content": raw.hex()}],
-        "properties": [{"name": "size", "value": size}],
+        "bom-ref": f"{parent_ref}#{row.path}",
+        "name": row.path,
+        "hashes": [{"alg": row.algorithm, "content": row.digest}],
+        "properties": [{"name": "size", "value": row.size}],
     }
 
 
-def record_digest(content: bytes) -> str:
-    return f"sha256={base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b'=').decode()}"
+def file_component_from_bytes(parent_ref: str, name: str, content: bytes) -> Component:
+    """
+    Describe one file from its bytes, such as a member of a zipapp.
+
+    :param parent_ref: the ``bom-ref`` of the component that holds the file
+    :param name: the file's path
+    :param content: the file's bytes
+    :returns: a ``file`` component with the file's SHA-256 and size
+
+    """
+    return {
+        "type": "file",
+        "bom-ref": f"{parent_ref}#{name}",
+        "name": name,
+        "hashes": [{"alg": "SHA-256", "content": hashlib.sha256(content).hexdigest()}],
+        "properties": [{"name": "size", "value": str(len(content))}],
+    }
+
+
+def script_tool(path: PurePosixPath, sha256: str, version: str, link: str | None) -> Component:
+    """
+    Describe a build script as a build tool, since a rebuild has to match the script that shaped the document.
+
+    :param path: the script's path relative to the project root
+    :param sha256: the SHA-256 of the script
+    :param version: the version of the artifact the script builds
+    :param link: a URL of the script in the repository, or ``None``
+    :returns: an ``application`` component
+
+    """
+    tool: Final[Component] = {
+        "type": "application",
+        "bom-ref": tool_ref(str(path)),
+        "name": path.name,
+        "version": version,
+        "hashes": [{"alg": "SHA-256", "content": sha256}],
+    }
+    if link is not None:
+        tool["externalReferences"] = [{"type": "vcs", "url": link}]
+    return tool
+
+
+def tool_ref(ref: str) -> str:
+    # prefixed because the same distribution can be both a build tool and a component of the artifact
+    return f"tool:{ref}"
+
+
+def sbom_file_name(name: str) -> str:
+    return f"{canonicalize_name(name)}.cdx.json"
 
 
 __all__ = [
+    "bundled_wheel_component",
     "component_from_metadata",
-    "contacts",
-    "document",
-    "external_reference",
     "file_component",
+    "file_component_from_bytes",
+    "project_urls",
     "purl",
-    "record_digest",
+    "pypi_url",
+    "reference_type",
+    "sbom_file_name",
+    "script_tool",
+    "tool_ref",
 ]

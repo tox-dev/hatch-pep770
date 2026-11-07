@@ -1,0 +1,306 @@
+from __future__ import annotations
+
+import hashlib
+from email import message_from_string
+from pathlib import PurePosixPath
+from typing import TYPE_CHECKING, Final
+
+import pytest
+
+from python_sbom import (
+    BundledWheel,
+    BundledWheelInfo,
+    RecordRow,
+    bundled_wheel_component,
+    component_from_metadata,
+    file_component_from_bytes,
+    script_tool,
+)
+
+if TYPE_CHECKING:
+    from python_sbom import Component, License, OrganizationalEntity
+
+_WHEEL: Final[str] = "src/example/wheels/pip-1.0-py3-none-any.whl"
+
+
+def test_component_from_metadata() -> None:
+    metadata = message_from_string(
+        "Name: Example\nVersion: 1.0\nSummary: an example\nMaintainer-email: Maintainer <maintainer@example.com>\n"
+        "License-Expression: MIT\nRequires-Python: >=3.11\nRequires-Dist: packaging>=24\nProvides-Extra: cli\n"
+        "Classifier: Programming Language :: Python :: 3\nKeywords: sample,demo\n"
+        "Project-URL: Source, https://github.com/example/example\n"
+    )
+    assert component_from_metadata(metadata) == {
+        "type": "library",
+        "bom-ref": "pkg:pypi/example@1.0",
+        "name": "Example",
+        "version": "1.0",
+        "purl": "pkg:pypi/example@1.0",
+        "description": "an example",
+        "authors": [{"name": "Maintainer", "email": "maintainer@example.com"}],
+        "licenses": [{"expression": "MIT", "acknowledgement": "declared"}],
+        "externalReferences": [
+            {"type": "vcs", "url": "https://github.com/example/example", "comment": "Project-URL: Source"}
+        ],
+        "properties": [
+            {"name": "python:requires-python", "value": ">=3.11"},
+            {"name": "python:requires-dist", "value": "packaging>=24"},
+            {"name": "python:provides-extra", "value": "cli"},
+            {"name": "python:classifier", "value": "Programming Language :: Python :: 3"},
+            {"name": "python:keywords", "value": "sample,demo"},
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        pytest.param("Author: Author\nMaintainer: Maintainer\n", [{"name": "Maintainer"}], id="maintainer-wins"),
+        pytest.param(
+            "Author-email: Author <author@example.com>, other@example.com\n",
+            [{"name": "Author", "email": "author@example.com"}, {"email": "other@example.com"}],
+            id="authors-without-maintainer",
+        ),
+        pytest.param(
+            "Author-email: Jane Doe <jane at example.com>\n", [{"name": "Jane Doe jane at example.com"}], id="bad-email"
+        ),
+    ],
+)
+def test_component_authors(fields: str, expected: list[dict[str, str]]) -> None:
+    assert component_from_metadata(message_from_string(f"Name: a\nVersion: 1\n{fields}"))["authors"] == expected
+
+
+def test_component_without_authors_has_no_key() -> None:
+    assert "authors" not in component_from_metadata(message_from_string("Name: a\nVersion: 1\n"))
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        pytest.param(
+            "Classifier: License :: OSI Approved :: MIT License\n",
+            [
+                {"license": {"name": "MIT License", "acknowledgement": "declared"}},
+                {"license": {"id": "MIT", "acknowledgement": "concluded"}},
+            ],
+            id="classifier",
+        ),
+        pytest.param(
+            "License: apache-2.0\n",
+            [
+                {"license": {"name": "apache-2.0", "acknowledgement": "declared"}},
+                {"license": {"id": "Apache-2.0", "acknowledgement": "concluded"}},
+            ],
+            id="license-field",
+        ),
+        pytest.param(
+            "Classifier: License :: OSI Approved :: MIT License\nLicense: MIT\n",
+            [
+                {"license": {"name": "MIT License", "acknowledgement": "declared"}},
+                {"license": {"name": "MIT", "acknowledgement": "declared"}},
+                {"license": {"id": "MIT", "acknowledgement": "concluded"}},
+            ],
+            id="same-id-once",
+        ),
+        pytest.param(
+            "Classifier: License :: OSI Approved :: BSD License\nLicense: MIT\n",
+            [
+                {"license": {"name": "BSD License", "acknowledgement": "declared"}},
+                {"license": {"name": "MIT", "acknowledgement": "declared"}},
+            ],
+            id="one-unresolved-name-concludes-nothing",
+        ),
+        pytest.param(
+            "License: LicenseRef-Proprietary\n",
+            [{"license": {"name": "LicenseRef-Proprietary", "acknowledgement": "declared"}}],
+            id="license-ref",
+        ),
+        pytest.param(
+            "License: MIT OR Apache-2.0\n",
+            [{"license": {"name": "MIT OR Apache-2.0", "acknowledgement": "declared"}}],
+            id="expression-in-license-field",
+        ),
+        pytest.param(
+            "License: not a license\n",
+            [{"license": {"name": "not a license", "acknowledgement": "declared"}}],
+            id="invalid-expression",
+        ),
+    ],
+)
+def test_component_licenses(fields: str, expected: list[License]) -> None:
+    assert component_from_metadata(message_from_string(f"Name: a\nVersion: 1\n{fields}"))["licenses"] == expected
+
+
+def test_component_ignores_license_text() -> None:
+    metadata = message_from_string("Name: a\nVersion: 1\nLicense: Copyright\n        the full text\n")
+    assert "licenses" not in component_from_metadata(metadata)
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        pytest.param("Home-page: UNKNOWN\n", [], id="unknown-home-page"),
+        pytest.param(
+            "Home-page: https://example.com\n", [{"type": "website", "url": "https://example.com"}], id="home-page"
+        ),
+        pytest.param("Project-URL: no comma\n", [], id="url-without-label"),
+        pytest.param(
+            "Project-URL: Bug Tracker, https://example.com/issues\n",
+            [{"type": "issue-tracker", "url": "https://example.com/issues", "comment": "Project-URL: Bug Tracker"}],
+            id="normalized-label",
+        ),
+        pytest.param(
+            "Project-URL: Funding, https://example.com/fund\n",
+            [{"type": "other", "url": "https://example.com/fund", "comment": "Project-URL: Funding"}],
+            id="unknown-label",
+        ),
+    ],
+)
+def test_component_references(fields: str, expected: list[dict[str, str]]) -> None:
+    component = component_from_metadata(message_from_string(f"Name: a\nVersion: 1\n{fields}"))
+    assert component["externalReferences"] == expected
+
+
+def test_bundled_wheel_component() -> None:
+    wheel = BundledWheel(
+        path=_WHEEL,
+        sha256="ab" * 32,
+        metadata_name="pip-1.0.dist-info/METADATA",
+        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        files=[RecordRow(path="pip/__init__.py", algorithm="SHA-256", digest="cd" * 32, size="0")],
+        vendored=[],
+    )
+    supplier: OrganizationalEntity = {"name": "PyPA", "url": ["https://www.pypa.io"]}
+    info = BundledWheelInfo(properties=[{"name": "example:seeded-for-python", "value": "3.15"}], supplier=supplier)
+    assert bundled_wheel_component(wheel, "example", info) == {
+        "type": "library",
+        "bom-ref": f"bundled:{_WHEEL}",
+        "name": "pip",
+        "version": "1.0",
+        "purl": "pkg:pypi/pip@1.0",
+        "supplier": supplier,
+        "hashes": [{"alg": "SHA-256", "content": "ab" * 32}],
+        "externalReferences": [{"type": "distribution", "url": "https://pypi.org/project/pip/1.0/"}],
+        "properties": [
+            {"name": "example:bundled-wheel", "value": _WHEEL},
+            {"name": "example:seeded-for-python", "value": "3.15"},
+        ],
+        "evidence": {
+            "identity": [
+                {
+                    "field": "purl",
+                    "confidence": 1,
+                    "methods": [
+                        {"technique": "manifest-analysis", "confidence": 1, "value": "pip-1.0.dist-info/METADATA"}
+                    ],
+                },
+                {
+                    "field": "hash",
+                    "confidence": 1,
+                    "methods": [{"technique": "hash-comparison", "confidence": 1, "value": "ab" * 32}],
+                },
+            ]
+        },
+        "components": [
+            {
+                "type": "file",
+                "bom-ref": f"bundled:{_WHEEL}#pip/__init__.py",
+                "name": "pip/__init__.py",
+                "hashes": [{"alg": "SHA-256", "content": "cd" * 32}],
+                "properties": [{"name": "size", "value": "0"}],
+            }
+        ],
+    }
+
+
+def test_bundled_wheel_vendored_metadata_wins_over_manifest() -> None:
+    manifest = "pip/_vendor/vendor.txt"
+    dist_info = "pip/_vendor/urllib3-1.26.4.dist-info/METADATA"
+    wheel = BundledWheel(
+        path=_WHEEL,
+        sha256="ab" * 32,
+        metadata_name="pip-1.0.dist-info/METADATA",
+        metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+        files=[],
+        vendored=[
+            (manifest, message_from_string("Name: urllib3\nVersion: 1.26.4\n")),
+            (dist_info, message_from_string("Name: urllib3\nVersion: 1.26.4\nLicense-Expression: MIT\n")),
+        ],
+    )
+    component = bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=[], supplier=None))
+    assert component["components"] == [
+        {
+            "type": "library",
+            "bom-ref": f"bundled:{_WHEEL}#vendored/pkg:pypi/urllib3@1.26.4",
+            "name": "urllib3",
+            "version": "1.26.4",
+            "purl": "pkg:pypi/urllib3@1.26.4",
+            "licenses": [{"expression": "MIT", "acknowledgement": "declared"}],
+            "externalReferences": [],
+            "properties": [{"name": "example:vendored-manifest", "value": dist_info}],
+            "evidence": {
+                "identity": [
+                    {
+                        "field": "purl",
+                        "confidence": 1,
+                        "methods": [{"technique": "manifest-analysis", "confidence": 1, "value": dist_info}],
+                    }
+                ]
+            },
+        }
+    ]
+
+
+def test_bundled_wheel_component_ref_tells_copies_apart() -> None:
+    def component(path: str) -> Component:
+        wheel = BundledWheel(
+            path=path,
+            sha256="ab" * 32,
+            metadata_name="pip-1.0.dist-info/METADATA",
+            metadata=message_from_string("Name: pip\nVersion: 1.0\n"),
+            files=[],
+            vendored=[],
+        )
+        return bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=[], supplier=None))
+
+    refs = {component(f"src/{directory}/pip-1.0-py3-none-any.whl")["bom-ref"] for directory in ("a", "b")}
+    assert refs == {"bundled:src/a/pip-1.0-py3-none-any.whl", "bundled:src/b/pip-1.0-py3-none-any.whl"}
+
+
+def test_bundled_wheel_supplier_never_comes_from_the_wheel() -> None:
+    wheel = BundledWheel(
+        path=_WHEEL,
+        sha256="ab" * 32,
+        metadata_name="pip-1.0.dist-info/METADATA",
+        metadata=message_from_string("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
+        files=[],
+        vendored=[],
+    )
+    component = bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=[], supplier=None))
+    assert "supplier" not in component
+
+
+def test_file_component_from_bytes() -> None:
+    assert file_component_from_bytes("app", "a.py", b"abc") == {
+        "type": "file",
+        "bom-ref": "app#a.py",
+        "name": "a.py",
+        "hashes": [{"alg": "SHA-256", "content": hashlib.sha256(b"abc").hexdigest()}],
+        "properties": [{"name": "size", "value": "3"}],
+    }
+
+
+def test_script_tool_with_link() -> None:
+    tool = script_tool(PurePosixPath("build/hook.py"), "ef" * 32, "1.0", "https://example.com/hook.py")
+    assert tool == {
+        "type": "application",
+        "bom-ref": "tool:build/hook.py",
+        "name": "hook.py",
+        "version": "1.0",
+        "hashes": [{"alg": "SHA-256", "content": "ef" * 32}],
+        "externalReferences": [{"type": "vcs", "url": "https://example.com/hook.py"}],
+    }
+
+
+def test_script_tool_without_link() -> None:
+    assert "externalReferences" not in script_tool(PurePosixPath("hook.py"), "ef" * 32, "1.0", None)

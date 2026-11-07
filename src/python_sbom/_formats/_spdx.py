@@ -5,11 +5,9 @@ import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
-from python_sbom.version import version
+from packaging.utils import canonicalize_name
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from python_sbom._model._types import Component, Document, License
 
 
@@ -54,8 +52,28 @@ class _CreationInfo(TypedDict):
     creators: list[str]
 
 
+class _ExtractedLicense(TypedDict):
+    licenseId: str
+    extractedText: str
+    name: str
+
+
 class Spdx(TypedDict):
-    """An SPDX 2.3 JSON document."""
+    """
+    An SPDX 2.3 JSON document, as :func:`to_spdx` renders it.
+
+    :ivar spdxVersion: ``SPDX-2.3``
+    :ivar dataLicense: ``CC0-1.0``
+    :ivar SPDXID: ``SPDXRef-DOCUMENT``
+    :ivar name: the root component's name and version
+    :ivar documentNamespace: a URI that ends in the CycloneDX serial number
+    :ivar comment: which CycloneDX document it was rendered from
+    :ivar creationInfo: the build time and the creators
+    :ivar packages: one package per component, files aside
+    :ivar relationships: containment, dependency and build tool relationships
+    :ivar hasExtractedLicensingInfos: one entry per ``LicenseRef-`` a package declares
+
+    """
 
     spdxVersion: str
     dataLicense: str
@@ -66,9 +84,10 @@ class Spdx(TypedDict):
     creationInfo: _CreationInfo
     packages: list[_Package]
     relationships: list[_Relationship]
+    hasExtractedLicensingInfos: NotRequired[list[_ExtractedLicense]]
 
 
-def to_spdx(bom: Document) -> Spdx:
+def to_spdx(bom: Document, tool_version: str) -> Spdx:
     """
     Render a CycloneDX document as SPDX 2.3.
 
@@ -76,46 +95,48 @@ def to_spdx(bom: Document) -> Spdx:
     over. Per-file hashes stay behind, because SPDX 2.3 requires a SHA-1 for every file and wheel ``RECORD`` files hold
     SHA-256, and so does the build formulation, which SPDX 2.3 has no field for.
 
-    :param bom: a CycloneDX document as this package writes it
+    :param bom: a CycloneDX document; python-sbom's own documents name their file and repository, others fall back
+    :param tool_version: the python-sbom version to name as a creator
     :returns: the SPDX document, whose namespace ends in the CycloneDX serial number so both name the same build
 
     """
     root: Final[Component] = bom["metadata"]["component"]
     tools: Final[list[Component]] = bom["metadata"]["tools"]["components"]
+    prefix = f"{canonicalize_name(root['name'])}:"
+    recorded = {prop["name"]: prop["value"] for prop in bom["metadata"].get("properties", [])}
     name: Final[str] = f"{root['name']}-{root['version']}" if "version" in root else root["name"]
-    namespace: Final[str] = re.sub(r"[-_.]+", "-", root["name"]).lower()
-    repository: Final[str] = next(
-        (
-            reference["url"]
-            for reference in root.get("externalReferences", [])
-            if reference["type"] == "vcs" and "Project-URL" in reference.get("comment", "")
-        ),
-        "https://spdx.org/spdxdocs",
-    )
-    components: Final[list[Component]] = list(_walk([root, *bom["components"], *tools]))
-    supplier: Final[list[str]] = (
-        [f"Organization: {bom['metadata']['supplier']['name']}"] if "supplier" in bom["metadata"] else []
-    )
-    return {
+    serial = bom["serialNumber"].removeprefix("urn:uuid:")
+    components: Final[list[Component]] = _walk([root, *bom["components"], *tools])
+    packages = [_package(component, prefix) for component in components]
+    spdx: Final[Spdx] = {
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": name,
-        "documentNamespace": f"{repository}/sboms/{name}-{bom['serialNumber'].removeprefix('urn:uuid:')}",
-        "comment": f"Rendered from the CycloneDX SBOM {bom['serialNumber']} ({namespace}.cdx.json), which also carries"
-        " per-file hashes and the build formulation.",
+        "documentNamespace": f"{recorded.get(f'{prefix}sbom:repository', 'https://spdx.org/spdxdocs')}/sboms/{name}-{serial}",
+        "comment": f"Rendered from the CycloneDX SBOM {bom['serialNumber']}"
+        f" ({recorded.get(f'{prefix}sbom:file', 'CycloneDX JSON')}), which also carries per-file hashes and the build"
+        " formulation.",
         "creationInfo": {
             "created": datetime
             .fromisoformat(bom["metadata"]["timestamp"])
             .astimezone(UTC)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "creators": [
-                *supplier,
-                *(f"Tool: {tool['name']}-{tool['version']}" for tool in tools if tool["type"] == "application"),
-                f"Tool: python-sbom-{version}",
+                *(
+                    [f"Organization: {supplier['name']}"]
+                    if (supplier := bom["metadata"].get("supplier")) is not None
+                    else []
+                ),
+                *(
+                    f"Tool: {tool['name']}-{tool['version']}" if "version" in tool else f"Tool: {tool['name']}"
+                    for tool in tools
+                    if tool["type"] == "application"
+                ),
+                f"Tool: python-sbom-{tool_version}",
             ],
         },
-        "packages": [_package(component, f"{namespace}:") for component in components],
+        "packages": packages,
         "relationships": [
             _relationship("SPDXRef-DOCUMENT", "DESCRIBES", _spdx_id(root["bom-ref"])),
             *(
@@ -132,19 +153,32 @@ def to_spdx(bom: Document) -> Spdx:
             *(_relationship(_spdx_id(tool["bom-ref"]), "BUILD_TOOL_OF", _spdx_id(root["bom-ref"])) for tool in tools),
         ],
     }
+    # SPDX requires the text of every LicenseRef a package declares; the metadata names them, it holds no text
+    if references := sorted({
+        token for package in packages for token in re.findall(r"LicenseRef-[A-Za-z0-9.-]+", package["licenseDeclared"])
+    }):
+        spdx["hasExtractedLicensingInfos"] = [
+            {"licenseId": token, "extractedText": f"{token}, as named in package metadata", "name": token}
+            for token in references
+        ]
+    return spdx
 
 
-def _walk(components: list[Component]) -> Iterator[Component]:
-    # file components mirror wheel RECORD entries, which carry no SHA-1 and so cannot become SPDX files
-    for component in components:
-        if component["type"] != "file":
-            yield component
-            yield from _walk(component.get("components", []))
+def _walk(components: list[Component]) -> list[Component]:
+    # iterative, so a deeply nested hostile document cannot exhaust the stack; file components mirror wheel RECORD
+    # entries, which carry no SHA-1 and so cannot become SPDX files
+    found: Final[list[Component]] = []
+    pending = list(reversed(components))
+    while pending:
+        if (component := pending.pop())["type"] != "file":
+            found.append(component)
+            pending.extend(reversed(component.get("components", [])))
+    return found
 
 
 def _package(component: Component, property_prefix: str) -> _Package:
-    # the hook writes either one SPDX expression, or the free-form names from License/classifier metadata plus the SPDX
-    # ids it concluded from them
+    # a component carries either one SPDX expression, or the free-form names from License/classifier metadata plus the
+    # SPDX ids concluded from them
     licenses: Final[list[License]] = component.get("licenses", [])
     concluded: Final[list[str]] = [
         entry["license"]["id"] for entry in licenses if "license" in entry and "id" in entry["license"]
@@ -156,9 +190,7 @@ def _package(component: Component, property_prefix: str) -> _Package:
         "filesAnalyzed": False,
         "licenseConcluded": " AND ".join(concluded) or "NOASSERTION",
         "licenseDeclared": next((entry["expression"] for entry in licenses if "expression" in entry), "NOASSERTION"),
-        "primaryPackagePurpose": {"application": "APPLICATION", "library": "LIBRARY", "platform": "OTHER"}[
-            component["type"]
-        ],
+        "primaryPackagePurpose": {"application": "APPLICATION", "library": "LIBRARY"}.get(component["type"], "OTHER"),
     }
     if version := component.get("version"):
         package["versionInfo"] = version

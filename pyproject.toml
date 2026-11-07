@@ -60,7 +60,7 @@ urls.Documentation = "https://python-sbom.readthedocs.io"
 urls.Homepage = "https://github.com/tox-dev/python-sbom"
 urls.Source = "https://github.com/tox-dev/python-sbom"
 urls.Tracker = "https://github.com/tox-dev/python-sbom/issues"
-scripts.python-sbom = "python_sbom.__main__:main"
+scripts.python-sbom = "python_sbom._cli._main:main"
 entry-points.hatch.python-sbom = "python_sbom.hatch.hooks"
 
 [dependency-groups]
@@ -140,20 +140,18 @@ lint.ignore = [
   "incorrect-blank-line-before-class",         # `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
   "missing-trailing-comma",                    # Conflict with formatter
   "multi-line-summary-first-line",             # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
-  "non-empty-init-module",                     # `__init__` module should only contain docstrings and re-exports
   "single-line-implicit-string-concatenation", # Conflict with formatter
 ]
 lint.per-file-ignores."tests/**/*.py" = [
   "assert",                               # Tests use assertions
-  "D",                                    # Test names document behavior
   "FBT",                                  # Boolean parameters keep parameterized cases compact
   "implicit-namespace-package",           # The tests directory is not a package
-  "import-private-name",                  # Tests cover private parsing boundaries directly
   "magic-value-comparison",               # Literal expected values keep assertions local
   "subprocess-without-shell-equals-true", # Entry-point arguments are fixed by the tests
   "suspicious-subprocess-import",         # Entry-point tests invoke a local Python executable
-  "too-many-positional-arguments",        # Test inputs favor explicit parameters over setup objects
 ]
+# the fixture mirrors virtualenv's seed/wheels/embed/__init__.py, which holds the bundle table
+lint.per-file-ignores."tests/_seeder/src/**/__init__.py" = [ "non-empty-init-module" ]
 lint.isort = { known-first-party = [
   "python_sbom",
 ], required-imports = [
@@ -217,6 +215,15 @@ type = [
   { directory = "deprecation", name = "Deprecated", showcontent = true },
   { directory = "removal", name = "Removed", showcontent = true },
   { directory = "packaging", name = "Packaging", showcontent = true },
+]
+
+[tool.simplint]
+docstring-style = "rst"
+# the fixture mirrors virtualenv's seed/wheels/embed/__init__.py, which holds the bundle table
+per-file-ignores."tests/_seeder/src/**/__init__.py" = [
+  "init-module-content",
+  "missing-final",
+  "module-variable-prefix"
 ]
 
 [tool.nab]
