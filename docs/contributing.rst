@@ -14,6 +14,30 @@ To record a new field, read it at the edge into ``_model/_inputs.py`` and write 
 add a registration function and a handler next to the others in ``_cli/_commands.py`` and list the registration in
 ``_cli/_parser.py``. Tests mirror the source: ``tests/<package>/test_<module>.py``.
 
+Updating the schemas
+--------------------
+
+``python-sbom validate`` checks documents against the official CycloneDX schema files, which ship byte for byte under
+``src/python_sbom/_validate/schemas``. Each comes from a tag of `CycloneDX/specification
+<https://github.com/CycloneDX/specification>`_: ``bom-1.6.schema.json`` and the ``jsf-0.82.schema.json`` it references
+from ``1.6.2``, and ``spdx.schema.json`` and the Apache-2.0 ``LICENSE`` from ``1.7.2``, the newest, since the
+cyclonedx.org URL every schema version references serves the newest license list. These commands fetch the shipped files
+from their raw URLs; change the tag to take a newer release:
+
+.. code-block:: console
+
+    $ cd src/python_sbom/_validate/schemas
+    $ curl -fsSLO https://raw.githubusercontent.com/CycloneDX/specification/1.6.2/schema/bom-1.6.schema.json
+    $ curl -fsSLO https://raw.githubusercontent.com/CycloneDX/specification/1.6.2/schema/jsf-0.82.schema.json
+    $ curl -fsSLO https://raw.githubusercontent.com/CycloneDX/specification/1.7.2/schema/spdx.schema.json
+    $ curl -fsSLO https://raw.githubusercontent.com/CycloneDX/specification/1.7.2/LICENSE
+    $ sha256sum *
+
+Put each file's tag and SHA-256 into the cases of ``test_schema_files_are_the_upstream_release`` in
+``tests/_validate/test_schemas.py``, which fails when a shipped file is not the release it names. ``.gitattributes``
+marks the directory ``-text`` and ``.pre-commit-config.yaml`` excludes it, so neither git nor the hooks rewrite the
+files' line endings, whitespace or formatting.
+
 Changelog fragments
 -------------------
 
