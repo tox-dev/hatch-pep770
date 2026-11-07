@@ -127,7 +127,7 @@ def _describes_distribution(path: str) -> bool:
     return not (
         path.startswith("../")
         or (directory.endswith(".dist-info") and name in {"INSTALLER", "REQUESTED", "direct_url.json"})
-        or re.fullmatch(r"uv_.*\.json", name)
+        or (name.startswith("uv_") and name.endswith(".json"))
     )
 
 
