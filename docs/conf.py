@@ -40,6 +40,7 @@ extensions: Final[list[str]] = [
     "sphinx.ext.inheritance_diagram",
     "sphinx_argparse_cli",
     "sphinx_autodoc_typehints",
+    "sphinxcontrib.mermaid",
 ]
 
 master_doc: Final[str] = "index"

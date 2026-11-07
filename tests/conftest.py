@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Final, Protocol
 import pytest
 from hatchling.builders.wheel import WheelBuilder
 
-from python_sbom import Project
+from python_sbom import BuildFacts, BuiltWheel, Settings, git_revision
 
 if TYPE_CHECKING:
     from python_sbom import Document
@@ -207,6 +207,16 @@ def install_tool() -> InstallTool:
     return install
 
 
+_PLAIN: Final[Settings] = Settings(supplier=None, repository=None, default_branch="main", bundled_wheels=())
+
+
+class EmbedInto(Protocol):
+    def __call__(self, wheel: Path, settings: Settings = _PLAIN) -> str: ...
+
+
 @pytest.fixture
-def plain_project(tmp_path: Path) -> Project:
-    return Project.from_table({}, root=tmp_path, where="[tool.python-sbom]")
+def embed_into(tmp_path: Path) -> EmbedInto:
+    def embed(wheel: Path, settings: Settings = _PLAIN) -> str:
+        return BuiltWheel(wheel, tmp_path, settings).embed(BuildFacts.collect(tmp_path, git_revision))
+
+    return embed

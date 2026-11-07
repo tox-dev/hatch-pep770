@@ -3,16 +3,18 @@ from __future__ import annotations
 import json
 import re
 import zipfile
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, TypeAlias
 
-from ._spdx import to_spdx
+from python_sbom._formats._spdx import to_spdx
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from ._cyclonedx import Component, Document, License
+    from python_sbom._model._types import Component, Document, License
 
+#: a JSON value, as :func:`json.loads` hands it over
+Json: TypeAlias = "str | int | float | bool | list[Json] | dict[str, Json] | None"
 # SPDX matches operators only in upper case
 _OPERATORS: Final[frozenset[str]] = frozenset({"AND", "OR", "WITH", "(", ")"})
 _TOKEN: Final[re.Pattern[str]] = re.compile(r"[()]|[^\s()]+")
@@ -51,10 +53,22 @@ def validate(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
     :returns: one message per problem, empty when the document is valid
 
     """
-    from ._extra import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level]  # optional extra
+    from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level]  # optional extra
 
     if error := schema_error(raw):
         return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
+    loaded: Json = json.loads(raw)
+    # the schema leaves these optional, yet the checks below and the SPDX rendering read them
+    required: tuple[tuple[str, ...], ...] = (
+        ("metadata", "timestamp"),
+        ("metadata", "tools", "components"),
+        ("metadata", "component", "bom-ref"),
+        ("metadata", "component", "name"),
+        ("components",),
+        ("dependencies",),
+    )
+    if missing := [".".join(path) for path in required if not _has(loaded, path)]:
+        return [f"lacks {', '.join(missing)}, which every document python-sbom writes carries"]
     document: Final[Document] = json.loads(raw)
     # optional in the CycloneDX spec itself, but actions/attest's format sniffer requires it to recognize the document
     # as CycloneDX at all, and silently rejects anything missing it as an unknown format
@@ -76,13 +90,21 @@ def validate(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
     return problems
 
 
+def _has(value: Json, path: tuple[str, ...]) -> bool:
+    for key in path:
+        if not isinstance(value, dict) or key not in value:
+            return False
+        value = value[key]
+    return True
+
+
 def _reference_problems(document: Document) -> list[str]:
     root_ref = document["metadata"]["component"]["bom-ref"]
     tools = document["metadata"]["tools"]["components"]
     every_ref = list(_bom_refs([document["metadata"]["component"], *document["components"], *tools]))
     if duplicates := {ref for ref in every_ref if every_ref.count(ref) > 1}:
         return [f"bom-ref values are not unique: {sorted(duplicates)}"]
-    dependencies = {entry["ref"]: set(entry["dependsOn"]) for entry in document["dependencies"]}
+    dependencies = {entry["ref"]: set(entry.get("dependsOn", [])) for entry in document["dependencies"]}
     problems = []
     if unknown := (set(dependencies) | set().union(*dependencies.values())) - set(every_ref):
         problems.append(f"dependencies reference bom-refs that do not exist: {sorted(unknown)}")
@@ -93,7 +115,7 @@ def _reference_problems(document: Document) -> list[str]:
     tool_refs = {tool["bom-ref"] for tool in tools}
     problems.extend(
         f"workflow {workflow['uid']} references unknown tools: {sorted(unknown)}"
-        for workflow in (workflow for formula in document["formulation"] for workflow in formula["workflows"])
+        for workflow in (workflow for formula in document.get("formulation", []) for workflow in formula["workflows"])
         if (unknown := {reference["ref"] for reference in workflow["resourceReferences"]} - tool_refs)
     )
     return problems

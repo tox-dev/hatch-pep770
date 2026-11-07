@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
+from docs.examples.zipapp import describe_zipapp
 from python_sbom import validate, validate_wheel
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from python_sbom import Component, Document
-    from python_sbom._cyclonedx import License
+    from python_sbom._model._types import License
 
 _ALLOWED: Final[frozenset[str]] = frozenset({"Apache-2.0", "BSD-3-Clause", "MIT"})
 
@@ -39,7 +40,7 @@ def _denied(expression: str, bom_ref: str = "pkg:pypi/bundled@1.0") -> str:
 @pytest.fixture
 def sbom_document(build_sbom: BuildSbom, mocker: MockerFixture) -> Document:
     # schema validation time grows with the document, and the test environment's packages are irrelevant here
-    mocker.patch("python_sbom._cyclonedx.distributions", autospec=True, return_value=[])
+    mocker.patch("python_sbom._collect._facts.distributions", autospec=True, return_value=[])
     return build_sbom()
 
 
@@ -234,3 +235,24 @@ def test_license_policy_judges_files_owner(sbom_document: Document) -> None:
     assert validate(_with_component(sbom_document, component), _ALLOWED) == [
         _denied("LGPL-3.0-only", "pkg:pypi/distlib@0.4")
     ]
+
+
+def test_document_missing_structure() -> None:
+    serial = f"urn:uuid:{'0' * 8}-0000-0000-0000-{'0' * 12}"
+    raw = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "serialNumber": serial})
+    assert validate(raw, None) == [
+        (
+            "lacks metadata.timestamp, metadata.tools.components, metadata.component.bom-ref, metadata.component.name,"
+            " components, dependencies, which every document python-sbom writes carries"
+        )
+    ]
+
+
+def test_documented_zipapp_example(tmp_path: Path) -> None:
+    assert validate(json.dumps(describe_zipapp(tmp_path, "21.0")), None) == []
+
+
+def test_versionless_root(tmp_path: Path) -> None:
+    document = describe_zipapp(tmp_path, "21.0")
+    del document["metadata"]["component"]["version"]
+    assert validate(json.dumps(document), None) == []

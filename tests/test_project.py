@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 from conftest import BUNDLED, HOOK, build_hook_sbom
 
+from python_sbom import SourceRevisionError, WheelError
+
 _SHA256_ABC: Final[str] = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 
 
@@ -153,7 +155,7 @@ def test_bundled_wheel(build_sbom: BuildSbom, bundle_wheel: BundleWheel) -> None
     sha256: Final[str] = hashlib.sha256(bundle_wheel({}, "License-Expression: MIT\n").read_bytes()).hexdigest()
     assert build_sbom(hook=f"{HOOK}{BUNDLED}")["components"][0] == {
         "type": "library",
-        "bom-ref": "pkg:pypi/pip@1.0",
+        "bom-ref": "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl",
         "name": "pip",
         "version": "1.0",
         "purl": "pkg:pypi/pip@1.0",
@@ -180,7 +182,7 @@ def test_bundled_wheel(build_sbom: BuildSbom, bundle_wheel: BundleWheel) -> None
         "components": [
             {
                 "type": "file",
-                "bom-ref": "pkg:pypi/pip@1.0#pip/example.py",
+                "bom-ref": "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl#pip/example.py",
                 "name": "pip/example.py",
                 "hashes": [{"alg": "SHA-256", "content": _SHA256_ABC}],
                 "properties": [{"name": "size", "value": "3"}],
@@ -206,8 +208,8 @@ def test_bundled_wheels_sorted_once(build_sbom: BuildSbom, bundle_wheel: BundleW
     bundle_wheel({}, name="pip")
     hook = f'{HOOK}bundled-wheels = ["src/example/wheels/*.whl", "src/example/wheels/pip-*"]\n'
     assert build_sbom(hook=hook)["dependencies"][0]["dependsOn"] == [
-        "pkg:pypi/pip@1.0",
-        "pkg:pypi/setuptools@1.0",
+        "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl",
+        "pkg:pypi/setuptools@1.0?file_name=setuptools-1.0-py3-none-any.whl",
         "requires-dist:packaging>=24",
         "requires-dist:tomli>=2; python_version < '3.11'",
     ]
@@ -249,7 +251,7 @@ def test_bundled_wheel_record_paths(root: Path, build_sbom: BuildSbom, filename:
     assert build_sbom(hook=f"{HOOK}{BUNDLED}")["components"][0].get("components") == [
         {
             "type": "file",
-            "bom-ref": f"pkg:pypi/pip@1.0#{filename}",
+            "bom-ref": f"pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl#{filename}",
             "name": filename,
             "hashes": [{"alg": "SHA-256", "content": _SHA256_ABC}],
             "properties": [{"name": "size", "value": "3"}],
@@ -272,7 +274,7 @@ def test_vendored_identity(build_sbom: BuildSbom, bundle_wheel: BundleWheel, sou
     assert [child for child in children if child["type"] == "library"] == [
         {
             "type": "library",
-            "bom-ref": "pkg:pypi/pip@1.0#vendored/pkg:pypi/urllib3@1.26.4",
+            "bom-ref": "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl#vendored/pkg:pypi/urllib3@1.26.4",
             "name": "urllib3",
             "version": "1.26.4",
             "purl": "pkg:pypi/urllib3@1.26.4",
@@ -294,8 +296,8 @@ def test_vendored_identity(build_sbom: BuildSbom, bundle_wheel: BundleWheel, sou
 def test_vendored_relationship(build_sbom: BuildSbom, bundle_wheel: BundleWheel) -> None:
     bundle_wheel({"pip/_vendor/vendor.txt": "urllib3==1.26.4\n"})
     assert build_sbom(hook=f"{HOOK}{BUNDLED}")["dependencies"][1] == {
-        "ref": "pkg:pypi/pip@1.0",
-        "dependsOn": ["pkg:pypi/pip@1.0#vendored/pkg:pypi/urllib3@1.26.4"],
+        "ref": "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl",
+        "dependsOn": ["pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl#vendored/pkg:pypi/urllib3@1.26.4"],
     }
 
 
@@ -494,7 +496,9 @@ def test_source_revision_unreadable(root: Path, build_sbom: BuildSbom, mocker: M
     (root / ".git").mkdir()
     error = subprocess.CalledProcessError(128, ["git"], stderr="fatal: detected dubious ownership")
     mocker.patch("subprocess.run", autospec=True, side_effect=error)
-    with pytest.raises(subprocess.CalledProcessError):
+    with pytest.raises(
+        SourceRevisionError, match=r"git rev-parse HEAD failed in .*: fatal: detected dubious ownership"
+    ):
         build_sbom()
 
 
@@ -548,3 +552,42 @@ def test_serial_number_per_project(build_sbom: BuildSbom) -> None:
 def test_invalid_option(build_sbom: BuildSbom, hook: str, message: str) -> None:
     with pytest.raises(TypeError, match=message):
         build_sbom(hook=hook)
+
+
+def test_bundled_wheel_variants_unique_refs(build_sbom: BuildSbom, bundle_wheel: BundleWheel) -> None:
+    wheel = bundle_wheel({})
+    shutil.copyfile(wheel, wheel.with_name("pip-1.0-py3-none-manylinux_2_17_x86_64.whl"))
+    assert [component["bom-ref"] for component in build_sbom(hook=f"{HOOK}{BUNDLED}")["components"][:2]] == [
+        "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-any.whl",
+        "pkg:pypi/pip@1.0?file_name=pip-1.0-py3-none-manylinux_2_17_x86_64.whl",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("requirement", "expected"),
+    [
+        pytest.param("foo; extra != 'fast'", ["foo"], id="not-an-extra"),
+        pytest.param("foo; extra == 'fast' or python_version < '3.12'", ["foo"], id="extra-or-platform"),
+        pytest.param("foo; python_version < '3.12' and extra == 'fast'", [], id="platform-and-extra"),
+        pytest.param("foo; (extra == 'a' or extra == 'b') and os_name == 'nt'", [], id="grouped-extras"),
+        pytest.param("foo; os_name == 'nt'", ["foo"], id="platform-only"),
+        pytest.param("foo; 'fast' == extra", [], id="extra-on-the-right"),
+    ],
+)
+def test_runtime_requirements_with_extra_markers(build_sbom: BuildSbom, requirement: str, expected: list[str]) -> None:
+    project = f'[project]\nname = "example"\nversion = "1.0"\ndependencies = ["{requirement}"]\n'
+    assert [component["name"] for component in build_sbom(project=project)["components"]] == expected
+
+
+def test_bundled_wheel_without_metadata(root: Path, build_sbom: BuildSbom) -> None:
+    (wheels := root / "src" / "example" / "wheels").mkdir(parents=True)
+    with zipfile.ZipFile(wheels / "pip-1.0-py3-none-any.whl", "w") as archive:
+        archive.writestr("pip/__init__.py", "")
+    with pytest.raises(WheelError, match=r"pip-1\.0-py3-none-any\.whl has no \.dist-info/METADATA"):
+        build_sbom(hook=f"{HOOK}{BUNDLED}")
+
+
+def test_vendored_requirement_unparsable(build_sbom: BuildSbom, bundle_wheel: BundleWheel) -> None:
+    bundle_wheel({"pip/_vendor/vendor.txt": "not a requirement!\n"})
+    with pytest.raises(WheelError, match="does not parse: not a requirement!"):
+        build_sbom(hook=f"{HOOK}{BUNDLED}")

@@ -28,7 +28,7 @@ def bundled(bundle_wheel: BundleWheel) -> None:
 def test_spdx_bundled_wheel(build_sbom: BuildSbom) -> None:
     cyclonedx: Final[Document] = build_sbom(hook=_SUPPLIED)
     assert to_spdx(cyclonedx)["packages"][1] == {
-        "SPDXID": "SPDXRef-pkg-pypi-pip-1.0",
+        "SPDXID": "SPDXRef-pkg-pypi-pip-1.0-file-name-pip-1.0-py3-none-any.whl-ccff93ba",
         "name": "pip",
         "downloadLocation": "NOASSERTION",
         "filesAnalyzed": False,
@@ -49,7 +49,7 @@ def test_spdx_bundled_wheel(build_sbom: BuildSbom) -> None:
 
 def test_spdx_root_package(build_sbom: BuildSbom) -> None:
     assert to_spdx(build_sbom())["packages"][0] == {
-        "SPDXID": "SPDXRef-pkg-pypi-example-1.0",
+        "SPDXID": "SPDXRef-pkg-pypi-example-1.0-42410e0c",
         "name": "Example",
         "downloadLocation": "NOASSERTION",
         "filesAnalyzed": False,
@@ -72,6 +72,9 @@ def test_spdx_root_package(build_sbom: BuildSbom) -> None:
 
 @pytest.mark.usefixtures("bundled")
 def test_spdx_relationships(build_sbom: BuildSbom) -> None:
+    urllib3: Final[str] = (
+        "SPDXRef-pkg-pypi-pip-1.0-file-name-pip-1.0-py3-none-any.whl-vendored-pkg-pypi-urllib3-1.26.4-82ad4d8f"
+    )
     assert [
         relationship
         for relationship in to_spdx(build_sbom(hook=_SUPPLIED))["relationships"]
@@ -80,32 +83,32 @@ def test_spdx_relationships(build_sbom: BuildSbom) -> None:
         {
             "spdxElementId": "SPDXRef-DOCUMENT",
             "relationshipType": "DESCRIBES",
-            "relatedSpdxElement": "SPDXRef-pkg-pypi-example-1.0",
+            "relatedSpdxElement": "SPDXRef-pkg-pypi-example-1.0-42410e0c",
         },
         {
-            "spdxElementId": "SPDXRef-pkg-pypi-pip-1.0",
+            "spdxElementId": "SPDXRef-pkg-pypi-pip-1.0-file-name-pip-1.0-py3-none-any.whl-ccff93ba",
             "relationshipType": "CONTAINS",
-            "relatedSpdxElement": "SPDXRef-pkg-pypi-pip-1.0-vendored-pkg-pypi-urllib3-1.26.4",
+            "relatedSpdxElement": urllib3,
         },
         {
-            "spdxElementId": "SPDXRef-pkg-pypi-example-1.0",
+            "spdxElementId": "SPDXRef-pkg-pypi-example-1.0-42410e0c",
             "relationshipType": "DEPENDS_ON",
-            "relatedSpdxElement": "SPDXRef-pkg-pypi-pip-1.0",
+            "relatedSpdxElement": "SPDXRef-pkg-pypi-pip-1.0-file-name-pip-1.0-py3-none-any.whl-ccff93ba",
         },
         {
-            "spdxElementId": "SPDXRef-pkg-pypi-example-1.0",
+            "spdxElementId": "SPDXRef-pkg-pypi-example-1.0-42410e0c",
             "relationshipType": "DEPENDS_ON",
-            "relatedSpdxElement": "SPDXRef-requires-dist-packaging-24",
+            "relatedSpdxElement": "SPDXRef-requires-dist-packaging-24-45a0ad48",
         },
         {
-            "spdxElementId": "SPDXRef-pkg-pypi-example-1.0",
+            "spdxElementId": "SPDXRef-pkg-pypi-example-1.0-42410e0c",
             "relationshipType": "DEPENDS_ON",
-            "relatedSpdxElement": "SPDXRef-requires-dist-tomli-2-python-version-3.11",
+            "relatedSpdxElement": "SPDXRef-requires-dist-tomli-2-python-version-3.11-7c43c831",
         },
         {
-            "spdxElementId": "SPDXRef-pkg-pypi-pip-1.0",
+            "spdxElementId": "SPDXRef-pkg-pypi-pip-1.0-file-name-pip-1.0-py3-none-any.whl-ccff93ba",
             "relationshipType": "DEPENDS_ON",
-            "relatedSpdxElement": "SPDXRef-pkg-pypi-pip-1.0-vendored-pkg-pypi-urllib3-1.26.4",
+            "relatedSpdxElement": urllib3,
         },
     ]
 
@@ -115,7 +118,7 @@ def test_spdx_build_tools(build_sbom: BuildSbom) -> None:
         relationship["relatedSpdxElement"]
         for relationship in to_spdx(build_sbom())["relationships"]
         if relationship["relationshipType"] == "BUILD_TOOL_OF"
-    } == {"SPDXRef-pkg-pypi-example-1.0"}
+    } == {"SPDXRef-pkg-pypi-example-1.0-42410e0c"}
 
 
 @pytest.mark.parametrize(
@@ -163,7 +166,7 @@ def test_spdx_creation_info(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
     (root / "build.py").write_text(
-        "from python_sbom import SbomBuildHook\n\n\ndef get_build_hook():\n    return SbomBuildHook\n",
+        "from python_sbom.hatch import SbomBuildHook\n\n\ndef get_build_hook():\n    return SbomBuildHook\n",
         encoding="utf-8",
     )
     cyclonedx: Final[Document] = build_sbom(hook=hook)
@@ -184,3 +187,12 @@ def test_spdx_namespace_without_repository(build_sbom: BuildSbom) -> None:
     assert to_spdx(cyclonedx)["documentNamespace"] == (
         f"https://spdx.org/spdxdocs/sboms/Example-1.0-{cyclonedx['serialNumber'].removeprefix('urn:uuid:')}"
     )
+
+
+def test_spdx_conditional_requirements_unique_ids(build_sbom: BuildSbom) -> None:
+    project = """[project]\nname = "example"\nversion = "1.0"
+dependencies = ["foo; python_version < '3.12'", "foo; python_version >= '3.12'"]\n"""
+    ids = [
+        package["SPDXID"] for package in to_spdx(build_sbom(project=project))["packages"] if package["name"] == "foo"
+    ]
+    assert (len(ids), len(set(ids))) == (2, 2)

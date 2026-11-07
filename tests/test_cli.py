@@ -69,3 +69,15 @@ def test_cli_validate_no_wheel(tmp_path: Path, capsys: pytest.CaptureFixture[str
     with pytest.raises(SystemExit) as error:
         main(["validate", str(tmp_path)])
     assert (error.value.code, capsys.readouterr().err) == (1, f"no wheel found in {tmp_path}\n")
+
+
+def test_cli_embed_not_a_wheel(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with zipfile.ZipFile(archive := tmp_path / "broken-1.0-py3-none-any.whl", "w") as zipped:
+        zipped.writestr("broken/__init__.py", "")
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'broken'\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as error:
+        main(["embed", str(archive), "--root", str(tmp_path)])
+    assert (error.value.code, capsys.readouterr().err) == (
+        1,
+        f"python-sbom embed: {archive} has no .dist-info/METADATA, so it is not a wheel\n",
+    )

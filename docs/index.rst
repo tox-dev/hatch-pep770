@@ -24,7 +24,7 @@ enable it in ``pyproject.toml``:
 
     [build-system]
     build-backend = 'hatchling.build'
-    requires = ['python-sbom>=0.1', 'hatchling>=1.28']
+    requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.1']
 
     [tool.hatch.build.hooks.python-sbom]
 

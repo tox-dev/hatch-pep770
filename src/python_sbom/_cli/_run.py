@@ -5,26 +5,28 @@ import sys
 import tomllib
 from typing import TYPE_CHECKING
 
-from ._embed import embed
-from ._project import Project
-from ._spdx import to_spdx
-from ._validate import validate_wheel
+from python_sbom._collect._facts import BuildFacts, git_revision
+from python_sbom._collect._settings import Settings
+from python_sbom._formats._json import dumps
+from python_sbom._formats._spdx import to_spdx
+from python_sbom._validate._checks import validate_wheel
+from python_sbom._wheel._embed import BuiltWheel
 
 if TYPE_CHECKING:
-    from ._cli import Options
+    from ._parser import Options
 
 
 def run(options: Options) -> bool:
     if options.command == "embed":
         pyproject = options.root / "pyproject.toml"
         table = tomllib.loads(pyproject.read_text(encoding="utf-8")).get("tool", {}).get("python-sbom", {})
-        project = Project.from_table(table, root=options.root, where=f"[tool.python-sbom] of {pyproject}")
+        settings = Settings.from_table(table, f"[tool.python-sbom] of {pyproject}")
+        facts = BuildFacts.collect(options.root, git_revision)
         for wheel in options.wheels:
-            sys.stdout.write(f"wrote {embed(wheel, project)} into {wheel.name}\n")
+            sys.stdout.write(f"wrote {BuiltWheel(wheel, options.root, settings).embed(facts)} into {wheel.name}\n")
         return True
     if options.command == "spdx":
-        bom = json.loads(options.source.read_text(encoding="utf-8"))
-        options.target.write_bytes(f"{json.dumps(to_spdx(bom), indent=2)}\n".encode())
+        options.target.write_bytes(dumps(to_spdx(json.loads(options.source.read_text(encoding="utf-8")))))
         return True
     allowed = None if options.allowed_licenses is None else frozenset(options.allowed_licenses)
     wheels = sorted(wheel for path in options.paths for wheel in (path.glob("*.whl") if path.is_dir() else [path]))

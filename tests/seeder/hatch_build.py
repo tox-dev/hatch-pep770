@@ -4,7 +4,7 @@ import ast
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from python_sbom import SbomBuildHook
+from python_sbom.hatch import SbomBuildHook
 
 if TYPE_CHECKING:
     from python_sbom import Property

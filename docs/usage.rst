@@ -5,7 +5,8 @@ With hatchling
 --------------
 
 Add the hook to ``build-system.requires`` and enable it with an empty table, as the quick start on the :doc:`index`
-shows. hatchling 1.28 added SBOM support to wheels, so the hook requires it. The hook acts on wheel builds only; an
+shows. The ``hatch`` extra brings hatchling 1.28, the first release that puts an SBOM into a wheel; the command line
+and the library need no hatchling. The hook acts on wheel builds only; an
 sdist carries no SBOM.
 
 The SBOM links to the wheel's PyPI attestation, so it needs the wheel's tag. List the hook after any hook that changes

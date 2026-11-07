@@ -2,46 +2,46 @@
 
 from __future__ import annotations
 
-from ._cli import Options, main
-from ._cyclonedx import (
-    Body,
-    Component,
-    Dependency,
-    Document,
-    OrganizationalEntity,
-    Property,
-    build_tools,
-    component_from_metadata,
-    document,
-    timestamp,
-)
-from ._embed import embed
-from ._hook import SbomBuildHook
-from ._project import BundledWheelProperties, Project, Toml
-from ._spdx import Spdx, to_spdx
-from ._validate import validate, validate_wheel
+from ._backend import Backend
+from ._cli._parser import Options, main
+from ._collect._facts import BuildFacts, RevisionReader, git_revision
+from ._collect._settings import Settings, Toml
+from ._errors import SbomError, SettingsError, SourceRevisionError, WheelError
+from ._extension import ContentProvider
+from ._formats._json import dumps
+from ._formats._spdx import Spdx, to_spdx
+from ._model._components import component_from_metadata, document
+from ._model._types import Body, Component, Dependency, Document, OrganizationalEntity, Property
+from ._validate._checks import validate, validate_wheel
+from ._wheel._embed import BuiltWheel
 from .version import version as __version__
 
 __all__ = [
+    "Backend",
     "Body",
-    "BundledWheelProperties",
+    "BuildFacts",
+    "BuiltWheel",
     "Component",
+    "ContentProvider",
     "Dependency",
     "Document",
     "Options",
     "OrganizationalEntity",
-    "Project",
     "Property",
-    "SbomBuildHook",
+    "RevisionReader",
+    "SbomError",
+    "Settings",
+    "SettingsError",
+    "SourceRevisionError",
     "Spdx",
     "Toml",
+    "WheelError",
     "__version__",
-    "build_tools",
     "component_from_metadata",
     "document",
-    "embed",
+    "dumps",
+    "git_revision",
     "main",
-    "timestamp",
     "to_spdx",
     "validate",
     "validate_wheel",

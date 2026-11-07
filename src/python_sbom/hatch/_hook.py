@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import shutil
 import tempfile
 from email.parser import Parser
@@ -11,15 +10,20 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.builders.wheel import WheelBuilder
 from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 
-from ._project import Project, sbom_file_name
+from python_sbom._backend import Backend
+from python_sbom._collect._facts import BuildFacts, git_revision
+from python_sbom._collect._settings import Settings
+from python_sbom._extension import ContentProvider
 
 if TYPE_CHECKING:
-    from ._cyclonedx import Property
+    from email.message import Message
+
+    from python_sbom._model._types import Property
 
 
-class SbomBuildHook(BuildHookInterface):
+class SbomBuildHook(BuildHookInterface, ContentProvider):
     """
-    Hatchling build hook that writes a PEP 770 CycloneDX SBOM into the wheel's ``.dist-info/sboms/``.
+    Hatchling build hook that writes a CycloneDX SBOM into the wheel's ``.dist-info/sboms/``, as PEP 770 describes.
 
     Enable it with a ``[tool.hatch.build.hooks.python-sbom]`` table, or subclass it in a hatchling custom build hook to
     add project-specific detail through :meth:`bundled_wheel_properties`.
@@ -43,28 +47,21 @@ class SbomBuildHook(BuildHookInterface):
         """
         if not isinstance(builder := self.build_config.builder, WheelBuilder):
             return
-        metadata = Parser().parsestr(
-            builder.config.core_metadata_constructor(self.metadata, extra_dependencies=build_data["dependencies"])
-        )
         tag = build_data.get("tag") or (
             builder.get_best_matching_tag() if build_data["infer_tag"] else builder.get_default_tag()
         )
-        project = Project.from_table(
-            self.config,
-            root=Path(self.root),
-            where=f"build hook `{self.PLUGIN_NAME}`",
-            # a custom build hook script shapes the document, so the SBOM lists it among the build tools
-            build_script=PurePosixPath(self.config.get("path", DEFAULT_BUILD_SCRIPT))
-            if self.PLUGIN_NAME == "custom"
-            else None,
-            bundled_wheel_properties=self.bundled_wheel_properties,
+        backend = _HatchBackend(
+            hook=self,
+            metadata=builder.config.core_metadata_constructor(
+                self.metadata, extra_dependencies=build_data["dependencies"]
+            ),
+            wheel_name=f"{builder.artifact_project_id}-{tag}.whl",
         )
-        content = json.dumps(project.describe(metadata, f"{builder.artifact_project_id}-{tag}.whl"), indent=2)
+        name, content = backend.sbom(BuildFacts.collect(backend.root, git_revision))
         # written outside self.directory, which is also the wheel's output directory, so no stray copy lands next to
         # the built artifacts
         self._sbom_directory = Path(tempfile.mkdtemp(prefix="python-sbom-"))
-        # bytes, so the line endings do not depend on the build machine's OS
-        (sbom := self._sbom_directory / sbom_file_name(metadata)).write_bytes(f"{content}\n".encode())
+        (sbom := self._sbom_directory / name).write_bytes(content)
         build_data["sbom_files"].append(str(sbom))
 
     def bundled_wheel_properties(  # ruff: ignore[no-self-use]  # subclasses override it
@@ -100,6 +97,36 @@ class SbomBuildHook(BuildHookInterface):
         if self._sbom_directory is not None:
             shutil.rmtree(self._sbom_directory)
             self._sbom_directory = None
+
+
+class _HatchBackend(Backend):
+    def __init__(self, *, hook: SbomBuildHook, metadata: str, wheel_name: str) -> None:
+        self._hook = hook
+        self._metadata = metadata
+        self._wheel_name = wheel_name
+
+    @property
+    def root(self) -> Path:
+        return Path(self._hook.root)
+
+    @property
+    def settings(self) -> Settings:
+        return Settings.from_table(self._hook.config, f"build hook `{self._hook.PLUGIN_NAME}`")
+
+    def metadata(self) -> Message:
+        return Parser().parsestr(self._metadata)
+
+    def wheel_name(self) -> str:
+        return self._wheel_name
+
+    def build_script(self) -> PurePosixPath | None:
+        # a custom build hook script shapes the document, so the SBOM lists it among the build tools
+        if self._hook.PLUGIN_NAME != "custom":
+            return None
+        return PurePosixPath(self._hook.config.get("path", DEFAULT_BUILD_SCRIPT))
+
+    def bundled_wheel_properties(self, wheel: Path) -> list[Property]:
+        return self._hook.bundled_wheel_properties(wheel)
 
 
 __all__ = [

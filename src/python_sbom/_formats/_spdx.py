@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
-from .version import version
+from python_sbom.version import version
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from ._cyclonedx import Component, Document, License
+    from python_sbom._model._types import Component, Document, License
 
 
 class _Checksum(TypedDict):
@@ -81,7 +82,7 @@ def to_spdx(bom: Document) -> Spdx:
     """
     root: Final[Component] = bom["metadata"]["component"]
     tools: Final[list[Component]] = bom["metadata"]["tools"]["components"]
-    name: Final[str] = f"{root['name']}-{root['version']}"
+    name: Final[str] = f"{root['name']}-{root['version']}" if "version" in root else root["name"]
     namespace: Final[str] = re.sub(r"[-_.]+", "-", root["name"]).lower()
     repository: Final[str] = next(
         (
@@ -126,7 +127,7 @@ def to_spdx(bom: Document) -> Spdx:
             *(
                 _relationship(_spdx_id(entry["ref"]), "DEPENDS_ON", _spdx_id(dependency))
                 for entry in bom["dependencies"]
-                for dependency in entry["dependsOn"]
+                for dependency in entry.get("dependsOn", [])
             ),
             *(_relationship(_spdx_id(tool["bom-ref"]), "BUILD_TOOL_OF", _spdx_id(root["bom-ref"])) for tool in tools),
         ],
@@ -196,7 +197,10 @@ def _relationship(element: str, kind: str, related: str) -> _Relationship:
 
 
 def _spdx_id(bom_ref: str) -> str:
-    return f"SPDXRef-{re.sub(r'[^A-Za-z0-9.]+', '-', bom_ref).strip('-')}"
+    # SPDX ids allow letters, digits, "." and "-"; the digest keeps two refs that differ only in other characters,
+    # such as the markers of two conditional requirements, apart
+    readable = re.sub(r"[^A-Za-z0-9.]+", "-", bom_ref).strip("-")
+    return f"SPDXRef-{readable}-{hashlib.sha256(bom_ref.encode()).hexdigest()[:8]}"
 
 
 __all__ = [

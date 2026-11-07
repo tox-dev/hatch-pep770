@@ -8,7 +8,7 @@ pieces the hook uses.
 Add properties to bundled wheels
 --------------------------------
 
-:class:`~python_sbom.SbomBuildHook` calls :meth:`~python_sbom.SbomBuildHook.bundled_wheel_properties` once per
+:class:`~python_sbom.hatch.SbomBuildHook` calls :meth:`~python_sbom.hatch.SbomBuildHook.bundled_wheel_properties` once per
 bundled wheel. Override it in a hatchling `custom build hook <https://hatch.pypa.io/latest/plugins/build-hook/custom/>`_
 to add properties. They follow ``<project>:bundled-wheel`` and come before those taken from the wheel's metadata. The
 options then live in the custom hook's table, and the SBOM lists the script among the build tools, hashed, because the
@@ -25,7 +25,7 @@ Python versions receive each wheel. Its ``pyproject.toml`` names the supplier an
 
     [build-system]
     build-backend = 'hatchling.build'
-    requires = ['hatch-vcs>=0.5', 'hatchling>=1.28', 'python-sbom>=0.1']
+    requires = ['hatch-vcs>=0.5', 'hatchling>=1.28', 'python-sbom[hatch]>=0.1']
 
     [tool.hatch.build.hooks.custom]
     path = 'hatch_build.py'
@@ -42,7 +42,7 @@ Python versions receive each wheel. Its ``pyproject.toml`` names the supplier an
     from pathlib import Path
     from typing import TYPE_CHECKING
 
-    from python_sbom import SbomBuildHook
+    from python_sbom.hatch import SbomBuildHook
 
     if TYPE_CHECKING:
         from python_sbom import Property
@@ -83,7 +83,7 @@ imports. The pip component of the wheel's SBOM then carries these properties, in
       - ``>=3.10``
 
 A project that still builds on a Python older than python-sbom supports, as virtualenv does on 3.9 and 3.10, puts an
-environment marker on the requirement, ``python-sbom>=0.1; python_version >= '3.11'``. Its script then falls back to
+environment marker on the requirement, ``python-sbom[hatch]>=0.1; python_version >= '3.11'``. Its script then falls back to
 hatchling's plain hook there, so those builds produce a wheel without an SBOM:
 
 .. code-block:: python
@@ -91,7 +91,7 @@ hatchling's plain hook there, so those builds produce a wheel without an SBOM:
     import sys
 
     if sys.version_info >= (3, 11):
-        from python_sbom import SbomBuildHook as BaseHook
+        from python_sbom.hatch import SbomBuildHook as BaseHook
     else:  # python-sbom needs Python 3.11; older builds get no SBOM
         from hatchling.builders.hooks.plugin.interface import BuildHookInterface as BaseHook
 
@@ -99,55 +99,27 @@ Describe another artifact
 -------------------------
 
 virtualenv also publishes a zipapp. Its SBOM describes what the archive holds and records the same build toolchain as
-the wheel's. The functions the hook uses are public for that:
+the wheel's. The pieces the hook uses are public for that:
 
+- :class:`~python_sbom.BuildFacts` collects the build time from ``SOURCE_DATE_EPOCH``, the source revision and the
+  interpreter and distributions of the running environment, once, at the edge.
 - :func:`~python_sbom.component_from_metadata` turns a distribution's ``METADATA`` into a component, with licenses,
   project URLs and metadata properties.
-- :func:`~python_sbom.build_tools` records the interpreter and every distribution of the running environment, with
-  the files of the pure-Python ones and the dependencies between them.
-- :func:`~python_sbom.timestamp` gives the time from ``SOURCE_DATE_EPOCH``.
 - :func:`~python_sbom.document` adds the CycloneDX header, with a serial number derived from the content.
 
-.. code-block:: python
+This function, which the test suite runs and validates, describes a zipapp with no components yet:
 
-    import uuid
-
-    from python_sbom import Body, Component, build_tools, document, timestamp
-
-    tools, tool_dependencies = build_tools()
-    zipapp: Component = {'type': 'application', 'bom-ref': 'pkg:generic/virtualenv.pyz@21.0', 'name': 'virtualenv.pyz'}
-    body: Body = {
-        'metadata': {
-            'timestamp': timestamp(),
-            'lifecycles': [{'phase': 'build'}],
-            'tools': {'components': tools},
-            'component': zipapp,
-        },
-        'components': [],
-        'dependencies': [{'ref': zipapp['bom-ref'], 'dependsOn': []}, *tool_dependencies],
-        'formulation': [],
-    }
-    sbom = document(body, uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/pypa/virtualenv/sboms'))
+.. literalinclude:: examples/zipapp.py
+    :language: python
+    :pyobject: describe_zipapp
 
 :func:`~python_sbom.validate` checks the result the way ``python-sbom validate`` checks a wheel's SBOM.
 
-Use it as a library
--------------------
+Add another build backend
+-------------------------
 
-:class:`~python_sbom.Project` holds the options and writes the SBOM of a wheel from its ``METADATA``, and
-:func:`~python_sbom.embed` rewrites a built wheel with it. Pass ``bundled_wheel_properties`` to add properties to
-bundled wheels without a hatchling hook:
-
-.. code-block:: python
-
-    from pathlib import Path
-
-    from python_sbom import Project, embed
-
-    project = Project.from_table(
-        {'bundled-wheels': ['src/project/wheels/*.whl']},
-        root=Path.cwd(),
-        where='my build script',
-        bundled_wheel_properties=lambda wheel: [{'name': 'project:role', 'value': 'seed'}],
-    )
-    embed(Path('dist/project-1.0-py3-none-any.whl'), project)
+A build system other than hatchling plugs in by subclassing :class:`~python_sbom.Backend`. The subclass supplies the
+wheel's metadata, its file name, the project directory and the settings; :meth:`~python_sbom.Backend.sbom` does the
+rest. :class:`~python_sbom.BuiltWheel`, the backend behind ``python-sbom embed``, reads all of that from a finished
+wheel; subclass it and override :meth:`~python_sbom.Backend.bundled_wheel_properties` to add properties to bundled wheels
+without hatchling.

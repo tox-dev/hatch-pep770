@@ -99,7 +99,7 @@ def test_custom_build_script_recorded(
     root: Path, write_project: WriteProject, urls: str, references: dict[str, list[dict[str, str]]]
 ) -> None:
     (script := root / "build.py").write_text(
-        "from __future__ import annotations\n\nfrom python_sbom import SbomBuildHook\n\n\n"
+        "from __future__ import annotations\n\nfrom python_sbom.hatch import SbomBuildHook\n\n\n"
         "def get_build_hook() -> type[SbomBuildHook]:\n    return SbomBuildHook\n",
         encoding="utf-8",
     )

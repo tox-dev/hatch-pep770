@@ -10,7 +10,7 @@ from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDi
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 
 if TYPE_CHECKING:
-    from ._spdx import Spdx
+    from python_sbom._formats._spdx import Spdx
 
 
 def schema_error(raw: str) -> str | None:

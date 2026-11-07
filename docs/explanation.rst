@@ -1,6 +1,45 @@
 How it works
 ============
 
+Architecture
+------------
+
+The package keeps each concern in its own place, and only the backends know a build system. A backend gathers what
+the edge knows: the wheel's metadata and file name, the project's settings, and, through
+:class:`~python_sbom.BuildFacts`, the build time, the source revision and the build environment. The core turns those
+explicit inputs into the document with pure functions, then serializes it. The hatchling hook hands the result to
+hatchling; :class:`~python_sbom.BuiltWheel` writes it into a finished wheel. SPDX rendering and validation read a
+document and nothing else.
+
+.. mermaid::
+
+    flowchart LR
+        subgraph backends[Backends]
+            hatch[python_sbom.hatch<br/>hatchling build hook]
+            built[BuiltWheel<br/>wheel from any backend]
+        end
+        subgraph collect[Collect, at the edge]
+            settings[Settings<br/>hook table or tool.python-sbom table]
+            facts[BuildFacts<br/>time, revision, build tools]
+            source[Source tree<br/>bundled wheels, license files]
+        end
+        model[Model<br/>pure document building]
+        formats[Formats<br/>CycloneDX JSON, SPDX 2.3]
+        validate[Validate<br/>schema, references, licenses]
+        hatch & built --> settings & facts & source
+        settings & facts & source --> model
+        formats --> hatch & built & validate
+        model --> formats
+        classDef edge fill:#cfe4ff,stroke:#1f6feb,color:#0b1f3a;
+        classDef core fill:#d8f3dc,stroke:#2d6a4f,color:#081c15;
+        class hatch,built,settings,facts,source edge;
+        class model,formats,validate core;
+
+Extension points are explicit: a new build system subclasses :class:`~python_sbom.Backend`, a project adds content
+through the :class:`~python_sbom.ContentProvider` method its hook or backend implements, and another version control
+system plugs in as a :class:`~python_sbom.RevisionReader`. Errors are subclasses of :class:`~python_sbom.SbomError`, so
+the command line reports them without a traceback.
+
 What the SBOM records
 ---------------------
 

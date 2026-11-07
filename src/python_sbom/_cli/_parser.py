@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import sys
 from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from python_sbom._errors import SbomError
+from python_sbom.version import version
+
 from ._run import run
-from .version import version
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -19,7 +22,13 @@ def main(args: Sequence[str] | None = None) -> None:
     :raises SystemExit: with status 1 when a command fails
 
     """
-    if not run(_build_parser().parse_args(args, namespace=Options())):
+    options = _build_parser().parse_args(args, namespace=Options())
+    try:
+        succeeded = run(options)
+    except SbomError as error:
+        sys.stderr.write(f"python-sbom {options.command}: {error}\n")
+        succeeded = False
+    if not succeeded:
         raise SystemExit(1)
 
 

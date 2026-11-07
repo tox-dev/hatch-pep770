@@ -45,8 +45,11 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "hatchling>=1.28",
   "packaging>=26.3",
+]
+optional-dependencies.hatch = [
+  # 1.28 is the first release that puts an SBOM into a wheel
+  "hatchling>=1.28",
 ]
 optional-dependencies.validate = [
   "cyclonedx-python-lib[json-validation]>=11.12",
@@ -58,7 +61,7 @@ urls.Homepage = "https://github.com/tox-dev/python-sbom"
 urls.Source = "https://github.com/tox-dev/python-sbom"
 urls.Tracker = "https://github.com/tox-dev/python-sbom/issues"
 scripts.python-sbom = "python_sbom.__main__:main"
-entry-points.hatch.python-sbom = "python_sbom.hooks"
+entry-points.hatch.python-sbom = "python_sbom.hatch.hooks"
 
 [dependency-groups]
 dev = [
@@ -70,6 +73,7 @@ dev = [
 test = [
   "covdefaults>=2.3",
   "cyclonedx-python-lib[json-validation]>=11.12",
+  "hatchling>=1.28",
   "installer>=0.7",
   "pytest>=9.1.1",
   "pytest-cov>=7.1",
@@ -83,9 +87,11 @@ type = [
 ]
 docs = [
   "furo>=2025.12.19",
+  "hatchling>=1.28",
   "sphinx>=9.0.4",
   "sphinx-argparse-cli>=1.23",
   "sphinx-autodoc-typehints>=3.17",
+  "sphinxcontrib-mermaid>=2.1.1",
 ]
 build = [
   "hatch-fancy-pypi-readme>=25.1",
@@ -168,6 +174,8 @@ environment.python-version = "3.15"
 
 [tool.pytest]
 ini_options.testpaths = [ "tests" ]
+# the tests run the examples under docs/examples that the documentation includes
+ini_options.pythonpath = [ "." ]
 ini_options.filterwarnings = [
   "error",
 ]
