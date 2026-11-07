@@ -659,34 +659,6 @@ size = 25604
 sha256 = "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
 
 [[packages]]
-name = "dep-logic"
-version = "0.7.2"
-marker = "\"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
-requires-python = ">=3.10"
-dependencies = [
-    { name = "packaging" },
-]
-index = "https://pypi.org/simple/"
-
-[packages.sdist]
-name = "dep_logic-0.7.2.tar.gz"
-upload-time = 2026-08-28 03:43:17.064829+00:00
-url = "https://files.pythonhosted.org/packages/1b/7a/ac7db322bfc792c237e059e0b048e8e0784eb624d0447e3cf5e231323725/dep_logic-0.7.2.tar.gz"
-size = 37962
-
-[packages.sdist.hashes]
-sha256 = "2a3c49526075b0bc6825f0ea8c2d9f464de48b7b85f3f3d2900b4e5950fefedf"
-
-[[packages.wheels]]
-name = "dep_logic-0.7.2-py3-none-any.whl"
-upload-time = 2026-08-28 03:43:15.718045+00:00
-url = "https://files.pythonhosted.org/packages/d0/71/e6979663eb7feaab2a2fcd3a004c0fc33b2a5d0ebafc4c474000b2be6732/dep_logic-0.7.2-py3-none-any.whl"
-size = 36183
-
-[packages.wheels.hashes]
-sha256 = "33640c4ba7fd45f2504442eb9e0c12e57dac253c748ca3925749548a5c556bae"
-
-[[packages]]
 name = "distlib"
 version = "0.4.4"
 marker = "\"dev\" in dependency_groups or \"lint\" in dependency_groups"

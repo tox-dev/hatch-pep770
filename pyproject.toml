@@ -1,7 +1,6 @@
 [build-system]
 build-backend = "hatchling.build"
 requires = [
-  "dep-logic>=0.7.2",
   "hatch-fancy-pypi-readme>=25.1",
   "hatch-vcs>=0.5",
   "hatchling>=1.32.4",
@@ -49,7 +48,6 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "dep-logic>=0.7.2",
   "installer>=1.1",
   "packageurl-python>=0.11.1",
   "packaging>=26.3",
@@ -80,7 +78,6 @@ dev = [
 test = [
   "covdefaults>=2.3",
   "cyclonedx-python-lib[json-validation]>=11.12",
-  "dep-logic>=0.7.2",
   "hatchling>=1.28",
   "installer>=1.1",
   "pytest>=9.1.1",
