@@ -5,17 +5,20 @@ With hatchling
 --------------
 
 Add the hook to ``build-system.requires`` and enable it with an empty table, as the quick start on the :doc:`index`
-shows. The ``hatch`` extra brings hatchling 1.28, the first release that puts an SBOM into a wheel; the command line
-and the library need no hatchling. The hook acts on wheel builds only; an
-sdist carries no SBOM.
+shows. The ``hatch`` extra brings hatchling; the command line and the library need none. The hook acts on wheel builds
+only: an sdist and an editable wheel carry no SBOM.
 
-The SBOM links to the wheel's PyPI attestation, so it needs the wheel's tag. List the hook after any hook that changes
-the tag.
+The hook writes the SBOM once hatchling has written the wheel, so the document describes the final file name and
+metadata, whatever dependencies or tag other hooks changed. Hatchling runs the hooks in the order of their tables; see
+its `build hook documentation <https://hatch.pypa.io/latest/config/build/#build-hooks>`_. The order does not matter
+for this hook.
 
 Options
 ~~~~~~~
 
-Each option lives in the hook's table and is optional.
+The options live in a ``[tool.python-sbom]`` table. Each is optional; an unknown key fails the build, so a typo cannot
+pass silently. A key in the hook's own table, such as ``[tool.hatch.build.hooks.python-sbom]``, wins over the same key
+in ``[tool.python-sbom]``.
 
 ``supplier``
     The organization that supplies the project: a table with a ``name`` string and an optional ``url`` string array. It
@@ -24,7 +27,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.python-sbom]
+        [tool.python-sbom]
         supplier = { name = 'Python Packaging Authority', url = ['https://www.pypa.io'] }
 
 ``repository``
@@ -33,7 +36,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.python-sbom]
+        [tool.python-sbom]
         repository = 'https://gitlab.com/example/project'
 
 ``default-branch``
@@ -41,7 +44,7 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.python-sbom]
+        [tool.python-sbom]
         default-branch = 'trunk'
 
 ``bundled-wheels``
@@ -50,19 +53,39 @@ Each option lives in the hook's table and is optional.
 
     .. code-block:: toml
 
-        [tool.hatch.build.hooks.python-sbom]
+        [tool.python-sbom]
         bundled-wheels = ['src/project/wheels/*.whl']
 
-A bundled wheel whose project URLs point to the same forge account as ``repository`` gets the same ``supplier``. Its
-vendored packages come from ``_vendor/vendor.txt``, pip's manifest, whose lines must each pin one exact version, and
-from any ``.dist-info/METADATA`` under ``_vendor/``.
+``content-provider``
+    A :class:`~python_sbom.ContentProvider`, as ``module:attribute`` importable from the project root, that adds what
+    the project knows beyond its metadata; :doc:`extend` shows one.
+
+    .. code-block:: toml
+
+        [tool.python-sbom]
+        content-provider = 'sbom_content:Content'
+
+A bundled wheel's files come from its ``RECORD``, and the build fails when a member is missing from it, a row names a
+member the wheel lacks, or a digest differs from the member's content. Its vendored packages come from
+``_vendor/vendor.txt``, pip's manifest, whose lines must each pin one exact version, and from any
+``.dist-info/METADATA`` under ``_vendor/``. A bundled wheel gets a supplier only from the project's content provider,
+never from its own metadata.
+
+The source revision
+~~~~~~~~~~~~~~~~~~~
+
+The SBOM names the commit the wheel was built from. It takes the first of: the ``PYTHON_SBOM_COMMIT`` environment
+variable; git, for a checkout or any directory inside one; and the ``node`` line of an expanded ``.git_archival.txt``,
+for a ``git archive``. A checkout with uncommitted changes to tracked files gets a ``<project>:vcs-dirty`` property, and
+the link to the revision says so. A wheel built from an sdist, as ``python -m build`` and ``uv build`` do by default,
+has no checkout, so set ``PYTHON_SBOM_COMMIT`` or ship ``.git_archival.txt`` to keep the commit.
 
 With another build backend
 --------------------------
 
-A backend other than hatchling, such as `meson-python <https://mesonpy.readthedocs.io/>`_, cannot run the hook.
+A backend other than hatchling, such as `meson-python <https://mesonbuild.com/meson-python/>`_, cannot run the hook.
 ``python-sbom embed`` writes the same document into a wheel that backend built, adds the ``RECORD`` row, and keeps
-every other entry of the archive as it was. It reads the options above from a ``[tool.python-sbom]`` table:
+every other entry of the archive as it was. It reads the options from ``[tool.python-sbom]``:
 
 .. code-block:: toml
 
@@ -77,14 +100,22 @@ Build, then embed, from the project root:
     $ python-sbom embed dist/*.whl
     wrote turbohtml-1.0.dist-info/sboms/turbohtml.cdx.json into turbohtml-1.0-cp314-cp314-linux_x86_64.whl
 
-The build tool record describes the environment ``embed`` runs in, not the isolated environment the backend built in.
-To record the build toolchain, build without isolation in the same locked environment:
+``--commit`` names the source revision when the wheel came from an sdist, and ``--content-provider`` overrides the
+``content-provider`` option.
+
+The build tool record lists the environment named by ``--build-env``, by default the one ``embed`` runs in. To record
+the real toolchain, point ``--build-env`` at the build environment's ``site-packages``, or build without isolation in
+the same locked environment. On Linux, meson-python also needs ``patchelf`` there:
 
 .. code-block:: console
 
-    $ python -m pip install python-sbom meson-python meson ninja
+    $ python -m pip install python-sbom meson-python meson ninja patchelf
     $ python -m build --wheel --no-isolation
     $ python-sbom embed dist/*.whl
+
+``auditwheel repair`` renames a Linux wheel to its ``manylinux`` tag, so the attestation link in an SBOM written
+before the repair names the old file. Run ``embed`` on the repaired wheel, after ``auditwheel``, to describe the file
+you publish; auditwheel's own SBOM in the same directory stays untouched.
 
 Render it as SPDX
 -----------------
@@ -105,9 +136,10 @@ number, so both documents name the same build.
 Check it in CI
 --------------
 
-``python-sbom validate`` needs the ``validate`` extra. It checks each wheel's SBOM against the CycloneDX 1.6 schema,
-requires the ``urn:uuid`` serial number ``actions/attest`` needs to recognize the format, checks that every reference
-resolves, and validates the SPDX rendering:
+``python-sbom validate`` needs the ``validate`` extra, and says so when it is missing. It checks every CycloneDX SBOM
+in each wheel's ``.dist-info/sboms`` against the CycloneDX 1.6 schema. For the SBOM python-sbom wrote, it also requires
+the ``urn:uuid`` serial number ``actions/attest`` needs to recognize the format, checks that every reference resolves,
+and validates the SPDX rendering; an SBOM another tool wrote, such as auditwheel's, gets the schema check alone:
 
 .. code-block:: console
 

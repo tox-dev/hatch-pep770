@@ -49,7 +49,7 @@ exclude_patterns: Final[list[str]] = ["changelog.d/*"]
 autosectionlabel_maxdepth: Final[int] = 2
 
 html_theme: Final[str] = "furo"
-html_title: Final[str] = "python-sbom"
+html_title: Final[str] = "python-sbom: SBOMs for Python distributions"
 html_last_updated_fmt: Final[str] = _NOW.isoformat()
 html_static_path: Final[list[str]] = ["_static"]
 html_css_files: Final[list[str]] = ["changelog-toc.css"]
@@ -59,12 +59,13 @@ pygments_dark_style: Final[str] = "monokai"
 autoclass_content: Final[str] = "both"
 inheritance_alias: Final[dict[str, str]] = _inheritance_aliases()
 inheritance_graph_attrs: Final[dict[str, str]] = {"rankdir": "TB"}
-autodoc_default_options: Final[dict[str, bool | str]] = {
-    "members": True,
-    "member-order": "bysource",
-    "undoc-members": True,
-    "show-inheritance": True,
-}
+# each directive names the members it documents, so hatchling's lifecycle methods and inherited members stay out
+autodoc_default_options: Final[dict[str, bool | str]] = {"member-order": "bysource", "show-inheritance": True}
+autodoc_type_aliases: Final[dict[str, str]] = {"Toml": "python_sbom.Toml"}
+typehints_fully_qualified: Final[bool] = False
+always_document_param_types: Final[bool] = True
+typehints_document_rtype: Final[bool] = True
+typehints_defaults: Final[str] = "comma"
 
 intersphinx_mapping: Final[dict[str, tuple[str, None]]] = {"python": ("https://docs.python.org/3.11", None)}
 extlinks: Final[dict[str, tuple[str, str]]] = {
@@ -75,13 +76,20 @@ nitpicky: Final[bool] = True
 nitpick_ignore: Final[list[tuple[str, str]]] = [
     # hatchling publishes no Sphinx inventory
     ("py:class", "hatchling.builders.hooks.plugin.interface.BuildHookInterface"),
+    ("py:class", "hatchling.metadata.core.ProjectMetadata"),
+    ("py:class", "hatchling.bridge.app.Application"),
     # the Python documentation describes the protocol without a reference target
     ("py:class", "importlib.metadata._meta.PackageMetadata"),
+]
+# parts of the document types that the CycloneDX and SPDX references describe
+nitpick_ignore_regex: Final[list[tuple[str, str]]] = [
+    ("py:class", r"python_sbom\._model\._types\.(Composition|LicenseInfo|Metadata)"),
+    ("py:class", r"python_sbom\._formats\._spdx\._\w+"),
 ]
 
 
 def setup(app: Sphinx) -> None:
-    # without this hook Sphinx resolves pathlib.Path to an undocumented private alias
+    # annotations name the private modules that define a type, and pathlib.Path an undocumented private alias
     app.connect("missing-reference", _resolve_private_path)
     app.connect("source-read", _include_unreleased)
 
@@ -92,9 +100,13 @@ def _resolve_private_path(
     node: pending_xref,
     contnode: Element,
 ) -> reference | None:
-    if node["reftarget"] != "pathlib._local.Path":
+    module, _, name = node["reftarget"].rpartition(".")
+    if node["reftarget"] == "pathlib._local.Path":
+        node["reftarget"] = "pathlib.Path"
+    elif module.startswith("python_sbom._") and name in python_sbom.__all__:
+        node["reftarget"] = f"python_sbom.{name}"
+    else:
         return None
-    node["reftarget"] = "pathlib.Path"
     domain = env.get_domain("py")
     return domain.resolve_xref(env, node["refdoc"], app.builder, node["reftype"], node["reftarget"], node, contnode)
 

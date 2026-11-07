@@ -26,3 +26,5 @@ they include one.
 The release workflow links each fragment to its merged pull request and credits its human author. If several people
 authored a change, put their `GitHub <https://github.com/>`_ handles in a ``by`` credit in the fragment; omit bots and
 reviewers. The changelog uses linked names, while ``GitHub`` Release notes use ``@handle``.
+
+Build the documentation with ``tox r -e docs``; ``tox r -e docs -- -b linkcheck`` checks its external links.
