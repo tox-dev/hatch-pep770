@@ -386,7 +386,10 @@ class Project:
             "bom-ref": f"tool:{script}",
             "name": script.name,
             "version": version,
-            "hashes": [{"alg": "SHA-256", "content": hashlib.sha256((self.root / script).read_bytes()).hexdigest()}],
+            # str, so a Windows drive in an absolute path survives the join with the native root
+            "hashes": [
+                {"alg": "SHA-256", "content": hashlib.sha256((self.root / str(script)).read_bytes()).hexdigest()}
+            ],
         }
         if repository:
             tool["externalReferences"] = [{"type": "vcs", "url": f"{repository}/blob/{self.default_branch}/{script}"}]

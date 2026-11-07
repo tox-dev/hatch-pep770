@@ -221,3 +221,6 @@ matrix.platforms = [ "linux_x86_64" ]
 # release-creator 4.4.0 needs a seven-day cutoff exception.
 # expires 2026-11-09
 packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z
+# simplint 0.7.1, the pre-commit hook, needs a seven-day cutoff exception.
+# expires 2026-11-13
+packages.simplint.uploaded-prior-to = 2026-11-06T21:30:00Z
