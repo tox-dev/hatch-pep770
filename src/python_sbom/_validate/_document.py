@@ -29,8 +29,6 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("dependencies",),
 )
 _SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-# the archive reader stops at the same size
-_MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
 # every check takes time in proportion to the count, so the cap bounds the work an untrusted document can ask for, far
 # above the few thousand components a wheel with its build tools' files lists
 MAX_COMPONENTS: Final[int] = 100_000
@@ -43,11 +41,22 @@ MAX_TEXT: Final[int] = 200
 _MAX_DEPTH: Final[int] = 128
 
 
+def byte_limit(max_components: int) -> int:
+    # python-sbom writes about 540 bytes per component, since every file of the wheel and of its build tools is one; a
+    # KiB each leaves room for documents with fuller components, plus a MiB for the metadata, dependencies and
+    # formulation beside them, while tying what the JSON parser may be asked to hold to the component cap
+    return 1024 * 1024 + max_components * 1024
+
+
 def validate_document(
-    raw: str, allowed_licenses: frozenset[str] | None, max_components: int = MAX_COMPONENTS
+    raw: bytes, allowed_licenses: frozenset[str] | None, max_components: int = MAX_COMPONENTS
 ) -> list[str]:
-    if len(raw) > _MAX_CHARACTERS:
-        return [f"is {len(raw)} characters long, over the {_MAX_CHARACTERS} character limit"]
+    if len(raw) > (limit := byte_limit(max_components)):
+        problem = (
+            f"is over {limit} bytes, the size limit for {max_components} components;"
+            " pass a higher --max-components to check it"
+        )
+        return [problem]
     # one document's problem never stops the others from being checked, so whatever the checks raise is reported
     try:
         return _problems(raw, allowed_licenses, max_components)
@@ -63,14 +72,14 @@ def validate_document(
         return [f"could not be checked, {type(error).__name__}: {str(error)[:MAX_TEXT]}"]
 
 
-def _problems(raw: str, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
+def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_components: int) -> list[str]:
     # every document must conform to the CycloneDX 1.6 schema; one python-sbom wrote must also carry the urn:uuid serial
     # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy. A
     # missing extra fails every document alike, while importing it, half a second, waits until the cheap census passes
     missing_extra: Final[str] = "validation needs the validate extra: pip install 'python-sbom[validate]'"
     if any(find_spec(name) is None for name in _EXTRA):
         raise MissingExtraError(missing_extra)
-    loaded: Final = json.loads(raw)
+    loaded: Final = json.loads(raw.decode("utf-8"))
     if census := _census_problems(loaded, max_components):
         return census
     # find_spec sees only the top-level modules, not a dependency of theirs that is missing or broken
@@ -194,6 +203,7 @@ __all__ = [
     "MAX_COMPONENTS",
     "MAX_TEXT",
     "Json",
+    "byte_limit",
     "is_document",
     "validate_document",
 ]

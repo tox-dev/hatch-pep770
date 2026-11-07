@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from python_sbom._validate._document import Json
 
 # what auditwheel writes: CycloneDX 1.4 conventions, a legacy tools array, no timestamp
-_FOREIGN: Final[str] = json.dumps({
+_FOREIGN: Final[bytes] = json.dumps({
     "bomFormat": "CycloneDX",
     "specVersion": "1.4",
     "version": 1,
@@ -33,19 +33,21 @@ _FOREIGN: Final[str] = json.dumps({
     },
     "components": [{"type": "library", "bom-ref": "pkg:rpm/almalinux/libfoo@1", "name": "libfoo", "version": "1"}],
     "dependencies": [{"ref": "pkg:pypi/plain@1.0", "dependsOn": ["pkg:rpm/almalinux/libfoo@1"]}],
-})
+}).encode()
 
 
 def test_valid(describe: Describe) -> None:
-    assert validate_document(dumps(describe("Requires-Dist: click\nLicense-Expression: MIT\n")).decode(), None) == []
+    assert validate_document(dumps(describe("Requires-Dist: click\nLicense-Expression: MIT\n")), None) == []
 
 
 def test_not_json() -> None:
-    assert validate_document("this is not json", None) == ["is not JSON: Expecting value: line 1 column 1 (char 0)"]
+    assert validate_document(b"this is not json", None) == ["is not JSON: Expecting value: line 1 column 1 (char 0)"]
 
 
 def test_schema_violation() -> None:
-    (problem,) = validate_document(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}), None)
+    (problem,) = validate_document(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}).encode(), None
+    )
     assert problem == 'does not conform to the CycloneDX 1.6 schema: "one" is not of type "integer" at $.version'
 
 
@@ -53,9 +55,22 @@ def test_other_tools_documents_get_the_schema_check_alone() -> None:
     assert validate_document(_FOREIGN, None) == []
 
 
-def test_oversized_document_is_not_parsed() -> None:
-    assert validate_document(" " * (16 * 1024 * 1024 + 1), None) == [
-        "is 16777217 characters long, over the 16777216 character limit"
+@pytest.mark.parametrize(
+    ("max_components", "limit"),
+    [pytest.param(100_000, 103_448_576, id="default"), pytest.param(10, 1_058_816, id="lowered")],
+)
+def test_oversized_document_is_not_parsed(max_components: int, limit: int) -> None:
+    assert validate_document(b" " * (limit + 1), None, max_components) == [
+        (
+            f"is over {limit} bytes, the size limit for {max_components} components; pass a higher --max-components to"
+            " check it"
+        )
+    ]
+
+
+def test_document_at_the_size_limit_is_parsed() -> None:
+    assert validate_document(b" " * 1_058_816, None, 10) == [
+        "is not JSON: Expecting value: line 1 column 1058817 (char 1058816)"
     ]
 
 
@@ -65,7 +80,7 @@ def test_component_cap_counts_nested_components() -> None:
     ]
 
 
-def many_components(groups: int) -> str:
+def many_components(groups: int) -> bytes:
     # groups of 100 parts each
     components = [
         {
@@ -75,7 +90,7 @@ def many_components(groups: int) -> str:
         }
         for group in range(groups)
     ]
-    return json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": components})
+    return json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1, "components": components}).encode()
 
 
 def test_component_cap_can_be_raised() -> None:
@@ -88,24 +103,38 @@ def test_component_cap_can_be_lowered() -> None:
     ]
 
 
-def test_sbom_the_size_of_virtualenvs_passes_by_default(describe: Describe, facts: BuildFacts) -> None:
-    # virtualenv's wheel lists 5,207 components and its zipapp 5,452, nearly all of them files of its build tools
+@pytest.mark.parametrize(
+    ("files", "expected"),
+    [
+        # virtualenv's wheel lists 5,207 components and its zipapp 5,452, nearly all of them files of its build tools
+        pytest.param(5_500, [], id="virtualenv"),
+        # the interpreter and the tool add two, so these reach the default cap, at about 54 MB, and one more file
+        # passes it; the size limit must leave both to the component count
+        pytest.param(99_998, [], id="at-the-cap"),
+        pytest.param(
+            99_999,
+            ["lists more than 100000 components, nested ones included; pass a higher --max-components to check it"],
+            id="over-the-cap",
+        ),
+    ],
+)
+def test_sbom_the_default_cap_admits(describe: Describe, facts: BuildFacts, files: int, expected: list[str]) -> None:
     rows = [
         RecordRow(path=f"tool/module_{index}.py", algorithm="SHA-256", digest="0" * 64, size="1")
-        for index in range(5_500)
+        for index in range(files)
     ]
     tool = InstalledDistribution(
         name="tool", metadata=parse_metadata("Name: tool\nVersion: 1.0\n"), files=rows, depends_on=[]
     )
     document = describe(facts=dataclasses.replace(facts, distributions=[tool]))
-    assert validate_document(dumps(document).decode(), None) == []
+    assert validate_document(dumps(document), None) == expected
 
 
 def test_missing_fields(describe: Describe) -> None:
     # the schema makes the timestamp optional, so the loaded JSON, not the typed document, loses it
     loaded = json.loads(dumps(describe()))
     del loaded["metadata"]["timestamp"]
-    assert validate_document(json.dumps(loaded), None) == [
+    assert validate_document(json.dumps(loaded).encode(), None) == [
         "lacks metadata.timestamp, which every document python-sbom writes carries"
     ]
 
@@ -114,7 +143,9 @@ def test_serial_is_required(describe: Describe) -> None:
     # the schema makes it optional, so the loaded JSON, not the typed document, loses it
     loaded = json.loads(dumps(describe()))
     del loaded["serialNumber"]
-    assert validate_document(json.dumps(loaded), None) == ["serialNumber must be a urn:uuid: RFC 4122 UUID, got ''"]
+    assert validate_document(json.dumps(loaded).encode(), None) == [
+        "serialNumber must be a urn:uuid: RFC 4122 UUID, got ''"
+    ]
 
 
 def test_duplicate_refs(describe: Describe) -> None:
@@ -124,23 +155,25 @@ def test_duplicate_refs(describe: Describe) -> None:
     ]
 
 
-def with_components(document: Document, *components: Component) -> str:
+def with_components(document: Document, *components: Component) -> bytes:
     document["components"].extend(components)
     document["dependencies"][0].setdefault("dependsOn", []).extend(component["bom-ref"] for component in components)
-    return dumps(document).decode()
+    return dumps(document)
 
 
 def test_duplicate_refs_in_other_tools_documents() -> None:
     foreign = json.loads(_FOREIGN)
     foreign["components"].append({"type": "library", "bom-ref": "pkg:pypi/plain@1.0", "name": "copy"})
-    assert validate_document(json.dumps(foreign), None) == ["bom-ref values are not unique: ['pkg:pypi/plain@1.0']"]
+    assert validate_document(json.dumps(foreign).encode(), None) == [
+        "bom-ref values are not unique: ['pkg:pypi/plain@1.0']"
+    ]
 
 
 def test_component_without_bom_ref(describe: Describe) -> None:
     # the schema makes the bom-ref optional, so the loaded JSON, not the typed document, loses it
     loaded = json.loads(dumps(describe()))
     loaded["components"].append({"type": "library", "name": "nameless"})
-    assert validate_document(json.dumps(loaded), None) == ["components lack a bom-ref: ['nameless']"]
+    assert validate_document(json.dumps(loaded).encode(), None) == ["components lack a bom-ref: ['nameless']"]
 
 
 @pytest.mark.parametrize(
@@ -173,13 +206,13 @@ def test_component_without_bom_ref(describe: Describe) -> None:
 def test_schema_valid_variations_pass(describe: Describe, mutate: Callable[[dict[str, Json]], None]) -> None:
     loaded = json.loads(dumps(describe()))
     mutate(loaded)
-    assert validate_document(json.dumps(loaded), None) == []
+    assert validate_document(json.dumps(loaded).encode(), None) == []
 
 
 def test_unknown_dependency_refs(describe: Describe) -> None:
     document = describe()
     document["dependencies"].append({"ref": "ghost", "dependsOn": ["phantom"]})
-    assert validate_document(dumps(document).decode(), None) == [
+    assert validate_document(dumps(document), None) == [
         "dependencies reference bom-refs that do not exist: ['ghost', 'phantom']"
     ]
 
@@ -187,15 +220,13 @@ def test_unknown_dependency_refs(describe: Describe) -> None:
 def test_root_must_depend_on_components(describe: Describe) -> None:
     document = describe("Requires-Dist: click\n")
     document["dependencies"][0]["dependsOn"] = []
-    assert validate_document(dumps(document).decode(), None) == [
-        "root dependsOn [] != components ['requires-dist:click']"
-    ]
+    assert validate_document(dumps(document), None) == ["root dependsOn [] != components ['requires-dist:click']"]
 
 
 def test_workflow_must_reference_tools(describe: Describe) -> None:
     document = describe()
     document.get("formulation", [])[0]["workflows"][0]["resourceReferences"].append({"ref": "pkg:pypi/example@1.0"})
-    assert validate_document(dumps(document).decode(), None) == [
+    assert validate_document(dumps(document), None) == [
         "workflow wheel-build references unknown tools: ['pkg:pypi/example@1.0']"
     ]
 
@@ -203,14 +234,14 @@ def test_workflow_must_reference_tools(describe: Describe) -> None:
 def test_formula_without_workflows(describe: Describe) -> None:
     loaded = json.loads(dumps(describe()))
     loaded["formulation"] = [{"bom-ref": "formula:other"}]
-    assert validate_document(json.dumps(loaded), None) == []
+    assert validate_document(json.dumps(loaded).encode(), None) == []
 
 
 def test_spdx_rendering_must_validate(describe: Describe) -> None:
     document = describe()
     properties = document["metadata"].get("properties", [])
     properties.append({"name": "example:sbom:repository", "value": "https://example.org/a#fragment"})
-    (problem,) = validate_document(dumps(document).decode(), None)
+    (problem,) = validate_document(dumps(document), None)
     assert problem.startswith("SPDX rendering invalid: ")
 
 
@@ -235,12 +266,14 @@ def test_deep_nesting_is_reported(describe: Describe) -> None:
         f'{{"type": "library", "bom-ref": "deep-{level}", "name": "deep", "components": [' for level in range(100)
     )
     nested += "]}" * 100
-    raw = json.dumps(describe()).replace('"components": []', f'"components": [{nested}]', 1)
+    raw = json.dumps(describe()).replace('"components": []', f'"components": [{nested}]', 1).encode()
     assert validate_document(raw, None) == ["nests more than 128 levels deep, too deep to check"]
 
 
 def test_nesting_too_deep_to_parse_is_reported() -> None:
-    assert validate_document("[" * 1_000_000 + "]" * 1_000_000, None) == ["nests too deep for the JSON parser to read"]
+    assert validate_document(b"[" * 1_000_000 + b"]" * 1_000_000, None) == [
+        "nests too deep for the JSON parser to read"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -248,7 +281,7 @@ def test_nesting_too_deep_to_parse_is_reported() -> None:
     [pytest.param("NaN", id="nan"), pytest.param("Infinity", id="infinity"), pytest.param("-Infinity", id="minus")],
 )
 def test_non_finite_numbers_are_rejected(constant: str) -> None:
-    raw = f'{{"bomFormat": "CycloneDX", "specVersion": "1.6", "version": {constant}}}'
+    raw = f'{{"bomFormat": "CycloneDX", "specVersion": "1.6", "version": {constant}}}'.encode()
     assert validate_document(raw, None) == [f"holds {float(constant)}, which is not a JSON number"]
 
 
@@ -261,7 +294,7 @@ def test_license_policy(describe: Describe) -> None:
 
 def test_unexpected_error_is_reported(describe: Describe, mocker: MockerFixture) -> None:
     mocker.patch("python_sbom._validate._document.render_spdx", autospec=True, side_effect=RuntimeError("x" * 300))
-    assert validate_document(dumps(describe()).decode(), None) == [f"could not be checked, RuntimeError: {'x' * 200}"]
+    assert validate_document(dumps(describe()), None) == [f"could not be checked, RuntimeError: {'x' * 200}"]
 
 
 @pytest.mark.parametrize(

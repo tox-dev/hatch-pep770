@@ -168,3 +168,8 @@ about 5,200. Raise the cap for an SBOM you expect to be larger, or lower it to r
 .. code-block:: console
 
     $ python-sbom validate dist/ --max-components 500000
+
+The cap also sets the size limit: 1 KiB per component plus 1 MiB, 103,448,576 bytes at the default, about twice the 54
+MB python-sbom writes for 100,000 components. ``validate`` refuses a larger SBOM before parsing it, and reads the SBOMs
+of a wheel one at a time, so memory holds only one however many the wheel packs. It also refuses an SBOM nested more
+than 128 levels deep; the SBOMs python-sbom and other tools write nest about a dozen levels.
