@@ -16,35 +16,34 @@ if TYPE_CHECKING:
 
 def test_missing_pyproject(tmp_path: Path) -> None:
     with pytest.raises(SettingsError, match=r"has no pyproject\.toml to read"):
-        settings_from_pyproject(tmp_path, {})
+        settings_from_pyproject(tmp_path)
 
 
 def test_invalid_pyproject(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[tool\n", encoding="utf-8")
     with pytest.raises(SettingsError, match=r"pyproject\.toml is not valid TOML"):
-        settings_from_pyproject(tmp_path, {})
+        settings_from_pyproject(tmp_path)
 
 
 def test_defaults(tmp_path: Path, settings: Settings) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'a'\n", encoding="utf-8")
-    assert settings_from_pyproject(tmp_path, {}) == settings
+    assert settings_from_pyproject(tmp_path) == settings
 
 
-def test_table_with_overrides(tmp_path: Path) -> None:
+def test_table(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         "[tool.python-sbom]\n"
         "repository = 'https://github.com/example/example/'\n"
         "default-branch = 'dev'\n"
         "bundled-wheels = ['src/*.whl']\n"
-        "supplier = { name = 'Example Org' }\n",
+        "supplier = { name = 'Example Org' }\n"
+        "content-provider = 'sbom:Content'\n",
         encoding="utf-8",
     )
-    assert settings_from_pyproject(
-        tmp_path, {"default-branch": "trunk", "content-provider": "sbom:Content"}
-    ) == Settings(
+    assert settings_from_pyproject(tmp_path) == Settings(
         supplier={"name": "Example Org", "url": []},
         repository="https://github.com/example/example",
-        default_branch="trunk",
+        default_branch="dev",
         bundled_wheels=("src/*.whl",),
         content_provider="sbom:Content",
     )

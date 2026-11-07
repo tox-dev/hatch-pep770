@@ -31,7 +31,7 @@ def embed_sbom(
     commit: str | None,
     build_env: Sequence[str] | None,
 ) -> str:
-    settings = settings_from_pyproject(root, {})
+    settings = settings_from_pyproject(root)
     content, scripts = resolve_provider(provider, settings, root)
     return embed_into(
         wheel,

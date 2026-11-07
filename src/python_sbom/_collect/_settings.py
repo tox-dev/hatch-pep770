@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 Toml: TypeAlias = "str | int | float | bool | datetime | date | time | list[Toml] | dict[str, Toml]"
 
 
-def settings_from_pyproject(root: Path, overrides: Mapping[str, Toml]) -> Settings:
+def settings_from_pyproject(root: Path) -> Settings:
     pyproject = root / "pyproject.toml"
     try:
         loaded = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -28,8 +28,7 @@ def settings_from_pyproject(root: Path, overrides: Mapping[str, Toml]) -> Settin
     except tomllib.TOMLDecodeError as error:
         msg = f"{pyproject} is not valid TOML: {error}"
         raise SettingsError(msg) from error
-    table = loaded.get("tool", {}).get("python-sbom", {})
-    return settings_from_table({**table, **overrides}, f"[tool.python-sbom] of {pyproject}")
+    return settings_from_table(loaded.get("tool", {}).get("python-sbom", {}), f"[tool.python-sbom] of {pyproject}")
 
 
 def settings_from_table(table: Mapping[str, Toml], where: str) -> Settings:

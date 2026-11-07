@@ -44,7 +44,7 @@ def describe_archive(
     # the archive's top-level .dist-info names the project; every other .dist-info marks a wheel bundled unpacked into
     # its parent directory and every .whl member a bundled wheel; other files belong to the deepest distribution that
     # holds them, or, at the top level, to the archive
-    settings = settings_from_pyproject(root, {})
+    settings = settings_from_pyproject(root)
     content, provider_scripts = resolve_provider(provider, settings, root)
     tree = read_archive(archive)
     project = project_identity(tree.metadata[""], settings)

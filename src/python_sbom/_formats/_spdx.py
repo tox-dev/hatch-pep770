@@ -108,10 +108,10 @@ class Spdx(TypedDict):
 
 
 def to_spdx(document: Document) -> str:
-    return dumps(render_spdx(document, __version__)).decode()
+    return dumps(render_spdx(document)).decode()
 
 
-def render_spdx(bom: Document, tool_version: str) -> Spdx:
+def render_spdx(bom: Document) -> Spdx:
     metadata: Final[Metadata] = bom["metadata"]
     root: Final[Component] = metadata["component"]
     project: Final[str] = property_prefix(root["name"])
@@ -141,7 +141,7 @@ def render_spdx(bom: Document, tool_version: str) -> Spdx:
         "documentNamespace": f"{repository}/sboms/{name}-{source.removeprefix('urn:uuid:')}",
         "comment": f"Rendered from the CycloneDX SBOM {source} ({sbom_file}), which also carries per-file hashes and"
         " the build formulation.",
-        "creationInfo": _creation_info(metadata, tool_creators, tool_version),
+        "creationInfo": _creation_info(metadata, tool_creators),
         "packages": packages,
         "relationships": _relationships(bom, components, tools),
     }
@@ -231,7 +231,7 @@ def _spdx_id(bom_ref: str) -> str:
     return f"SPDXRef-{readable}-{hashlib.sha256(bom_ref.encode()).hexdigest()[:8]}"
 
 
-def _creation_info(metadata: Metadata, tool_creators: list[str], tool_version: str) -> _CreationInfo:
+def _creation_info(metadata: Metadata, tool_creators: list[str]) -> _CreationInfo:
     timestamp: Final[str | None] = metadata.get("timestamp")
     # SPDX requires a creation time; without the CycloneDX one, the time of this rendering is the true one
     created: Final[datetime] = datetime.now(UTC) if timestamp is None else datetime.fromisoformat(timestamp)
@@ -239,7 +239,7 @@ def _creation_info(metadata: Metadata, tool_creators: list[str], tool_version: s
     organization: Final[str] = "" if supplier is None else supplier.get("name", "")
     creators: Final[list[str]] = [f"Organization: {organization}"] if organization else []
     creators.extend(tool_creators)
-    creators.append(f"Tool: python-sbom-{tool_version}")
+    creators.append(f"Tool: python-sbom-{__version__}")
     return {"created": created.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), "creators": creators}
 
 
