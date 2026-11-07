@@ -45,11 +45,11 @@ _FAT_PACKAGES: Final[tuple[str, ...]] = (
     "tox",
     "wheel",
 )
-_HOSTILE_COMPONENTS: Final[int] = 10_000
+#: component counts of the hostile documents: the default cap, which still gets the full schema check, and twice it
+_HOSTILE_COMPONENTS: Final[tuple[int, ...]] = (5_000, 10_000)
 _LICENSE: Final[str] = (
     "MIT License\n\nCopyright (c) 2026 Bench Authors\n\nPermission is hereby granted, free of charge.\n"
 )
-_GIT_IDENTITY: Final[tuple[str, ...]] = ("-c", "user.name=bench", "-c", "user.email=bench@example.org")
 
 
 def prepare(work: Path, project: Path, virtualenv: Path | None) -> None:
@@ -58,7 +58,9 @@ def prepare(work: Path, project: Path, virtualenv: Path | None) -> None:
     fixtures: Final[dict[str, str]] = {}
     fixtures["small"] = str(_small_project(work / "small"))
     fixtures["small-wheel"] = str(_hatchling_wheel(work / "small", work / "small-dist"))
-    fixtures["hostile"] = str(_hostile_document(Path(fixtures["small-wheel"]), work / "hostile-10k.cdx.json"))
+    for count in _HOSTILE_COMPONENTS:
+        target = work / f"hostile-{count // 1000}k.cdx.json"
+        fixtures[f"hostile-{count // 1000}k"] = str(_hostile_document(Path(fixtures["small-wheel"]), target, count))
     fixtures["meson"] = str(_meson_project(work / "meson"))
     fixtures["meson-wheel"] = str(_meson_wheel(work / "meson-dist"))
     fixtures["fat-env"] = _fat_environment(work / "fat-env")
@@ -66,7 +68,7 @@ def prepare(work: Path, project: Path, virtualenv: Path | None) -> None:
     fixtures["own-wheel"] = str(_hatchling_wheel(work / "python-sbom", work / "own-dist"))
     if virtualenv is not None:
         fixtures.update(_virtualenv(virtualenv, work))
-    (work / "fixtures.json").write_text(json.dumps(fixtures, indent=2) + "\n", encoding="utf-8")
+    (work / "fixtures.json").write_text(f"{json.dumps(fixtures, indent=2)}\n", encoding="utf-8")
     sys.stdout.write(f"wrote {work / 'fixtures.json'}\n")
 
 
@@ -117,7 +119,10 @@ def _commit(root: Path) -> None:
         "git",
         "-C",
         str(root),
-        *_GIT_IDENTITY,
+        "-c",
+        "user.name=bench",
+        "-c",
+        "user.email=bench@example.org",
         "commit",
         "--quiet",
         "--no-verify",
@@ -139,16 +144,14 @@ def _hatchling_wheel(root: Path, directory: Path) -> Path:
     return wheel
 
 
-def _hostile_document(wheel: Path, target: Path) -> Path:
-    # ten thousand unique components: over the default component cap, which rejects the document before the schema
-    # check, and with a raised limit a uniqueItems check that compares every pair of them
+def _hostile_document(wheel: Path, target: Path, count: int) -> Path:
+    # unique components in one array, the small project's SBOM otherwise: over the default component cap the document
+    # is rejected before the schema check, at or under it the uniqueItems check compares every pair of them
     with zipfile.ZipFile(wheel) as archive:
         (name,) = (member for member in archive.namelist() if "/sboms/" in member)
         document = json.loads(archive.read(name))
     hostile = copy.deepcopy(document)
-    hostile["components"] = [
-        {"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(_HOSTILE_COMPONENTS)
-    ]
+    hostile["components"] = [{"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(count)]
     target.write_text(json.dumps(hostile), encoding="utf-8")
     return target
 

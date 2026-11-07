@@ -129,6 +129,13 @@ description = "run type check on code base"
 dependency_groups = [ "type" ]
 commands = [ [ "ty", "check", "--output-format", "concise", "--error-on-warning", "--python-platform", "all", "." ] ]
 
+[env.bench]
+description = "time python-sbom's hot paths with pyperf (not run in CI); `prepare` the fixtures first"
+dependency_groups = [ "bench" ]
+extras = [ "hatch", "validate" ]
+set_env.PYTHONPATH = "{tox_root}"
+commands = [ [ "python", "-m", "bench", { replace = "posargs", extend = true } ] ]
+
 [env.dev]
 description = "dev environment with all deps at {envdir}"
 package = "editable"

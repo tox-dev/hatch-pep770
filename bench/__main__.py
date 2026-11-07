@@ -1,18 +1,12 @@
 """
 CLI entry point: ``python -m bench <command>``, run from the project root or with the root on ``PYTHONPATH``.
 
-``prepare``
-    build the fixtures into the work directory; the only command that needs the network
-``run [CASE ...] [-- PYPERF-OPTION ...]``
-    time each case (all by default) in its own pyperf process tree, one JSON file per case under
-    ``<out>/<python>/``; options after ``--`` reach pyperf, overriding the case's defaults (e.g. ``--rigorous``)
-``profile [CASE ...]``
-    run each case once under cProfile, after one untimed warm-up, and write its stats, the top functions by
-    cumulative and own time, and with ``--py-spy`` a speedscope flame graph
-``report PATH ...``
-    render pyperf JSON files, or directories of them, as a Markdown table
-``list``
-    print the case names
+``prepare`` builds the fixtures into the work directory, the only command that needs the network. ``run`` times each
+case in its own pyperf process tree, one JSON file per case under ``<out>/<python>/``; options after ``--`` reach
+pyperf and override the case's defaults (e.g. ``--rigorous``).
+
+``profile`` runs each case once under cProfile after an untimed warm-up, and under py-spy with ``--py-spy``. ``report``
+renders pyperf JSON as a Markdown table, ``compare`` two result directories side by side, and ``list`` prints the cases.
 
 The timed process imports whichever python-sbom the running interpreter has installed, so comparing two revisions
 means running the same harness from two environments.
@@ -30,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from importlib.metadata import version
 from operator import itemgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -44,16 +39,11 @@ if TYPE_CHECKING:
 
 _ROOT: Final[Path] = Path(__file__).parents[1]
 _PYTHON: Final[str] = f"{sys.implementation.name}{sys.version_info.major}.{sys.version_info.minor}"
-_TOP: Final[int] = 15
-_CLOCKS: Final[tuple[str, ...]] = ("wall", "cpu")
 
 
 def main(arguments: Sequence[str]) -> None:
     if arguments[:1] == ["worker"]:
         _worker(arguments[1], Path(arguments[2]), arguments[3], arguments[4:])
-        return
-    if arguments[:1] == ["profile-worker"]:
-        _profile_case(arguments[1], Path(arguments[2]), Path(arguments[3]))
         return
     passthrough: list[str] = []
     if "--" in arguments:
@@ -69,9 +59,11 @@ def main(arguments: Sequence[str]) -> None:
         case "profile":
             _profile(options.work, options.out / _PYTHON / "profile", _selected(options.cases), py_spy=options.py_spy)
         case "once":
-            _once(options.work, options.case)
+            _once(options.case, options.work, options.cprofile)
         case "report":
             sys.stdout.write(_report(options.paths))
+        case "compare":
+            sys.stdout.write(_compare(options.before, options.current))
         case "list":
             sys.stdout.write("".join(f"{name}\n" for name in CASES))
 
@@ -91,13 +83,18 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("cases", nargs="*", metavar="CASE", help="cases to run (default: all)")
     commands.choices["run"].add_argument(
         "--clock",
-        choices=_CLOCKS,
+        choices=("wall", "cpu"),
         default="wall",
         help="wall time, or the CPU time of the process and its children, steadier on a loaded machine",
     )
     commands.choices["profile"].add_argument("--py-spy", action="store_true", help="also record with py-spy")
-    commands.add_parser("once", parents=[work], help="run one case once, for an outside profiler").add_argument("case")
+    once = commands.add_parser("once", parents=[work], help="run one case once, for a profiler")
+    once.add_argument("case")
+    once.add_argument("--cprofile", type=Path, metavar="STATS", help="run it under cProfile, writing its stats here")
     commands.add_parser("report", help="render results as Markdown").add_argument("paths", nargs="+", type=Path)
+    compare = commands.add_parser("compare", help="render two result directories side by side as Markdown")
+    compare.add_argument("before", type=Path, help="result directory of the baseline")
+    compare.add_argument("current", type=Path, help="result directory of the revision under test")
     commands.add_parser("list", help="print the case names")
     return parser
 
@@ -143,8 +140,8 @@ def _worker(name: str, work: Path, clock: str, arguments: Sequence[str]) -> None
     runner = pyperf.Runner(program_args=("-m", "bench", "worker", name, str(work), clock))
     runner.parse_args(list(arguments))
     with tempfile.TemporaryDirectory(dir=work, prefix="scratch-") as scratch:
-        step = make_step(CASES[name], load(work), Path(scratch))
-        runner.metadata["python_sbom_version"] = _python_sbom_version()
+        step = make_step(name, load(work), Path(scratch))
+        runner.metadata["python_sbom_version"] = version("python-sbom")
         runner.metadata["bench_clock"] = clock
         runner.bench_time_func(name, _timed, step, time.perf_counter if clock == "wall" else _cpu_time)
 
@@ -152,8 +149,7 @@ def _worker(name: str, work: Path, clock: str, arguments: Sequence[str]) -> None
 def _timed(loops: int, step: Step, clock: Callable[[], float]) -> float:
     total = 0.0
     for _ in range(loops):
-        if step.reset is not None:
-            step.reset()
+        step.reset()
         start = clock()
         step.run()
         total += clock() - start
@@ -168,14 +164,6 @@ def _cpu_time() -> float:
     return own.ru_utime + own.ru_stime + children.ru_utime + children.ru_stime
 
 
-def _once(work: Path, name: str) -> None:
-    with tempfile.TemporaryDirectory(dir=work, prefix="scratch-") as scratch:
-        step = make_step(CASES[name], load(work), Path(scratch))
-        if step.reset is not None:
-            step.reset()
-        step.run()
-
-
 def _profile(work: Path, out: Path, names: list[str], *, py_spy: bool) -> None:
     out.mkdir(parents=True, exist_ok=True)
     fixtures: Final = load(work)
@@ -185,7 +173,10 @@ def _profile(work: Path, out: Path, names: list[str], *, py_spy: bool) -> None:
             continue
         stats_file = out / f"{name}.pstats"
         # each case in a fresh process, so one case's warm caches never shorten another's profile
-        subprocess.run([sys.executable, "-m", "bench", "profile-worker", name, str(work), str(stats_file)], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "bench", "once", name, "--work", str(work), "--cprofile", str(stats_file)],
+            check=True,
+        )
         summary.append(_hot_spots(name, stats_file))
         (out / f"{name}.txt").write_text(_stats_text(stats_file), encoding="utf-8")
         # next to the interpreter too, as a venv's scripts are when its python runs without activating it
@@ -217,20 +208,20 @@ def _profile(work: Path, out: Path, names: list[str], *, py_spy: bool) -> None:
     sys.stdout.write(f"wrote {target}\n")
 
 
-def _profile_case(name: str, work: Path, stats_file: Path) -> None:
+def _once(name: str, work: Path, stats_file: Path | None) -> None:  # simplint: ignore[SMP505] # ruff's C901 on main
+    # without a stats file for an outside profiler such as py-spy
     with tempfile.TemporaryDirectory(dir=work, prefix="scratch-") as scratch:
-        step = make_step(CASES[name], load(work), Path(scratch))
+        step = make_step(name, load(work), Path(scratch))
+        step.reset()
+        if stats_file is None:
+            step.run()
+            return
         if step.command is not None:
-            if step.reset is not None:
-                step.reset()
             command = [step.command[0], "-m", "cProfile", "-o", str(stats_file), *step.command[1:]]
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
             return
-        if CASES[name].tier != "huge":  # warm, as the timed values are; the huge case loads its validator on import
-            if step.reset is not None:
-                step.reset()
+        if CASES[name].tier != "huge":  # warm, as the timed values are; huge values are each a process's first call
             step.run()
-        if step.reset is not None:
             step.reset()
         profiler = cProfile.Profile()
         profiler.runcall(step.run)
@@ -264,7 +255,7 @@ def _hot_spots(name: str, stats_file: Path) -> str:
         lines += [
             f"| `{label}` | {calls if calls == primitive else f'{calls}/{primitive}'} | {own:.3f} | {cumulative:.3f} |"
             f" {100 * cumulative / total:.1f} |"
-            for label, calls, primitive, own, cumulative in sorted(rows, key=itemgetter(key), reverse=True)[:_TOP]
+            for label, calls, primitive, own, cumulative in sorted(rows, key=itemgetter(key), reverse=True)[:15]
         ]
         lines.append("")
     return "\n".join(lines)
@@ -307,17 +298,38 @@ def _report(paths: list[Path]) -> str:
             f" {_seconds(benchmark.percentile(25))} - {_seconds(benchmark.percentile(75))} |"
             f" {_seconds(min(values))} - {_seconds(max(values))} | {len(values)} |"
         )
-    return "\n".join(lines) + "\n"
+    return "".join(f"{line}\n" for line in lines)
+
+
+def _compare(before: Path, current: Path) -> str:
+    import pyperf  # ruff: ignore[import-outside-top-level] # see _worker
+
+    lines = [
+        "| path | before median ± MAD | current median ± MAD | change |",
+        "| --- | ---: | ---: | ---: |",
+    ]
+    for name in sorted({file.stem for file in (*before.glob("*.json"), *current.glob("*.json"))}):
+        old, new = (
+            pyperf.Benchmark.load(str(file)) if (file := directory / f"{name}.json").is_file() else None
+            for directory in (before, current)
+        )
+        # the median absolute deviation, which one value a loaded host stretched barely moves
+        cells = [
+            "-" if benchmark is None else f"{_seconds(benchmark.median())} ± {_seconds(benchmark.median_abs_dev())}"
+            for benchmark in (old, new)
+        ]
+        change = "-" if old is None or new is None else _change(old.median(), new.median())
+        lines.append(f"| {name} | {cells[0]} | {cells[1]} | {change} |")
+    return "".join(f"{line}\n" for line in lines)
+
+
+def _change(before: float, current: float) -> str:
+    ratio = before / current
+    return f"{ratio:.2f}x faster" if ratio >= 1 else f"{1 / ratio:.2f}x slower"
 
 
 def _seconds(value: float) -> str:
     return f"{value:.2f} s" if value >= 1 else f"{value * 1000:.1f} ms"
-
-
-def _python_sbom_version() -> str:
-    from python_sbom import __version__  # ruff: ignore[import-outside-top-level] # see _worker
-
-    return __version__
 
 
 if __name__ == "__main__":

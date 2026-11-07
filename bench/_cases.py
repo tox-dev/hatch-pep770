@@ -32,17 +32,17 @@ TIERS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Step:
-    run: Callable[[], object]
-    reset: Callable[[], object] | None = None
+    run: Callable[[], None]
+    #: undoes what ``run`` changed on disk, untimed, before every call
+    reset: Callable[[], None] = lambda: None
     #: the command a cold case runs, which the profiler runs under cProfile instead of profiling the subprocess call
     command: tuple[str, ...] | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Case:
-    name: str
     tier: str
     needs: tuple[str, ...]
     make: Callable[[dict[str, str], Path], Step]
@@ -55,10 +55,11 @@ def _hatch(root_key: str, *, hooks: bool) -> Callable[[dict[str, str], Path], St
         if not hooks:
             os.environ["HATCH_BUILD_NO_HOOKS"] = "true"
         root = fixtures[root_key]
-        return Step(
-            run=lambda: list(WheelBuilder(root).build(directory=str(scratch), versions=["standard"])),
-            reset=lambda: _empty(scratch),
-        )
+
+        def run() -> None:
+            list(WheelBuilder(root).build(directory=str(scratch), versions=["standard"]))
+
+        return Step(run=run, reset=lambda: _empty(scratch))
 
     return make
 
@@ -67,9 +68,13 @@ def _embed(*, cold: bool) -> Callable[[dict[str, str], Path], Step]:
     def make(fixtures: dict[str, str], scratch: Path) -> Step:
         wheel = scratch / Path(fixtures["meson-wheel"]).name
         arguments = ("embed", str(wheel), "--root", fixtures["meson"], "--build-env", fixtures["fat-env"])
+
+        def reset() -> None:
+            shutil.copyfile(fixtures["meson-wheel"], wheel)
+
         return Step(
             run=_cold(arguments) if cold else _cli(arguments),
-            reset=lambda: shutil.copyfile(fixtures["meson-wheel"], wheel),
+            reset=reset,
             command=_command(arguments) if cold else None,
         )
 
@@ -128,8 +133,12 @@ def _collect_facts(fixtures: dict[str, str], scratch: Path) -> Step:  # ruff: ig
     from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # see _validate
 
     root, path = Path(fixtures["meson"]), [fixtures["fat-env"]]
-    # no revision, so only reading the environment's distributions is timed
-    return Step(run=lambda: collect_facts(root, lambda _root: None, path=path))
+
+    def run() -> None:
+        # no revision, so only reading the environment's distributions is timed
+        collect_facts(root, lambda _root: None, path=path)
+
+    return Step(run=run)
 
 
 def _bundled(key: str) -> Callable[[dict[str, str], Path], Step]:
@@ -138,46 +147,54 @@ def _bundled(key: str) -> Callable[[dict[str, str], Path], Step]:
 
         wheel = Path(fixtures[key])
         data = wheel.read_bytes()
-        return Step(run=lambda: read_bundled_wheel(data, wheel.name))
+
+        def run() -> None:
+            read_bundled_wheel(data, wheel.name)
+
+        return Step(run=run)
 
     return make
 
 
 CASES: Final[dict[str, Case]] = {
-    case.name: case
-    for case in (
-        Case("hatch-small", "slow", ("small",), _hatch("small", hooks=True)),
-        Case("hatch-small-nohook", "slow", ("small",), _hatch("small", hooks=False)),
-        Case("hatch-virtualenv", "slow", ("virtualenv",), _hatch("virtualenv", hooks=True)),
-        Case("hatch-virtualenv-nohook", "slow", ("virtualenv",), _hatch("virtualenv", hooks=False)),
-        Case("embed-meson-fat-env", "slow", ("meson", "meson-wheel", "fat-env"), _embed(cold=False)),
-        Case("cold-embed-meson-fat-env", "slow", ("meson", "meson-wheel", "fat-env"), _embed(cold=True)),
-        Case("archive-zipapp", "slow", ("virtualenv", "zipapp"), _archive),
-        Case("validate-own-wheel", "slow", ("own-wheel",), _validate("own-wheel")),
-        Case("cold-validate-own-wheel", "slow", ("own-wheel",), _cold_validate),
-        Case("validate-virtualenv-wheel", "slow", ("virtualenv-wheel",), _validate("virtualenv-wheel")),
-        Case("validate-zipapp", "slow", ("zipapp-embedded",), _validate("zipapp-embedded")),
-        # the default limit: a revision with the component cap times the rejection, one without the full schema check
-        Case("validate-hostile-10k", "huge", ("hostile",), _validate("hostile", expect_valid=False)),
-        # a limit above the count, so every revision times the full schema check
-        Case(
-            "validate-hostile-10k-uncapped",
-            "huge",
-            ("hostile",),
-            _validate("hostile", expect_valid=False, max_components=20_000),
-        ),
-        Case("spdx-zipapp", "fast", ("zipapp-sbom",), _spdx),
-        Case("collect-facts-fat-env", "slow", ("meson", "fat-env"), _collect_facts),
-        Case("bundled-wheel-pip", "fast", ("pip-wheel",), _bundled("pip-wheel")),
-        Case("bundled-wheel-setuptools", "fast", ("setuptools-wheel",), _bundled("setuptools-wheel")),
-    )
+    "hatch-small": Case(tier="slow", needs=("small",), make=_hatch("small", hooks=True)),
+    "hatch-small-nohook": Case(tier="slow", needs=("small",), make=_hatch("small", hooks=False)),
+    "hatch-virtualenv": Case(tier="slow", needs=("virtualenv",), make=_hatch("virtualenv", hooks=True)),
+    "hatch-virtualenv-nohook": Case(tier="slow", needs=("virtualenv",), make=_hatch("virtualenv", hooks=False)),
+    "embed-meson-fat-env": Case(tier="slow", needs=("meson", "meson-wheel", "fat-env"), make=_embed(cold=False)),
+    "cold-embed-meson-fat-env": Case(tier="slow", needs=("meson", "meson-wheel", "fat-env"), make=_embed(cold=True)),
+    "archive-zipapp": Case(tier="slow", needs=("virtualenv", "zipapp"), make=_archive),
+    "validate-own-wheel": Case(tier="slow", needs=("own-wheel",), make=_validate("own-wheel")),
+    "cold-validate-own-wheel": Case(tier="slow", needs=("own-wheel",), make=_cold_validate),
+    # virtualenv's SBOMs list over 5,000 components, files included, so a limit above that times the full check
+    "validate-virtualenv-wheel": Case(
+        tier="slow", needs=("virtualenv-wheel",), make=_validate("virtualenv-wheel", max_components=20_000)
+    ),
+    "validate-zipapp": Case(
+        tier="slow", needs=("zipapp-embedded",), make=_validate("zipapp-embedded", max_components=20_000)
+    ),
+    # at the default cap, so every revision times the full schema check
+    "validate-hostile-5k": Case(tier="huge", needs=("hostile-5k",), make=_validate("hostile-5k", expect_valid=False)),
+    # the default limit: a revision with the component cap times the rejection, one without the full schema check
+    "validate-hostile-10k": Case(
+        tier="huge", needs=("hostile-10k",), make=_validate("hostile-10k", expect_valid=False)
+    ),
+    # a limit above the count, so every revision times the full schema check
+    "validate-hostile-10k-uncapped": Case(
+        tier="huge", needs=("hostile-10k",), make=_validate("hostile-10k", expect_valid=False, max_components=20_000)
+    ),
+    "spdx-zipapp": Case(tier="fast", needs=("zipapp-sbom",), make=_spdx),
+    "collect-facts-fat-env": Case(tier="slow", needs=("meson", "fat-env"), make=_collect_facts),
+    "bundled-wheel-pip": Case(tier="fast", needs=("pip-wheel",), make=_bundled("pip-wheel")),
+    "bundled-wheel-setuptools": Case(tier="fast", needs=("setuptools-wheel",), make=_bundled("setuptools-wheel")),
 }
 
 
-def make_step(case: Case, fixtures: dict[str, str], scratch: Path) -> Step:
+def make_step(name: str, fixtures: dict[str, str], scratch: Path) -> Step:
     os.environ["SOURCE_DATE_EPOCH"] = SOURCE_DATE_EPOCH
+    case = CASES[name]
     if missing := [key for key in case.needs if key not in fixtures]:
-        msg = f"{case.name} needs the fixture(s) {', '.join(missing)}; prepare with --virtualenv to build them"
+        msg = f"{name} needs the fixture(s) {', '.join(missing)}; prepare with --virtualenv to build them"
         raise SystemExit(msg)
     return case.make(fixtures, scratch)
 
@@ -196,9 +213,13 @@ def _command(arguments: tuple[str, ...]) -> tuple[str, ...]:
     return (sys.executable, "-m", "python_sbom", *arguments)
 
 
-def _cold(arguments: tuple[str, ...]) -> Callable[[], object]:
+def _cold(arguments: tuple[str, ...]) -> Callable[[], None]:
     command = _command(arguments)
-    return lambda: subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+
+    def run() -> None:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+
+    return run
 
 
 def _empty(directory: Path) -> None:
@@ -209,7 +230,6 @@ def _empty(directory: Path) -> None:
 __all__ = [
     "CASES",
     "TIERS",
-    "Case",
     "Step",
     "make_step",
 ]

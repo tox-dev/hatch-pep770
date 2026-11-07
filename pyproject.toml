@@ -89,6 +89,7 @@ test = [
 ]
 type = [
   "ty>=0.0.84",
+  { include-group = "bench" },
   { include-group = "docs" },
   { include-group = "test" },
 ]
@@ -99,6 +100,11 @@ docs = [
   "sphinx-argparse-cli>=1.23",
   "sphinx-autodoc-typehints>=3.17",
   "sphinxcontrib-mermaid>=2.1.1",
+]
+bench = [
+  "pyperf>=2.10",
+  { include-group = "build" },
+  { include-group = "test" },
 ]
 build = [
   "hatch-fancy-pypi-readme>=25.1",
@@ -155,6 +161,12 @@ lint.ignore = [
   "undocumented-public-init",                  # undocumented-public-api (simplint SMP903) covers the public API instead
   "undocumented-public-method",                # undocumented-public-api (simplint SMP903) covers the public API instead
   "undocumented-public-nested-class",          # undocumented-public-api (simplint SMP903) covers the public API instead
+]
+lint.per-file-ignores."bench/**/*.py" = [
+  "import-private-name",                  # Benchmarks time the private entry points the public API wraps
+  "start-process-with-partial-path",      # Fixtures run git from PATH, as a project build does
+  "subprocess-without-shell-equals-true", # Commands are fixed argument lists the harness builds
+  "suspicious-subprocess-import",         # Fixtures and cold cases run git, uv and Python processes
 ]
 lint.per-file-ignores."tests/**/*.py" = [
   "assert",                               # Tests use assertions
