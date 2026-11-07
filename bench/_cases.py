@@ -143,13 +143,18 @@ def _collect_facts(fixtures: dict[str, str], scratch: Path) -> Step:  # ruff: ig
 
 def _bundled(key: str) -> Callable[[dict[str, str], Path], Step]:
     def make(fixtures: dict[str, str], scratch: Path) -> Step:  # ruff: ignore[unused-function-argument] # one signature
-        from python_sbom._collect._source import read_bundled_wheel  # ruff: ignore[import-outside-top-level] # see _validate
+        from python_sbom._collect import _source  # ruff: ignore[import-outside-top-level] # see _validate
 
         wheel = Path(fixtures[key])
         data = wheel.read_bytes()
+        # revisions before the batch reader take one wheel's bytes; later ones a list and a way to open each
+        single = getattr(_source, "read_bundled_wheel", None)
 
         def run() -> None:
-            read_bundled_wheel(data, wheel.name)
+            if single is not None:
+                single(data, wheel.name)
+            else:
+                _source.read_bundled_wheels([wheel.name], lambda _name: io.BytesIO(data))
 
         return Step(run=run)
 

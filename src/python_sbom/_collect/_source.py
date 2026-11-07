@@ -3,12 +3,10 @@ from __future__ import annotations
 import hashlib
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from io import BytesIO
-from itertools import starmap
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Final
 
-from installer.records import InvalidRecordEntry, RecordEntry, parse_record_file
+from installer.records import InvalidRecordEntry, parse_record_file
 from installer.sources import WheelFile
 from packaging.requirements import InvalidRequirement, Requirement
 
@@ -16,13 +14,20 @@ from python_sbom._errors import SettingsError, WheelError
 from python_sbom._model._inputs import BuildScript, BundledWheel, RecordRow, SbomRequest, SourceTree
 from python_sbom._model._metadata import CoreMetadata, parse_metadata
 from python_sbom._wheel._archive import open_archive, read_member, read_wheel_metadata
-from python_sbom._wheel._record import decode_digest
+from python_sbom._wheel._record import record_rows
 
 if TYPE_CHECKING:
     import zipfile
+    from collections.abc import Callable
     from pathlib import Path, PurePosixPath
+    from typing import IO
 
     from python_sbom._model._inputs import Settings
+
+# a bundled wheel is hashed in chunks of this size
+_CHUNK: Final[int] = 1024 * 1024
+# wheels verified at once, each perhaps in memory whole
+_WORKERS: Final[int] = 4
 
 
 def read_source_tree(request: SbomRequest) -> SourceTree:
@@ -35,12 +40,12 @@ def read_source_tree(request: SbomRequest) -> SourceTree:
     return SourceTree(
         copyright=copyright_notice(root, request.metadata.values("license_files")),
         bundled=read_bundled_wheels(
-            root,
             sorted({
                 wheel.relative_to(root).as_posix()
                 for pattern in request.settings.bundled_wheels
                 for wheel in root.glob(pattern)
             }),
+            lambda path: (root / path).open("rb"),
         ),
         # str, so a Windows drive in an absolute path survives the join with the native root
         build_scripts=[
@@ -60,16 +65,24 @@ def copyright_notice(root: Path, license_files: list[str]) -> str | None:
     return None
 
 
-def read_bundled_wheels(root: Path, paths: list[str]) -> list[BundledWheel]:
-    # inflating and hashing release the GIL, so the wheels verify side by side; results and the first error come in the
-    # order given
-    with ThreadPoolExecutor() as pool:
-        return list(pool.map(lambda path: read_bundled_wheel((root / path).read_bytes(), path), paths))
+def read_bundled_wheels(paths: list[str], open_wheel: Callable[[str], IO[bytes]]) -> list[BundledWheel]:
+    # inflating and hashing release the GIL, so the wheels verify side by side, a few at a time, as each may be held in
+    # memory whole; results and the first error come in the order given
+    def read(path: str) -> BundledWheel:
+        with open_wheel(path) as stream:
+            return _read_bundled_wheel(stream, path)
+
+    with ThreadPoolExecutor(max_workers=_WORKERS) as pool:
+        return list(pool.map(read, paths))
 
 
-def read_bundled_wheel(data: bytes, path: str) -> BundledWheel:
+def _read_bundled_wheel(stream: IO[bytes], path: str) -> BundledWheel:
     where: Final[str] = f"bundled wheel {path}"
-    with open_archive(BytesIO(data), where) as archive:
+    digest: Final = hashlib.sha256()
+    while chunk := stream.read(_CHUNK):
+        digest.update(chunk)
+    stream.seek(0)
+    with open_archive(stream, where) as archive:
         # installer takes the project name from the archive's file name, which an archive read from memory lacks
         archive.filename = path
         members: Final[list[str]] = sorted(name for name in archive.namelist() if not name.endswith("/"))
@@ -87,7 +100,7 @@ def read_bundled_wheel(data: bytes, path: str) -> BundledWheel:
         ]
     return BundledWheel(
         path=path,
-        sha256=hashlib.sha256(data).hexdigest(),
+        sha256=digest.hexdigest(),
         metadata_name=f"{dist_info}/METADATA",
         metadata=metadata,
         files=files,
@@ -108,6 +121,9 @@ def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> 
     record: Final[str] = read_member(archive, f"{dist_info}/RECORD", where).decode("utf-8")
     try:
         rows: Final[list[tuple[str, str, str]]] = list(parse_record_file(record.splitlines()))
+        # read before installer's check, which takes any hashlib name and fails on one needing a length, such as
+        # shake_128, with a TypeError
+        found: Final[list[RecordRow]] = record_rows(rows, where)
     except InvalidRecordEntry as error:
         msg = f"{where}: RECORD does not parse: {error}"
         raise WheelError(msg) from error
@@ -135,13 +151,6 @@ def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> 
         prefix: Final[str] = f"In {archive.filename}, "
         msg = f"{where}: RECORD disagrees with the wheel: {'; '.join(issue.removeprefix(prefix) for issue in issues)}"
         raise WheelError(msg) from error
-    found: Final[list[RecordRow]] = []
-    for entry in starmap(RecordEntry.from_elements, rows):
-        # the row of RECORD itself
-        if entry.hash_ is None:
-            continue
-        algorithm, digest = decode_digest(str(entry.hash_), f"{where}: RECORD row for {entry.path}")
-        found.append(RecordRow(path=entry.path, algorithm=algorithm, digest=digest, size=str(entry.size)))
     return found
 
 
@@ -180,7 +189,6 @@ def wheel_request(wheel: Path, root: Path, settings: Settings, build_scripts: tu
 
 __all__ = [
     "copyright_notice",
-    "read_bundled_wheel",
     "read_bundled_wheels",
     "read_source_tree",
     "wheel_request",

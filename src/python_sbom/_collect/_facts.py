@@ -7,10 +7,9 @@ import sys
 import time
 import warnings
 from importlib.metadata import distributions
-from itertools import starmap
 from typing import TYPE_CHECKING, Final
 
-from installer.records import InvalidRecordEntry, RecordEntry, parse_record_file
+from installer.records import InvalidRecordEntry, parse_record_file
 from installer.utils import parse_metadata_file
 from packaging.direct_url import DirectUrl, DirectUrlValidationError
 from packaging.requirements import InvalidRequirement, Requirement
@@ -19,7 +18,7 @@ from packaging.utils import canonicalize_name
 from python_sbom._errors import SettingsError
 from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, RecordRow
 from python_sbom._model._metadata import parse_metadata
-from python_sbom._wheel._record import decode_digest
+from python_sbom._wheel._record import record_rows
 
 if TYPE_CHECKING:
     from collections.abc import Container, Sequence
@@ -83,20 +82,12 @@ def _recorded_files(distribution: Distribution) -> list[RecordRow]:
         return []
     # RECORD read once and as written: Distribution.files would stat every row to drop files missing on disk, and build
     # a path object for each, while the SBOM lists what the install recorded
+    rows: Final = parse_record_file((distribution.read_text("RECORD") or "").splitlines())
     try:
-        entries: Final[list[RecordEntry]] = list(
-            starmap(RecordEntry.from_elements, parse_record_file((distribution.read_text("RECORD") or "").splitlines()))
-        )
+        return record_rows((row for row in rows if _describes_distribution(row[0])), distribution.name)
     except InvalidRecordEntry as error:
         warnings.warn(f"listed no files of {distribution.name}, its RECORD is malformed: {error}", stacklevel=2)
         return []
-    rows: Final[list[RecordRow]] = []
-    for entry in entries:
-        if entry.hash_ is None or not _describes_distribution(entry.path):
-            continue
-        algorithm, digest = decode_digest(str(entry.hash_), entry.path)
-        rows.append(RecordRow(path=entry.path, algorithm=algorithm, digest=digest, size=str(entry.size)))
-    return rows
 
 
 def _editable(distribution: Distribution) -> bool:

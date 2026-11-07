@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Protocol
 import pytest
 
 from python_sbom import ContentProvider, ProviderContext
+from python_sbom._collect._archive import member_reader
 from python_sbom._generate._pipeline import build_sbom
 from python_sbom._model._identity import project_identity
 from python_sbom._model._inputs import BuildFacts, Interpreter, SbomRequest, Settings, SourceTree
@@ -158,7 +159,7 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
             root=Path(),
             settings=settings,
             identity=project_identity(request.metadata, settings),
-            artifact=Path(),
+            read=member_reader(Path("example-1.0-py3-none-any.whl")),
         )
         return build_sbom(
             request,
@@ -175,6 +176,6 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
 def context_for(settings: Settings) -> ContextFor:
     def context(root: Path, artifact: Path) -> ProviderContext:
         identity = project_identity(parse_metadata("Name: Example\nVersion: 1.0\n"), settings)
-        return ProviderContext(root=root, settings=settings, identity=identity, artifact=artifact)
+        return ProviderContext(root=root, settings=settings, identity=identity, read=member_reader(artifact))
 
     return context

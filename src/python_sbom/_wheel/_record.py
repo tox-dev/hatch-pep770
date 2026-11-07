@@ -2,9 +2,16 @@ from __future__ import annotations
 
 import base64
 import binascii
-from typing import Final
+from itertools import starmap
+from typing import TYPE_CHECKING, Final
+
+from installer.records import RecordEntry
 
 from python_sbom._errors import WheelError
+from python_sbom._model._inputs import RecordRow
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 # the algorithms a wheel RECORD may name, as CycloneDX spells them
 _ALGORITHMS: Final[dict[str, str]] = {
@@ -14,6 +21,18 @@ _ALGORITHMS: Final[dict[str, str]] = {
     "sha384": "SHA-384",
     "sha512": "SHA-512",
 }
+
+
+def record_rows(rows: Iterable[tuple[str, str, str]], where: str) -> list[RecordRow]:
+    # the rows with a digest, as the SBOM lists them: RECORD's own row has none, nor has a file an installer left
+    # unhashed; installer's InvalidRecordEntry passes to the caller, which knows what a malformed row means there
+    found: Final[list[RecordRow]] = []
+    for entry in starmap(RecordEntry.from_elements, rows):
+        if entry.hash_ is None:
+            continue
+        algorithm, digest = decode_digest(str(entry.hash_), f"{where}: RECORD row for {entry.path}")
+        found.append(RecordRow(path=entry.path, algorithm=algorithm, digest=digest, size=str(entry.size)))
+    return found
 
 
 def decode_digest(digest: str, where: str) -> tuple[str, str]:
@@ -33,4 +52,5 @@ def decode_digest(digest: str, where: str) -> tuple[str, str]:
 
 __all__ = [
     "decode_digest",
+    "record_rows",
 ]

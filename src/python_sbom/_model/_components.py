@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from email.utils import getaddresses
 from itertools import starmap
 from typing import TYPE_CHECKING, Final
 from urllib.parse import urlsplit
 
-from ._inputs import RecordRow
 from ._licenses import licenses
 from ._names import property_prefix, purl, pypi_url, reference_type, tool_ref
 from ._types import Dependency
@@ -15,7 +13,7 @@ from ._types import Dependency
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
-    from ._inputs import BundledWheel
+    from ._inputs import BundledWheel, RecordRow
     from ._metadata import CoreMetadata
     from ._types import Component, Contact, ExternalReference, Identity, OrganizationalEntity, Property
 
@@ -149,13 +147,6 @@ def vendored_dependencies(components: list[Component]) -> list[Dependency]:
     return found
 
 
-def file_component_from_bytes(parent_ref: str, name: str, content: bytes) -> Component:
-    return file_component(
-        parent_ref,
-        RecordRow(path=name, algorithm="SHA-256", digest=hashlib.sha256(content).hexdigest(), size=str(len(content))),
-    )
-
-
 def script_tool(path: PurePosixPath, sha256: str, version: str, link: str | None) -> Component:
     tool: Final[Component] = {
         "type": "application",
@@ -173,7 +164,6 @@ __all__ = [
     "bundled_wheel_component",
     "component_from_metadata",
     "file_component",
-    "file_component_from_bytes",
     "script_tool",
     "vendored_dependencies",
 ]

@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 from typing import TYPE_CHECKING
 
+from python_sbom._collect._archive import member_reader
 from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._facts import collect_facts
 from python_sbom._collect._revision import commit_revision, default_revision
@@ -54,7 +55,7 @@ def embed_into(wheel: Path, request: SbomRequest, content: ContentProvider, fact
         ],
     )
     project = project_identity(request.metadata, request.settings)
-    context = ProviderContext(root=request.root, settings=request.settings, identity=project, artifact=wheel)
+    context = ProviderContext(root=request.root, settings=request.settings, identity=project, read=member_reader(wheel))
     sbom = build_sbom(request, source, facts, content, context)
     return write_sbom(wheel, sbom.file_name, sbom.content, facts.epoch)
 

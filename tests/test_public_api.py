@@ -70,7 +70,9 @@ def reached(start: _Hint) -> set[_Hint]:
             pending.extend(typing.get_type_hints(item, globalns=_names(), include_extras=True).values())
             for member in _members(item):
                 pending.extend(typing.get_type_hints(member, globalns=_names(), include_extras=True).values())
-        pending.extend(typing.get_args(item))
+        # a Callable's parameters come as one list among its arguments
+        for argument in typing.get_args(item):
+            pending.extend(argument if isinstance(argument, list) else [argument])
         if (origin := typing.get_origin(item)) is not None:
             pending.append(origin)
     return {item for item in found if _ours(item)}

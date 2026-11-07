@@ -95,6 +95,18 @@ class BuildScript:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class ArchiveTree:
+    # what an archive holds, read from the zip without unpacking it: each distribution's metadata and members by the
+    # directory that holds its .dist-info, "" for the project's own, the archive's own top-level files, the digest of
+    # every member but the bundled wheels, and those wheels
+    metadata: dict[str, CoreMetadata]
+    owned: dict[str, list[str]]
+    loose: list[str]
+    files: dict[str, RecordRow]
+    bundled: dict[str, BundledWheel]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class Artifact:
     # what one artifact, a wheel or an archive, puts in its SBOM; the provenance every artifact of the project shares is
     # added around it
@@ -160,6 +172,7 @@ class Contributions:
 
 
 __all__ = [
+    "ArchiveTree",
     "Artifact",
     "BuildFacts",
     "BuildScript",

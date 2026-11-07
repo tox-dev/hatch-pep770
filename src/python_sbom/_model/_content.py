@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import zipfile
 from typing import TYPE_CHECKING
 
 from ._inputs import BundledWheelInfo, Contributions
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path, PurePosixPath
 
     from ._identity import ProjectIdentity
@@ -19,18 +19,17 @@ class ProviderContext:
     :param root: the project directory
     :param settings: the project's options
     :param identity: how the project's SBOMs name it, including the prefix of its properties
-    :param artifact: the built wheel, or the directory an archive is unpacked into, which :meth:`read` reads
-    :ivar root: the project directory
-    :ivar settings: the project's options
-    :ivar identity: how the project's SBOMs name it, including the prefix of its properties
+    :param read: reads a member of the artifact being described, for :meth:`read`
 
     """
 
-    def __init__(self, *, root: Path, settings: Settings, identity: ProjectIdentity, artifact: Path) -> None:
+    def __init__(
+        self, *, root: Path, settings: Settings, identity: ProjectIdentity, read: Callable[[PurePosixPath], bytes]
+    ) -> None:
         self.root = root
         self.settings = settings
         self.identity = identity
-        self._artifact = artifact
+        self._read = read
 
     def read(self, path: PurePosixPath) -> bytes:
         """
@@ -41,12 +40,7 @@ class ProviderContext:
         :raises KeyError: when the artifact holds no such file
 
         """
-        if self._artifact.is_dir():
-            if not (target := self._artifact / str(path)).is_file():
-                raise KeyError(str(path))
-            return target.read_bytes()
-        with zipfile.ZipFile(self._artifact) as archive:
-            return archive.read(str(path))
+        return self._read(path)
 
 
 class ContentProvider:

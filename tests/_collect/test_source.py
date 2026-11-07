@@ -5,15 +5,16 @@ import dataclasses
 import hashlib
 import re
 import zipfile
+from io import BytesIO
 from itertools import starmap
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._collect._source import read_bundled_wheel, read_source_tree, wheel_request
+from python_sbom._collect._source import read_bundled_wheels, read_source_tree, wheel_request
 from python_sbom._errors import SettingsError, WheelError
-from python_sbom._model._inputs import BuildScript, RecordRow, SbomRequest
+from python_sbom._model._inputs import BuildScript, BundledWheel, RecordRow, SbomRequest
 from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
@@ -118,7 +119,7 @@ def test_bundled_wheel(tmp_path: Path, write_wheel: WriteWheel) -> None:
             "pip/_vendor/rich-13.0.dist-info/METADATA": b"Name: rich\nVersion: 13.0\n",
         },
     )
-    bundled = read_bundled_wheel(wheel.read_bytes(), "src/pip-1.0-py3-none-any.whl")
+    bundled = _bundled(wheel.read_bytes(), "src/pip-1.0-py3-none-any.whl")
     assert (bundled.path, bundled.sha256, bundled.metadata_name, bundled.metadata.name, bundled.files[0]) == (
         "src/pip-1.0-py3-none-any.whl",
         hashlib.sha256(wheel.read_bytes()).hexdigest(),
@@ -169,7 +170,7 @@ def test_malformed_bundled_wheel(
 ) -> None:
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     with pytest.raises(WheelError, match=message):
-        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+        _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 @pytest.mark.parametrize(
@@ -186,12 +187,12 @@ def test_bundled_wheel_file_name_names_the_project(
 ) -> None:
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", _PIP)
     with pytest.raises(WheelError, match=f"bundled wheel {name} is not a wheel: {message}"):
-        read_bundled_wheel(wheel.read_bytes(), name)
+        _bundled(wheel.read_bytes(), name)
 
 
 def test_corrupt_bundled_wheel() -> None:
     with pytest.raises(WheelError, match=r"bundled wheel pip\.whl is not a valid zip archive"):
-        read_bundled_wheel(b"not a zip", "pip.whl")
+        _bundled(b"not a zip", "pip.whl")
 
 
 def test_bundled_wheel_with_duplicate_member(tmp_path: Path) -> None:
@@ -203,7 +204,7 @@ def test_bundled_wheel_with_duplicate_member(tmp_path: Path) -> None:
         archive.writestr(_METADATA, _PIP[_METADATA])
         archive.writestr("pip-1.0.dist-info/RECORD", f"{row(_INIT, b'')}{_METADATA_ROW}")
     with pytest.raises(WheelError, match=f"holds more than one member named {_INIT}, ignoring case"):
-        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+        _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 @pytest.mark.parametrize(
@@ -220,7 +221,7 @@ def test_bundled_wheel_record_algorithm(tmp_path: Path, write_wheel: WriteWheel,
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     assert [
         (file.path, file.algorithm, file.digest)
-        for file in read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl").files
+        for file in _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl").files
     ] == [(path, expected, hashlib.new(algorithm, content).hexdigest()) for path, content in _PIP.items()]
 
 
@@ -249,6 +250,12 @@ def test_bundled_wheel_record_algorithm(tmp_path: Path, write_wheel: WriteWheel,
             f"{row(_INIT, b'', 'sha224')}{_METADATA_ROW}{_RECORD_ROW}",
             f"RECORD row for {_INIT}: unknown hash algorithm 'sha224'",
             id="algorithm-cyclonedx-lacks",
+        ),
+        # installer would call digest() without the length shake_128 needs and raise a TypeError
+        pytest.param(
+            f"{_INIT},shake_128=AAAA,0\n{_METADATA_ROW}{_RECORD_ROW}",
+            f"RECORD row for {_INIT}: unknown hash algorithm 'shake_128'",
+            id="algorithm-needing-a-length",
         ),
         pytest.param(_METADATA_ROW, f"RECORD lacks a digest for {_INIT}", id="member-not-recorded"),
         pytest.param(
@@ -282,16 +289,14 @@ def test_record_disagrees_with_wheel(tmp_path: Path, write_wheel: WriteWheel, re
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode()}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     with pytest.raises(WheelError, match=message):
-        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+        _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 def test_record_signatures_need_no_row(tmp_path: Path, write_wheel: WriteWheel) -> None:
     record = "".join(starmap(row, _PIP.items())) + _RECORD_ROW
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode(), "pip-1.0.dist-info/RECORD.jws": b"{}"}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
-    assert [file.path for file in read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl").files] == list(
-        _PIP
-    )
+    assert [file.path for file in _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl").files] == list(_PIP)
 
 
 @pytest.mark.parametrize(
@@ -307,14 +312,14 @@ def test_signature_away_from_record_needs_a_row(tmp_path: Path, write_wheel: Wri
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode(), signature: b"import os\n"}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
     with pytest.raises(WheelError, match=f"RECORD lacks a digest for {re.escape(signature)}"):
-        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+        _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 def test_vendored_metadata_needs_name_and_version(tmp_path: Path, write_wheel: WriteWheel) -> None:
     files = {**_PIP, "pip/_vendor/rich-13.0.dist-info/METADATA": b"Metadata-Version: 2.1\n"}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files)
     with pytest.raises(WheelError, match=r"pip/_vendor/rich-13\.0\.dist-info/METADATA lacks Name or Version"):
-        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+        _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 @pytest.mark.parametrize(
@@ -331,7 +336,7 @@ def test_vendor_manifest_needs_exact_pins(
 ) -> None:
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", {**_PIP, "pip/_vendor/vendor.txt": manifest})
     with pytest.raises(WheelError, match=message):
-        read_bundled_wheel(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
+        _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 def test_wheel_request(tmp_path: Path, settings: Settings, write_wheel: WriteWheel) -> None:
@@ -363,3 +368,20 @@ def test_wheel_request_needs_a_wheel(
     archive = write_wheel(tmp_path / name, {"native/__init__.py": b""}, record=False)
     with pytest.raises(WheelError, match=message):
         wheel_request(archive, Path(), settings, ())
+
+
+def _bundled(data: bytes, path: str) -> BundledWheel:
+    return read_bundled_wheels([path], lambda _: BytesIO(data))[0]
+
+
+def test_bundled_wheels_come_in_the_order_given(tmp_path: Path, write_wheel: WriteWheel) -> None:
+    # read side by side, yet reported in order, the first broken wheel's error included
+    good = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", _PIP).read_bytes()
+    wheels = {"pip-1.0-py3-none-any.whl": good, "b.whl": b"not a zip", "c.whl": b"neither"}
+    paths = ["pip-1.0-py3-none-any.whl", "b.whl", "c.whl"]
+    assert [bundled.path for bundled in read_bundled_wheels(paths[:1] * 2, lambda name: BytesIO(wheels[name]))] == [
+        paths[0],
+        paths[0],
+    ]
+    with pytest.raises(WheelError, match=r"^bundled wheel b\.whl is not a valid zip archive"):
+        read_bundled_wheels(paths, lambda name: BytesIO(wheels[name]))

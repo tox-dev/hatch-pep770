@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 
@@ -9,7 +8,6 @@ import pytest
 from python_sbom._model._components import (
     bundled_wheel_component,
     component_from_metadata,
-    file_component_from_bytes,
     script_tool,
 )
 from python_sbom._model._inputs import BundledWheel, RecordRow
@@ -307,16 +305,6 @@ def test_bundled_wheel_supplier_never_comes_from_the_wheel() -> None:
     )
     component = bundled_wheel_component(wheel, "example", [], None)
     assert "supplier" not in component
-
-
-def test_file_component_from_bytes() -> None:
-    assert file_component_from_bytes("app", "a.py", b"abc") == {
-        "type": "file",
-        "bom-ref": "app#a.py",
-        "name": "a.py",
-        "hashes": [{"alg": "SHA-256", "content": hashlib.sha256(b"abc").hexdigest()}],
-        "properties": [{"name": "size", "value": "3"}],
-    }
 
 
 def test_script_tool_with_link() -> None:
