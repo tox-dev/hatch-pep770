@@ -57,7 +57,9 @@ def read_archive(archive: Path) -> ArchiveTree:
         else:
             loose.append(name)
     # in the order the components list them, so the first broken wheel is the one reported
-    wheels: Final[list[str]] = [name for prefix in sorted(metadata) for name in owned[prefix] if name.endswith(".whl")]
+    wheels: Final[list[str]] = []
+    for prefix in sorted(metadata):
+        wheels.extend(name for name in owned[prefix] if name.endswith(".whl"))
     return ArchiveTree(
         metadata=metadata,
         owned=owned,

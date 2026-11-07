@@ -146,13 +146,13 @@ def render_spdx(bom: Document) -> Spdx:
         "relationships": _relationships(bom, components, tools),
     }
     # SPDX requires the text of every LicenseRef a package declares; the metadata names them, it holds no text
-    references: Final[list[str]] = sorted({
-        token for package in packages for token in _LICENSE_REF.findall(package["licenseDeclared"])
-    })
+    references: Final[set[str]] = set()
+    for package in packages:
+        references.update(_LICENSE_REF.findall(package["licenseDeclared"]))
     if references:
         spdx["hasExtractedLicensingInfos"] = [
             {"licenseId": token, "extractedText": f"{token}, as named in package metadata", "name": token}
-            for token in references
+            for token in sorted(references)
         ]
     return spdx
 
@@ -246,17 +246,15 @@ def _creation_info(metadata: Metadata, tool_creators: list[str]) -> _CreationInf
 def _relationships(bom: Document, components: list[Component], tools: list[Component]) -> list[_Relationship]:
     root_id: Final[str] = _spdx_id(bom["metadata"]["component"]["bom-ref"])
     relationships: Final[list[_Relationship]] = [_relationship("SPDXRef-DOCUMENT", "DESCRIBES", root_id)]
-    relationships.extend(
-        _relationship(_spdx_id(parent["bom-ref"]), "CONTAINS", _spdx_id(child["bom-ref"]))
-        for parent in components
-        for child in parent.get("components", [])
-        if child["type"] != "file"
-    )
-    relationships.extend(
-        _relationship(_spdx_id(entry["ref"]), "DEPENDS_ON", _spdx_id(dependency))
-        for entry in bom.get("dependencies", [])
-        for dependency in entry.get("dependsOn", [])
-    )
+    for parent in components:
+        parent_id = _spdx_id(parent["bom-ref"])
+        children = (child for child in parent.get("components", []) if child["type"] != "file")
+        relationships.extend(_relationship(parent_id, "CONTAINS", _spdx_id(child["bom-ref"])) for child in children)
+    for entry in bom.get("dependencies", []):
+        dependent_id = _spdx_id(entry["ref"])
+        relationships.extend(
+            _relationship(dependent_id, "DEPENDS_ON", _spdx_id(dependency)) for dependency in entry.get("dependsOn", [])
+        )
     relationships.extend(_relationship(_spdx_id(tool["bom-ref"]), "BUILD_TOOL_OF", root_id) for tool in tools)
     return relationships
 

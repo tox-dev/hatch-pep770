@@ -32,21 +32,16 @@ _WORKERS: Final[int] = 4
 
 def read_source_tree(request: SbomRequest) -> SourceTree:
     root = request.root
+    wheels: Final[set[str]] = set()
     for pattern in request.settings.bundled_wheels:
         # a wheel outside the project is none the project ships, and pathlib refuses an absolute pattern outright
         if (path := PurePath(pattern)).anchor or ".." in path.parts:
             msg = f"`bundled-wheels` pattern {pattern!r} must be relative to the project, without `..`"
             raise SettingsError(msg)
+        wheels.update(wheel.relative_to(root).as_posix() for wheel in root.glob(pattern))
     return SourceTree(
         copyright=copyright_notice(root, request.metadata.values("license_files")),
-        bundled=read_bundled_wheels(
-            sorted({
-                wheel.relative_to(root).as_posix()
-                for pattern in request.settings.bundled_wheels
-                for wheel in root.glob(pattern)
-            }),
-            lambda path: (root / path).open("rb"),
-        ),
+        bundled=read_bundled_wheels(sorted(wheels), lambda path: (root / path).open("rb")),
         # str, so a Windows drive in an absolute path survives the join with the native root
         build_scripts=[
             BuildScript(path=script, sha256=hashlib.sha256((root / str(script)).read_bytes()).hexdigest())

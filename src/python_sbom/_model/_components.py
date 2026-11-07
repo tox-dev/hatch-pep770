@@ -69,27 +69,27 @@ def component_from_metadata(metadata: CoreMetadata) -> Component:
         component["description"] = summary
     # maintainers are who users reach today, so they win over the original authors when both are named
     for names, addresses in (("maintainer", "maintainer_email"), ("author", "author_email")):
-        named = (_contact(name, "") for name in metadata.values(names))
-        if people := [
-            contact for contact in (*named, *starmap(_contact, getaddresses(metadata.values(addresses)))) if contact
-        ]:
+        contacts = [
+            *(_contact(name, "") for name in metadata.values(names)),
+            *starmap(_contact, getaddresses(metadata.values(addresses))),
+        ]
+        if people := [contact for contact in contacts if contact]:
             component["authors"] = people
             break
     if declared := licenses(metadata):
         component["licenses"] = declared
     component["externalReferences"] = _project_references(metadata)
     # core metadata headers copied verbatim, so a reader sees what the distribution declared
-    component["properties"] = [
-        {"name": f"python:{header}", "value": value}
-        for header, values in (
-            ("requires-python", metadata.values("requires_python")),
-            ("requires-dist", metadata.values("requires_dist")),
-            ("provides-extra", metadata.values("provides_extra")),
-            ("classifier", metadata.values("classifiers")),
-            ("keywords", metadata.keywords()),
-        )
-        for value in values
+    headers: Final[list[tuple[str, list[str]]]] = [
+        ("requires-python", metadata.values("requires_python")),
+        ("requires-dist", metadata.values("requires_dist")),
+        ("provides-extra", metadata.values("provides_extra")),
+        ("classifier", metadata.values("classifiers")),
+        ("keywords", metadata.keywords()),
     ]
+    component["properties"] = []
+    for header, values in headers:
+        component["properties"].extend({"name": f"python:{header}", "value": value} for value in values)
     return component
 
 
