@@ -111,6 +111,15 @@ commands = [
     "--no-config",
     "{env_tmp_dir}",
   ],
+  [
+    "python",
+    "-c",
+    # the project's own wheel carries the SBOM its hook writes
+    """\
+  import glob, zipfile; (wheel,) = glob.glob(r'{env_tmp_dir}{/}*.whl'); assert any('/sboms/' in name for name in \
+  zipfile.ZipFile(wheel).namelist()), f'no SBOM in {wheel}'\
+  """,
+  ],
 ]
 
 [env.type]
