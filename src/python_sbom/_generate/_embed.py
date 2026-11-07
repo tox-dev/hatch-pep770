@@ -4,7 +4,8 @@ import dataclasses
 from typing import TYPE_CHECKING
 
 from python_sbom._collect._content import load_content_provider, provider_script
-from python_sbom._collect._facts import collect_facts, commit_revision, default_revision
+from python_sbom._collect._facts import collect_facts
+from python_sbom._collect._revision import commit_revision, default_revision
 from python_sbom._collect._settings import settings_from_pyproject
 from python_sbom._collect._source import read_source_tree, wheel_request
 from python_sbom._model._content import ProviderContext
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from python_sbom._collect._facts import RevisionReader
+    from python_sbom._collect._revision import RevisionReader
     from python_sbom._model._content import ContentProvider
     from python_sbom._model._inputs import BuildFacts, SbomRequest
 

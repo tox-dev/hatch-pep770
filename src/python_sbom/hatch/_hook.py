@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tempfile
-from functools import cached_property
+from functools import cache, cached_property
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Final
 
@@ -9,16 +9,13 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.builders.utils import get_reproducible_timestamp
 from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 
-from python_sbom._collect._content import load_content_provider, provider_script
-from python_sbom._collect._facts import REVISION_FILE, collect_facts, default_revision
+from python_sbom._collect._revision import REVISION_FILE, default_revision
 from python_sbom._collect._settings import settings_from_table
-from python_sbom._collect._source import wheel_request
 from python_sbom._errors import SettingsError
-from python_sbom._generate._embed import embed_into
 
 if TYPE_CHECKING:
     from python_sbom._model._content import ContentProvider
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Revision, Settings
 
 # options of every hatchling hook table, which hatchling itself reads
 _HATCHLING_OPTIONS: Final[frozenset[str]] = frozenset({
@@ -58,7 +55,7 @@ class SbomBuildHook(BuildHookInterface):
 
         """
         # a dirty checkout has no commit that reproduces the sdist, so a wheel built from it names none
-        if self.target_name != "sdist" or (revision := default_revision(Path(self.root))) is None or revision.dirty:
+        if self.target_name != "sdist" or (revision := _revision(Path(self.root))) is None or revision.dirty:
             return
         # outside the project, so the build leaves nothing behind in it; bytes, so the sdist holds the same LF line on
         # every OS
@@ -82,6 +79,12 @@ class SbomBuildHook(BuildHookInterface):
         """
         if self.target_name != "wheel" or version == "editable":
             return
+        # what a wheel needs loads only when one is built, so an sdist build stays light
+        from python_sbom._collect._content import provider_script  # ruff: ignore[import-outside-top-level] # see above
+        from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # see above
+        from python_sbom._collect._source import wheel_request  # ruff: ignore[import-outside-top-level] # see above
+        from python_sbom._generate._embed import embed_into  # ruff: ignore[import-outside-top-level] # see above
+
         root = Path(self.root)
         content = self.content_provider()
         # a custom hook script shapes the document, as a provider defined in the project does, so the SBOM lists both
@@ -92,7 +95,7 @@ class SbomBuildHook(BuildHookInterface):
         # the zip entries hatchling wrote
         facts = collect_facts(
             root,
-            default_revision,
+            _revision,
             default_epoch=get_reproducible_timestamp() if self.build_config.reproducible else None,
         )
         wheel = Path(artifact_path)
@@ -108,6 +111,8 @@ class SbomBuildHook(BuildHookInterface):
         :returns: the ``content-provider`` option's provider, or one that adds nothing
 
         """
+        from python_sbom._collect._content import load_content_provider  # ruff: ignore[import-outside-top-level] # see finalize
+
         return load_content_provider(self._settings.content_provider, Path(self.root))
 
     @cached_property
@@ -121,6 +126,12 @@ class SbomBuildHook(BuildHookInterface):
             )
             raise SettingsError(msg)
         return settings_from_table(self.metadata.config.get("tool", {}).get("python-sbom", {}), "[tool.python-sbom]")
+
+
+@cache
+def _revision(root: Path) -> Revision | None:
+    # read once per process: hatch build makes the sdist and then the wheel in one, of the same checkout
+    return default_revision(root)
 
 
 __all__ = [
