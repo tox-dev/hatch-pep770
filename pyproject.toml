@@ -20,8 +20,8 @@ keywords = [
   "sbom",
   "spdx",
 ]
-license = "MIT"
-license-files = [ "LICENSE" ]
+license = "MIT AND Apache-2.0"
+license-files = [ "LICENSE", "src/python_sbom/_validate/schemas/LICENSE" ]
 maintainers = [
   { name = "Bernát Gábor", email = "gaborjbernat@gmail.com" },
 ]
