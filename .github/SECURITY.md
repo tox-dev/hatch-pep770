@@ -1,8 +1,9 @@
 # Security policy
 
-python-sbom writes a CycloneDX SBOM into wheels, from a hatchling build hook or from a command that rewrites a wheel
-another build backend built, and renders or validates that SBOM. This policy says how to report a security problem and
-how we decide whether a report is one.
+python-sbom writes a CycloneDX SBOM into wheels, from a hatchling build hook or from `python-sbom embed`, which rewrites
+a wheel another build backend built. `python-sbom archive` describes another zip archive a project publishes, such as a
+zipapp, and `python-sbom spdx` and `validate` render or check an SBOM. This policy says how to report a security problem
+and how we decide whether a report is one.
 
 ## Reporting a vulnerability
 
@@ -34,8 +35,8 @@ publish no advisory. Classify by who supplies the dangerous input, not by how ba
 
 **In scope**
 
-- A bundled wheel, or an SBOM given to `python-sbom spdx` or `validate`, that makes python-sbom write outside its output
-  file or the wheel it rewrites, or run code.
+- A wheel bundled in a wheel or in an archive given to `python-sbom archive`, or an SBOM given to `python-sbom spdx` or
+  `validate`, that makes python-sbom write outside its output file or the wheel or archive it rewrites, or run code.
 - An SBOM that misstates what a wheel holds in a way its inputs cannot explain, such as a wrong hash.
 
 **Out of scope**
