@@ -246,3 +246,29 @@ def test_archive_asks_provider_in_component_order(project: Path, archive: Path) 
         project, archive, facts=collect_facts(project, revision_reader(None)), provider=Recording(), build_scripts=()
     )
     assert asked == [_WHEEL, _LIBRARY]
+
+
+def test_archive_top_level_wheel_belongs_to_the_archive(project: Path, tmp_path: Path, write_wheel: WriteWheel) -> None:
+    wheel = write_wheel(
+        tmp_path / "pip-1.0-py3-none-any.whl", {"pip-1.0.dist-info/METADATA": b"Name: pip\nVersion: 1.0\n"}
+    )
+    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
+        handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\n")
+        handle.writestr(wheel.name, wheel.read_bytes())
+    root = describe_archive(
+        project, archive, facts=collect_facts(project, revision_reader(None)), provider=None, build_scripts=()
+    )["metadata"]["component"]
+    assert [(child["bom-ref"], child["name"]) for child in root.get("components", [])] == [
+        (f"bundled:{wheel.name}", "pip")
+    ]
+
+
+def test_archive_refuses_distributions_sharing_a_directory(project: Path, tmp_path: Path) -> None:
+    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
+        handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\n")
+        for name in ("bar", "foo"):
+            handle.writestr(f"vendor/{name}-1.0.dist-info/METADATA", f"Name: {name}\nVersion: 1.0\n")
+    with pytest.raises(SbomError, match=r"app\.pyz holds more than one \.dist-info in vendor/, so their files cannot"):
+        describe_archive(
+            project, archive, facts=collect_facts(project, revision_reader(None)), provider=None, build_scripts=()
+        )

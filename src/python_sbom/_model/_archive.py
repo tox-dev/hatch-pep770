@@ -41,7 +41,10 @@ def archive_artifact(  # ruff: ignore[too-many-arguments] # keyword-only, each a
             "name": name,
             "version": version,
             "purl": ref,
-            "components": [file_component(ref, tree.files[member]) for member in tree.loose],
+            "components": [
+                distributions.wheel(member) if member.endswith(".whl") else file_component(ref, tree.files[member])
+                for member in tree.loose
+            ],
         },
         components=components,
         dependencies=vendored_dependencies(components),
@@ -79,12 +82,12 @@ class _Distributions:
                 *component["properties"],
             ]
         component["components"] = [
-            self._wheel(name) if name.endswith(".whl") else file_component(component["bom-ref"], self.tree.files[name])
+            self.wheel(name) if name.endswith(".whl") else file_component(component["bom-ref"], self.tree.files[name])
             for name in self.tree.owned[prefix]
         ]
         return component
 
-    def _wheel(self, name: str) -> Component:
+    def wheel(self, name: str) -> Component:
         info = self.bundled_info[name]
         return bundled_wheel_component(
             self.tree.bundled[name], self.project.property_prefix, info.properties, info.supplier
@@ -96,15 +99,18 @@ def _directory(prefix: str) -> PurePosixPath:
 
 
 def bundled_paths(tree: ArchiveTree) -> list[PurePosixPath]:
-    # what a content provider is asked about, in the order the components list them: each wheel bundled unpacked, by its
-    # directory, followed by the .whl members it holds
+    # what a content provider is asked about, in the order the components list them: the archive's own top-level .whl
+    # members, then each wheel bundled unpacked, by its directory, followed by the .whl members it holds
     return [
-        path
-        for prefix in sorted(tree.metadata)
-        for path in (
-            *([_directory(prefix)] if prefix else []),
-            *(PurePosixPath(name) for name in tree.owned[prefix] if name.endswith(".whl")),
-        )
+        *(PurePosixPath(name) for name in tree.loose if name.endswith(".whl")),
+        *(
+            path
+            for prefix in sorted(tree.metadata)
+            for path in (
+                *([_directory(prefix)] if prefix else []),
+                *(PurePosixPath(name) for name in tree.owned[prefix] if name.endswith(".whl")),
+            )
+        ),
     ]
 
 

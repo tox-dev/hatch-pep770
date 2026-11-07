@@ -148,9 +148,13 @@ def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _M
     return bytes(content)
 
 
-def bundled_wheels_by_digest(wheel: Path) -> dict[str, str]:
+def bundled_wheels_by_digest(wheel: Path) -> dict[str, list[str]]:
+    found: Final[dict[str, list[str]]] = {}
     with open_archive(wheel, str(wheel)) as archive:
-        return {member_digest(archive, name, "sha256"): name for name in archive.namelist() if name.endswith(".whl")}
+        for name in sorted(archive.namelist()):
+            if name.endswith(".whl"):
+                found.setdefault(member_digest(archive, name, "sha256"), []).append(name)
+    return found
 
 
 def member_digest(archive: zipfile.ZipFile, name: str | zipfile.ZipInfo, algorithm: str) -> str:

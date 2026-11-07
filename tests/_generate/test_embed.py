@@ -60,6 +60,27 @@ class Table(ContentProvider):
         return BundledWheelInfo(properties=[{"name": f"{context.identity.property_prefix}:table", "value": value}])
 
 
+def test_identical_bundled_copies_keep_their_own_paths(tmp_path: Path, write_wheel: WriteWheel) -> None:
+    (root := tmp_path / "project").mkdir()
+    (root / "pyproject.toml").write_text("[tool.python-sbom]\nbundled-wheels = ['src/*/wheels/*.whl']\n")
+    pip = {"pip-1.0.dist-info/METADATA": b"Name: pip\nVersion: 1.0\nLicense-Expression: MIT\n"}
+    for package in ("a", "b"):
+        content = write_wheel(root / "src" / package / "wheels" / "pip-1.0-py3-none-any.whl", pip).read_bytes()
+    wheel = write_wheel(
+        tmp_path / "dist" / "pkg-1.0-py3-none-any.whl",
+        {
+            "a/wheels/pip-1.0-py3-none-any.whl": content,
+            "b/wheels/pip-1.0-py3-none-any.whl": content,
+            "pkg-1.0.dist-info/METADATA": b"Name: pkg\nVersion: 1.0\n",
+        },
+    )
+    written = embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+    assert [component["bom-ref"] for component in json.loads(zipfile.ZipFile(wheel).read(written))["components"]] == [
+        "bundled:a/wheels/pip-1.0-py3-none-any.whl",
+        "bundled:b/wheels/pip-1.0-py3-none-any.whl",
+    ]
+
+
 def test_embed_output_is_pinned(
     tmp_path: Path, write_wheel: WriteWheel, install: Install, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
 ) -> None:

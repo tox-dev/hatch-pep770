@@ -11,15 +11,16 @@ from python_sbom._wheel._archive import open_archive, read_wheel_metadata
 from python_sbom._wheel._bundled import read_bundled_wheels
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping, Sequence
     from pathlib import Path, PurePosixPath
 
     from python_sbom._model._inputs import Settings
 
 
-def read_source_tree(request: SbomRequest, *, inside: Mapping[str, str]) -> SourceTree:
-    # inside maps a wheel's sha256 to its path in the built artifact: a bundled wheel the artifact holds is named by
-    # that path, as an archive SBOM names it, so both documents give one wheel the same identity
+def read_source_tree(request: SbomRequest, *, inside: Mapping[str, Sequence[str]]) -> SourceTree:
+    # inside maps a wheel's sha256 to its paths in the built artifact: a bundled wheel the artifact holds is named by
+    # its path there, as an archive SBOM names it, so both documents give one wheel the same identity; identical copies
+    # take those paths in turn, so each keeps an identity of its own
     root = request.root
     wheels: Final[set[str]] = set()
     for pattern in request.settings.bundled_wheels:
@@ -28,10 +29,11 @@ def read_source_tree(request: SbomRequest, *, inside: Mapping[str, str]) -> Sour
             msg = f"`bundled-wheels` pattern {pattern!r} must be relative to the project, without `..`"
             raise SbomError(msg)
         wheels.update(wheel.relative_to(root).as_posix() for wheel in root.glob(pattern))
+    destinations: Final[dict[str, Iterator[str]]] = {digest: iter(paths) for digest, paths in inside.items()}
     return SourceTree(
         copyright=copyright_notice(root, request.metadata.values("license_files")),
         bundled=[
-            dataclasses.replace(wheel, path=inside.get(wheel.sha256, wheel.path))
+            dataclasses.replace(wheel, path=next(destinations.get(wheel.sha256, iter(())), wheel.path))
             for wheel in read_bundled_wheels(sorted(wheels), lambda path: (root / path).open("rb"))
         ],
         # str, so a Windows drive in an absolute path survives the join with the native root

@@ -27,11 +27,18 @@ def read_archive(archive: Path) -> ArchiveTree:
         members: Final[list[str]] = sorted(
             info.filename for info in handle.infolist() if not info.is_dir() and info.filename != f"{where}.cdx.json"
         )
-        metadata: Final[dict[str, CoreMetadata]] = {
-            _directory(name): parse_metadata(read_member(handle, name, where).decode("utf-8"))
-            for name in members
-            if name.endswith(".dist-info/METADATA")
-        }
+        metadata: Final[dict[str, CoreMetadata]] = {}
+        for name in members:
+            if not name.endswith(".dist-info/METADATA"):
+                continue
+            # files belong to a distribution by the directory that holds its .dist-info, which two cannot share
+            if (directory := _directory(name)) in metadata:
+                msg = (
+                    f"{where} holds more than one .dist-info in {directory or 'its top level'}, so their files cannot"
+                    " be told apart"
+                )
+                raise SbomError(msg)
+            metadata[directory] = parse_metadata(read_member(handle, name, where).decode("utf-8"))
         if (top := sum(name.count("/") == 1 and name.endswith(".dist-info/METADATA") for name in members)) != 1:
             msg = f"{where} holds {top} top-level .dist-info/METADATA, not the one naming the project"
             raise SbomError(msg)
@@ -56,7 +63,7 @@ def read_archive(archive: Path) -> ArchiveTree:
         else:
             loose.append(name)
     # in the order the components list them, so the first broken wheel is the one reported
-    wheels: Final[list[str]] = []
+    wheels: Final[list[str]] = [name for name in loose if name.endswith(".whl")]
     for prefix in sorted(metadata):
         wheels.extend(name for name in owned[prefix] if name.endswith(".whl"))
     return ArchiveTree(
