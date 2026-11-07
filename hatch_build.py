@@ -3,21 +3,29 @@
 from __future__ import annotations
 
 import sys
+from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 
+if TYPE_CHECKING:
+    from python_sbom.hatch import SbomBuildHook
+
 
 class SelfSbomHook(BuildHookInterface):  # simplint: ignore[SMP409] # hatchling loads it from this script
-    def finalize(
+    def initialize(
         self,
         version: str,
         build_data: dict[str, Any],  # simplint: ignore[SMP602] # hatchling's signature
-        artifact_path: str,
     ) -> None:
+        self._hook.initialize(version, build_data)
+
+    @cached_property
+    def _hook(self) -> SbomBuildHook:
         # python-sbom cannot be a build requirement of itself, so its hook comes from this source tree; by now the vcs
-        # hook has written the version module the package imports
+        # hook has written the version module the package imports. One hook serves the whole build, so finalize reuses
+        # the revision initialize read and removes the revision file it wrote
         sys.path.insert(0, str(Path(self.root) / "src"))
         from python_sbom.hatch import SbomBuildHook  # ruff: ignore[import-outside-top-level] # see above
 
@@ -26,4 +34,12 @@ class SelfSbomHook(BuildHookInterface):  # simplint: ignore[SMP409] # hatchling 
         )
         # as hatchling names a custom hook, so the SBOM lists this script among the build tools
         hook.PLUGIN_NAME = self.PLUGIN_NAME
-        hook.finalize(version, build_data, artifact_path)
+        return hook
+
+    def finalize(
+        self,
+        version: str,
+        build_data: dict[str, Any],  # simplint: ignore[SMP602] # hatchling's signature
+        artifact_path: str,
+    ) -> None:
+        self._hook.finalize(version, build_data, artifact_path)
