@@ -38,6 +38,25 @@ Put each file's tag and SHA-256 into the cases of ``test_schema_files_are_the_up
 marks the directory ``-text`` and ``.pre-commit-config.yaml`` excludes it, so neither git nor the hooks rewrite the
 files' line endings, whitespace or formatting.
 
+Benchmarks
+----------
+
+``bench/`` times python-sbom's hot paths with `pyperf <https://pyperf.readthedocs.io/>`_; CI does not run it. The
+``bench`` tox environment passes its arguments to ``python -m bench``:
+
+.. code-block:: console
+
+    $ tox r -e bench -- prepare
+    $ tox r -e bench -- run
+    $ tox r -e bench -- compare ../baseline/.tox/bench-results/cpython3.15 .tox/bench-results/cpython3.15
+
+``prepare`` builds the fixtures, the only step that needs the network. ``run`` times each case in its own pyperf process
+tree and writes one JSON file per case under ``.tox/bench-results/<python>/``; options after a second ``--`` reach
+pyperf. ``profile`` runs each case once under cProfile, and under py-spy with ``--py-spy``. Both take case names to run
+only those, and ``list`` prints the names. ``report`` renders result files as a Markdown table, and ``compare`` puts two
+result directories side by side. The timed process imports the python-sbom its environment installed, so to compare two
+revisions, run the cases from a checkout of each and compare their result directories.
+
 Changelog fragments
 -------------------
 
