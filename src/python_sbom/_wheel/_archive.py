@@ -51,7 +51,9 @@ def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
     descriptor, temporary = tempfile.mkstemp(dir=wheel.parent, prefix=".python-sbom-", suffix=".tmp")
     os.close(descriptor)
     try:  # ruff: ignore[too-many-statements-in-try-clause] # whichever step fails, the temporary file goes
-        shutil.copyfile(wheel, temporary)
+        # copied through the process: copy_file_range makes some file systems first flush the wheel just written
+        with wheel.open("rb") as source, Path(temporary).open("wb") as target:
+            shutil.copyfileobj(source, target)
         # the other members keep their bytes as stored, still compressed, so only the SBOM and RECORD get compressed
         # here; both go last, RECORD after the SBOM
         with zipremove.ZipFile(temporary, "a") as archive:
