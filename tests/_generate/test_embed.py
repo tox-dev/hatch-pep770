@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import platform
 import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -15,6 +14,7 @@ if TYPE_CHECKING:
 
     import pytest
     from conftest import Install, WriteWheel
+    from pytest_mock import MockerFixture
 
 _PINNED: Final[Path] = Path(__file__).parent / "pinned"
 
@@ -56,12 +56,12 @@ class Table(ContentProvider):
 
 
 def test_embed_output_is_pinned(
-    tmp_path: Path, write_wheel: WriteWheel, install: Install, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, write_wheel: WriteWheel, install: Install, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture
 ) -> None:
     # every input fixed, down to the interpreter's version, so the SBOM and the wheel's members must not change by a
     # byte; a change that means to alter them updates the pinned files with it
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
-    monkeypatch.setattr(platform, "python_version", lambda: "3.14.0")
+    mocker.patch("platform.python_version", autospec=True, return_value="3.14.0")
     metadata = b"""\
 Metadata-Version: 2.4
 Name: Pkg.Name
