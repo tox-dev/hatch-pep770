@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ._iri import iri_reference
 from ._names import property_prefix, reference_type
 
 if TYPE_CHECKING:
@@ -13,9 +14,13 @@ if TYPE_CHECKING:
 
 def project_identity(metadata: CoreMetadata, settings: Settings) -> ProjectIdentity:
     project = property_prefix(metadata.name)
-    repository = settings.repository or next(
-        (url.rstrip("/") for label, url in metadata.project_urls() if reference_type(label) == "vcs"), None
-    )
+    repository = settings.repository
+    # links into the repository extend its URL, so one that cannot be an IRI reference, as an scp-style git address, is
+    # passed over for the next
+    for label, url in [] if repository else metadata.project_urls():
+        if reference_type(label) == "vcs" and (link := iri_reference(url)) is not None:
+            repository = link.rstrip("/")
+            break
     base = repository or f"https://pypi.org/project/{project}"
     return ProjectIdentity(
         property_prefix=project,

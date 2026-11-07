@@ -68,6 +68,10 @@ with a repository, the license file follow. A build from a git checkout adds the
 revision. Links to the license file and build scripts point at that commit when the checkout is clean, and at the
 default branch otherwise.
 
+CycloneDX requires each URL to be an IRI reference. A project URL or home page that is not one gets percent-encoded,
+or left out when encoding cannot mend it, as with an scp-style ``git@host:path`` address; either way a
+``python:project-url`` or ``python:home-page`` property keeps the text as written.
+
 The components below the root are the wheels the project bundles and the runtime dependencies it declares. A bundled
 wheel carries its SHA-256, its license, a component per file from its ``RECORD``, and the packages it vendors. A
 declared dependency carries no version, because the installer picks it at install time; the document marks the root's

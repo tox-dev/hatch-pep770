@@ -29,6 +29,19 @@ if TYPE_CHECKING:
             "https://git.example.org/example",
             id="setting-wins",
         ),
+        pytest.param(
+            None,
+            "Project-URL: Source, git@github.com:example/example.git\n"
+            "Project-URL: Repository, https://github.com/example/example\n",
+            "https://github.com/example/example",
+            id="scp-style-passed-over",
+        ),
+        pytest.param(
+            None,
+            "Project-URL: Source, https://git.example.org/{team}/example\n",
+            "https://git.example.org/%7Bteam%7D/example",
+            id="encoded",
+        ),
     ],
 )
 def test_project_identity_repository(

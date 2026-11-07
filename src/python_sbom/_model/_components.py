@@ -4,11 +4,11 @@ import re
 from email.utils import getaddresses
 from itertools import starmap
 from typing import TYPE_CHECKING, Final
-from urllib.parse import urlsplit
 
 from packaging.utils import canonicalize_name
 
 from ._document import walk_components
+from ._iri import iri_reference
 from ._licenses import licenses
 from ._names import purl, pypi_url, reference_type, tool_ref
 from ._types import Dependency
@@ -78,7 +78,7 @@ def component_from_metadata(metadata: CoreMetadata) -> Component:
             break
     if declared := licenses(metadata):
         component["licenses"] = declared
-    component["externalReferences"] = _project_references(metadata)
+    component["externalReferences"], unlinked = _project_references(metadata)
     # core metadata headers copied verbatim, so a reader sees what the distribution declared
     headers: Final[list[tuple[str, list[str]]]] = [
         ("requires-python", metadata.values("requires_python")),
@@ -90,6 +90,7 @@ def component_from_metadata(metadata: CoreMetadata) -> Component:
     component["properties"] = []
     for header, values in headers:
         component["properties"].extend({"name": f"python:{header}", "value": value} for value in values)
+    component["properties"].extend(unlinked)
     return component
 
 
@@ -105,16 +106,23 @@ def _contact(name: str, email: str) -> Contact:
     return contact
 
 
-def _project_references(metadata: CoreMetadata) -> list[ExternalReference]:
-    # a home page that is not an http(s) URL, such as UNKNOWN, is left out
+def _project_references(metadata: CoreMetadata) -> tuple[list[ExternalReference], list[Property]]:
+    # a URL CycloneDX would reject is percent-encoded where that keeps what it points at and left out where it cannot
+    # be, as an scp-style git address; either way the header's text is kept verbatim as a property
     references: Final[list[ExternalReference]] = []
-    if (home_page := metadata.first("home_page")) and urlsplit(home_page).scheme in {"http", "https"}:
-        references.append({"type": "website", "url": home_page})
-    references.extend(
-        {"type": reference_type(label), "url": url, "comment": f"Project-URL: {label}"}
-        for label, url in metadata.project_urls()
-    )
-    return references
+    unlinked: Final[list[Property]] = []
+    # a home page that is not an http(s) URL, such as UNKNOWN, is left out
+    if (home_page := metadata.first("home_page")) and re.match(r"https?:", home_page, re.IGNORECASE):
+        if (url := iri_reference(home_page)) is not None:
+            references.append({"type": "website", "url": url})
+        if url != home_page:
+            unlinked.append({"name": "python:home-page", "value": home_page})
+    for label, link in metadata.project_urls():
+        if (url := iri_reference(link)) is not None:
+            references.append({"type": reference_type(label), "url": url, "comment": f"Project-URL: {label}"})
+        if url != link:
+            unlinked.append({"name": "python:project-url", "value": f"{label}, {link}"})
+    return references, unlinked
 
 
 def _evidence(field: str, technique: str, value: str) -> Identity:

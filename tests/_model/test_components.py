@@ -363,3 +363,55 @@ def test_vendored_dependencies_at_any_depth_in_document_order() -> None:
         {"ref": "bundled:b.whl", "dependsOn": ["bundled:b.whl#vendored/pkg:pypi/six@1"]},
         {"ref": "bundled:c.whl", "dependsOn": ["bundled:c.whl#vendored/pkg:pypi/six@1"]},
     ]
+
+
+@pytest.mark.parametrize(
+    ("fields", "references", "kept"),
+    [
+        pytest.param(
+            "Project-URL: Source, git@github.com:example/pkg.git\n",
+            [],
+            [{"name": "python:project-url", "value": "Source, git@github.com:example/pkg.git"}],
+            id="scp-style-git",
+        ),
+        pytest.param(
+            "Project-URL: Docs, https://example.org/my docs\n",
+            [{"type": "documentation", "url": "https://example.org/my%20docs", "comment": "Project-URL: Docs"}],
+            [{"name": "python:project-url", "value": "Docs, https://example.org/my docs"}],
+            id="space",
+        ),
+        pytest.param(
+            "Project-URL: Template, https://example.org/{name}/x\n",
+            [{"type": "other", "url": "https://example.org/%7Bname%7D/x", "comment": "Project-URL: Template"}],
+            [{"name": "python:project-url", "value": "Template, https://example.org/{name}/x"}],
+            id="braces",
+        ),
+        pytest.param(
+            "Home-page: https://example.org/a b\n",
+            [{"type": "website", "url": "https://example.org/a%20b"}],
+            [{"name": "python:home-page", "value": "https://example.org/a b"}],
+            id="home-page-space",
+        ),
+        pytest.param(
+            "Home-page: https://example.org:port/\n",
+            [],
+            [{"name": "python:home-page", "value": "https://example.org:port/"}],
+            id="home-page-bad-port",
+        ),
+        pytest.param(
+            "Home-page: https://example.org/\nProject-URL: Source, https://github.com/example/pkg\n",
+            [
+                {"type": "website", "url": "https://example.org/"},
+                {"type": "vcs", "url": "https://github.com/example/pkg", "comment": "Project-URL: Source"},
+            ],
+            [],
+            id="valid-kept-as-is",
+        ),
+    ],
+)
+def test_url_no_iri_reference_is_encoded_or_kept_as_property(
+    fields: str, references: list[dict[str, str]], kept: list[dict[str, str]]
+) -> None:
+    # validation requires an IRI reference, so a URL copied as written would build an SBOM validate rejects
+    component = component_from_metadata(parse_metadata(f"Name: a\nVersion: 1\n{fields}"))
+    assert (component["externalReferences"], component["properties"]) == (references, kept)
