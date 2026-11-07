@@ -13,6 +13,7 @@ from python_sbom._model._components import (
 )
 from python_sbom._model._inputs import BundledWheel, RecordRow
 from python_sbom._model._metadata import parse_metadata
+from python_sbom._model._names import purl
 
 if TYPE_CHECKING:
     from python_sbom import Component, Property
@@ -343,9 +344,26 @@ def test_vendored_spellings_of_one_package_merge() -> None:
     assert [child["name"] for child in component.get("components", [])] == ["jaraco_text"]
 
 
-def test_pypi_purl_keeps_dots() -> None:
-    component = component_from_metadata(parse_metadata("Name: zope.interface\nVersion: 7.0\n"))
-    assert component["purl"] == "pkg:pypi/zope.interface@7.0"
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param("jaraco.context", id="dots"),
+        pytest.param("jaraco_context", id="underscore"),
+        pytest.param("Jaraco-Context", id="case"),
+        pytest.param("jaraco..context", id="run-of-separators"),
+    ],
+)
+def test_spellings_of_one_project_share_a_purl(name: str) -> None:
+    component = component_from_metadata(parse_metadata(f"Name: {name}\nVersion: 6.1.0\n"))
+    assert (component["purl"], component["bom-ref"]) == (
+        "pkg:pypi/jaraco-context@6.1.0",
+        "pkg:pypi/jaraco-context@6.1.0",
+    )
+
+
+def test_purl_escapes_a_local_version() -> None:
+    # the purl spec percent-encodes every version character outside its unreserved set, + among them
+    assert purl("pkg", "1.0+local.1") == "pkg:pypi/pkg@1.0%2Blocal.1"
 
 
 def test_vendored_dependencies_at_any_depth_in_document_order() -> None:

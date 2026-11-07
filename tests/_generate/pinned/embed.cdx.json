@@ -2,7 +2,7 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:0c382715-4ac3-55f8-b2e5-bb3920847bd3",
+  "serialNumber": "urn:uuid:cc128def-101f-5a39-891f-b23b5e129f55",
   "version": 1,
   "metadata": {
     "timestamp": "2023-11-14T22:13:20+00:00",
@@ -115,10 +115,10 @@
     },
     "component": {
       "type": "application",
-      "bom-ref": "pkg:pypi/pkg.name@1.0",
+      "bom-ref": "pkg:pypi/pkg-name@1.0",
       "name": "Pkg.Name",
       "version": "1.0",
-      "purl": "pkg:pypi/pkg.name@1.0",
+      "purl": "pkg:pypi/pkg-name@1.0",
       "description": "a pinned example",
       "authors": [
         {
@@ -495,7 +495,7 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:pypi/pkg.name@1.0",
+      "ref": "pkg:pypi/pkg-name@1.0",
       "dependsOn": [
         "bundled:pkg_name/wheels/pip-1.0-py3-none-any.whl",
         "requires-dist:alpha>=1",
@@ -529,7 +529,7 @@
     {
       "aggregate": "incomplete",
       "dependencies": [
-        "pkg:pypi/pkg.name@1.0"
+        "pkg:pypi/pkg-name@1.0"
       ]
     }
   ],
@@ -562,7 +562,7 @@
             {
               "type": "artifact",
               "resource": {
-                "ref": "pkg:pypi/pkg.name@1.0"
+                "ref": "pkg:pypi/pkg-name@1.0"
               }
             }
           ],

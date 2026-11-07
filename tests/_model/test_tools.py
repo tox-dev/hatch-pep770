@@ -55,3 +55,12 @@ def test_tools_list_interpreter_then_distributions_by_name(facts: BuildFacts) ->
         {"ref": "tool:pkg:pypi/alpha@1", "dependsOn": ["tool:pkg:pypi/zeta@2"]},
         {"ref": "tool:pkg:pypi/zeta@2", "dependsOn": []},
     ]
+
+
+def test_tool_bom_ref_and_purl_agree(facts: BuildFacts) -> None:
+    # the distribution is keyed by its normalized name, while its metadata spells it with a dot
+    tool = InstalledDistribution(
+        name="boolean-py", metadata=parse_metadata("Name: boolean.py\nVersion: 5.0\n"), files=[], depends_on=[]
+    )
+    (_, component), _ = tool_components(dataclasses.replace(facts, distributions=[tool]))
+    assert (component["bom-ref"], component.get("purl")) == ("tool:pkg:pypi/boolean-py@5.0", "pkg:pypi/boolean-py@5.0")

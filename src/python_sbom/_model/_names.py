@@ -53,7 +53,9 @@ def property_prefix(name: str) -> str:
 
 
 def purl(name: str, version: str | None = None) -> str:
-    return PackageURL(type="pypi", name=name, version=version).to_string()
+    # normalized as PEP 503 does, so every spelling of a project, jaraco.context or jaraco_context, gets one purl and a
+    # component's bom-ref agrees with its purl; packageurl only lowercases and turns underscores into dashes
+    return PackageURL(type="pypi", name=canonicalize_name(name), version=version).to_string()
 
 
 def pypi_url(name: str, version: str | None = None) -> str:
