@@ -6,9 +6,11 @@ from itertools import starmap
 from typing import TYPE_CHECKING, Final
 from urllib.parse import urlsplit
 
+from packaging.utils import canonicalize_name
+
 from ._document import walk_components
 from ._licenses import licenses
-from ._names import property_prefix, purl, pypi_url, reference_type, tool_ref
+from ._names import purl, pypi_url, reference_type, tool_ref
 from ._types import Dependency
 
 if TYPE_CHECKING:
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
 
 
 def bundled_wheel_component(
-    wheel: BundledWheel, namespace: str, properties: list[Property], supplier: OrganizationalEntity | None
+    wheel: BundledWheel, property_prefix: str, properties: list[Property], supplier: OrganizationalEntity | None
 ) -> Component:
     component = component_from_metadata(wheel.metadata)
     # the purl names the package; the path tells apart copies of one release bundled in two places
@@ -33,7 +35,7 @@ def bundled_wheel_component(
         {"type": "distribution", "url": pypi_url(wheel.metadata.name, wheel.metadata.version)},
     ]
     component["properties"] = [
-        {"name": f"{namespace}:bundled-wheel", "value": wheel.path},
+        {"name": f"{property_prefix}:bundled-wheel", "value": wheel.path},
         *properties,
         *component["properties"],
     ]
@@ -47,11 +49,11 @@ def bundled_wheel_component(
     for source, metadata in wheel.vendored:
         child = component_from_metadata(metadata)
         child["bom-ref"] = f"{component['bom-ref']}#vendored/{child['bom-ref']}"
-        child["properties"] = [*child["properties"], {"name": f"{namespace}:vendored-manifest", "value": source}]
+        child["properties"] = [*child["properties"], {"name": f"{property_prefix}:vendored-manifest", "value": source}]
         child["evidence"] = {"identity": [_evidence("purl", "manifest-analysis", source)]}
         # a vendored .dist-info comes after pip's manifest line naming the same package, so its metadata wins; keyed on
         # the PEP 503 name, since the manifest and the .dist-info may spell it differently
-        vendored[f"{property_prefix(child['name'])}=={child['version']}"] = child
+        vendored[f"{canonicalize_name(child['name'])}=={child['version']}"] = child
     component["components"] = [
         *(file_component(component["bom-ref"], row) for row in wheel.files),
         *(vendored[key] for key in sorted(vendored)),

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from ._types import Body, Component, Document, Formula, Property
 
 
-def with_header(body: Body, namespace: uuid.UUID) -> Document:
+def check_refs(body: Body) -> None:
     # a provider contributes refs of its own, so the document is checked before it is written rather than by validate
     components: Final[list[Component]] = [
         *walk_components([
@@ -27,11 +27,8 @@ def with_header(body: Body, namespace: uuid.UUID) -> Document:
     ]
     refs: Final[Counter[str]] = Counter(component["bom-ref"] for component in components)
     # formulas and workflows share the bom-ref namespace, so a component cannot take theirs
-    refs.update(
-        ref
-        for formula in body.get("formulation", [])
-        for ref in (formula["bom-ref"], *(workflow["bom-ref"] for workflow in formula["workflows"]))
-    )
+    for formula in body.get("formulation", []):
+        refs.update([formula["bom-ref"], *(workflow["bom-ref"] for workflow in formula["workflows"])])
     if repeated := sorted(ref for ref, count in refs.items() if count > 1):
         msg = f"bom-ref values repeat: {', '.join(repeated)}"
         raise SbomError(msg)
@@ -41,19 +38,12 @@ def with_header(body: Body, namespace: uuid.UUID) -> Document:
     if repeated := sorted(ref for ref, count in entries.items() if count > 1):
         msg = f"dependencies list more than one entry for: {', '.join(repeated)}"
         raise SbomError(msg)
-    known: Final[set[str]] = {component["bom-ref"] for component in components}
-    named = {ref for entry in body["dependencies"] for ref in (entry["ref"], *entry.get("dependsOn", []))}
-    if unknown := sorted(named - known):
+    named: Final[set[str]] = set(entries)
+    for entry in body["dependencies"]:
+        named.update(entry.get("dependsOn", []))
+    if unknown := sorted(named - {component["bom-ref"] for component in components}):
         msg = f"dependencies name bom-refs no component has: {', '.join(unknown)}"
         raise SbomError(msg)
-    return {
-        "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.6",
-        "serialNumber": f"urn:uuid:{uuid.uuid5(namespace, json.dumps(body, sort_keys=True))}",
-        "version": 1,
-        **body,
-    }
 
 
 def walk_components(components: Iterable[Component]) -> Iterator[Component]:
@@ -64,6 +54,17 @@ def walk_components(components: Iterable[Component]) -> Iterator[Component]:
         component = pending.pop()
         yield component
         pending.extend(reversed(component.get("components", [])))
+
+
+def with_header(body: Body, serial_namespace: uuid.UUID) -> Document:
+    return {
+        "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "serialNumber": f"urn:uuid:{uuid.uuid5(serial_namespace, json.dumps(body, sort_keys=True))}",
+        "version": 1,
+        **body,
+    }
 
 
 def checked_contributions(contributions: Contributions, provider: ContentProvider) -> Contributions:
@@ -110,6 +111,7 @@ def timestamp(facts: BuildFacts) -> str:
 
 
 __all__ = [
+    "check_refs",
     "checked_contributions",
     "contributed_properties",
     "formulation",

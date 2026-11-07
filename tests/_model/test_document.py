@@ -8,7 +8,13 @@ import pytest
 
 from python_sbom import ContentProvider, Contributions
 from python_sbom._errors import SbomError
-from python_sbom._model._document import checked_contributions, contributed_properties, formulation, with_header
+from python_sbom._model._document import (
+    check_refs,
+    checked_contributions,
+    contributed_properties,
+    formulation,
+    with_header,
+)
 
 if TYPE_CHECKING:
     from python_sbom import Component, Dependency, Property
@@ -38,7 +44,7 @@ def test_document_serial_derives_from_body() -> None:
     }
 
 
-def test_header_refuses_repeated_refs() -> None:
+def test_check_refs_refuses_repeated_refs() -> None:
     body: Body = {
         "metadata": {
             "timestamp": "2023-11-14T22:13:20+00:00",
@@ -50,10 +56,10 @@ def test_header_refuses_repeated_refs() -> None:
         "dependencies": [],
     }
     with pytest.raises(SbomError, match="bom-ref values repeat: app"):
-        with_header(body, uuid.uuid4())
+        check_refs(body)
 
 
-def test_header_refuses_unknown_dependency() -> None:
+def test_check_refs_refuses_unknown_dependency() -> None:
     body: Body = {
         "metadata": {
             "timestamp": "2023-11-14T22:13:20+00:00",
@@ -65,7 +71,7 @@ def test_header_refuses_unknown_dependency() -> None:
         "dependencies": [{"ref": "app", "dependsOn": ["ghost"]}],
     }
     with pytest.raises(SbomError, match="dependencies name bom-refs no component has: ghost"):
-        with_header(body, uuid.uuid4())
+        check_refs(body)
 
 
 def test_contributed_properties_keep_their_own_prefix() -> None:
@@ -83,11 +89,11 @@ def _partial(**fields: str | list[dict[str, str]]) -> Component:
     return cast("Component", fields)
 
 
-def test_header_refuses_a_second_dependency_entry_for_a_ref() -> None:
+def test_check_refs_refuses_a_second_dependency_entry_for_a_ref() -> None:
     # as when a provider adds an entry for the root, whose entry python-sbom writes
     body = _body([], [{"ref": "app", "dependsOn": []}, {"ref": "app", "dependsOn": []}], [])
     with pytest.raises(SbomError, match="dependencies list more than one entry for: app"):
-        with_header(body, uuid.uuid4())
+        check_refs(body)
 
 
 def _body(components: list[Component], dependencies: list[Dependency], formulation: list[Formula]) -> Body:
@@ -107,11 +113,11 @@ def _body(components: list[Component], dependencies: list[Dependency], formulati
 @pytest.mark.parametrize(
     "ref", [pytest.param("formula:build", id="formula"), pytest.param("workflow:build", id="workflow")]
 )
-def test_header_refuses_a_component_taking_a_formulation_ref(facts: BuildFacts, ref: str) -> None:
+def test_check_refs_refuses_a_component_taking_a_formulation_ref(facts: BuildFacts, ref: str) -> None:
     formula = formulation("build", "build the app", [], "app", facts)
     body = _body([{"type": "library", "bom-ref": ref, "name": "clash"}], [], [formula])
     with pytest.raises(SbomError, match=f"bom-ref values repeat: {ref}"):
-        with_header(body, uuid.uuid4())
+        check_refs(body)
 
 
 @pytest.mark.parametrize(

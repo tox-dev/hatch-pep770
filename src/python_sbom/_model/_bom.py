@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from packaging.requirements import Requirement
 
 from ._components import bundled_wheel_component, component_from_metadata, script_tool, vendored_dependencies
-from ._document import contributed_properties, formulation, timestamp, with_header
+from ._document import check_refs, contributed_properties, formulation, timestamp, with_header
 from ._identity import project_identity
 from ._inputs import Artifact
 from ._markers import applies_without_extras
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from ._identity import ProjectIdentity
     from ._inputs import BuildFacts, BundledWheelInfo, Contributions, SbomRequest, Settings, SourceTree
-    from ._types import Component, Document, ExternalReference, Metadata, Property
+    from ._types import Body, Component, Document, ExternalReference, Metadata, Property
 
 
 def describe(
@@ -71,7 +71,7 @@ def describe(
     return assemble(artifact, project, settings, facts, contributions)
 
 
-def _declared_dependency(text: str, requirement: Requirement, namespace: str) -> Component:
+def _declared_dependency(text: str, requirement: Requirement, property_prefix: str) -> Component:
     component: Final[Component] = {
         "type": "library",
         # the same distribution can be declared more than once with different markers, so the purl is not unique
@@ -79,10 +79,13 @@ def _declared_dependency(text: str, requirement: Requirement, namespace: str) ->
         "name": requirement.name,
         "purl": purl(requirement.name),
         "externalReferences": [{"type": "distribution", "url": pypi_url(requirement.name)}],
-        "properties": [{"name": f"{namespace}:requires-dist", "value": text}],
+        "properties": [{"name": f"{property_prefix}:requires-dist", "value": text}],
     }
     if requirement.marker is not None:
-        component["properties"].append({"name": f"{namespace}:environment-marker", "value": str(requirement.marker)})
+        component["properties"].append({
+            "name": f"{property_prefix}:environment-marker",
+            "value": str(requirement.marker),
+        })
     return component
 
 
@@ -113,23 +116,22 @@ def assemble(
         *contributions.tools,
     ]
     uid, name = artifact.workflow
-    return with_header(
-        {
-            "metadata": _metadata(tools, artifact, project, settings, facts),
-            "components": components,
-            "dependencies": [
-                {"ref": root["bom-ref"], "dependsOn": [component["bom-ref"] for component in components]},
-                *artifact.dependencies,
-                *tool_dependencies,
-                *contributions.dependencies,
-            ],
-            # what the artifact needs at run time beyond what it ships, an interpreter and the dependencies an installer
-            # resolves, is not listed
-            "compositions": [{"aggregate": "incomplete", "dependencies": [root["bom-ref"]]}],
-            "formulation": [formulation(uid, name, tools, root["bom-ref"], facts)],
-        },
-        project.serial_namespace,
-    )
+    body: Final[Body] = {
+        "metadata": _metadata(tools, artifact, project, settings, facts),
+        "components": components,
+        "dependencies": [
+            {"ref": root["bom-ref"], "dependsOn": [component["bom-ref"] for component in components]},
+            *artifact.dependencies,
+            *tool_dependencies,
+            *contributions.dependencies,
+        ],
+        # what the artifact needs at run time beyond what it ships, an interpreter and the dependencies an installer
+        # resolves, is not listed
+        "compositions": [{"aggregate": "incomplete", "dependencies": [root["bom-ref"]]}],
+        "formulation": [formulation(uid, name, tools, root["bom-ref"], facts)],
+    }
+    check_refs(body)
+    return with_header(body, project.serial_namespace)
 
 
 def _provenance(
