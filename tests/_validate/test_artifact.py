@@ -112,6 +112,18 @@ def test_oversized_json_file(tmp_path: Path) -> None:
     ]
 
 
+def test_sbom_not_utf8_is_reported_and_the_rest_checked(tmp_path: Path, write_wheel: WriteWheel) -> None:
+    sboms = {
+        "example-1.0.dist-info/sboms/utf16.cdx.json": b"\xff\xfe{}",
+        "example-1.0.dist-info/sboms/other.cdx.json": b"not JSON",
+    }
+    wheel = write_wheel(tmp_path / "example-1.0-py3-none-any.whl", {**_METADATA, **sboms})
+    assert validate(wheel, None) == [
+        "example-1.0.dist-info/sboms/other.cdx.json: is not JSON: Expecting value: line 1 column 1 (char 0)",
+        "example-1.0.dist-info/sboms/utf16.cdx.json: is not UTF-8: invalid start byte at byte 0",
+    ]
+
+
 def test_archive_with_duplicate_member(tmp_path: Path) -> None:
     with zipfile.ZipFile(wheel := tmp_path / "example-1.0-py3-none-any.whl", "w") as archive:
         archive.writestr("example.cdx.json", b"{}")

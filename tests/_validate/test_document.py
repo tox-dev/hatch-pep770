@@ -44,6 +44,10 @@ def test_not_json() -> None:
     assert validate_document(b"this is not json", None) == ["is not JSON: Expecting value: line 1 column 1 (char 0)"]
 
 
+def test_not_utf8() -> None:
+    assert validate_document(b'{"name": "\xe9t\xe9"}', None) == ["is not UTF-8: invalid continuation byte at byte 10"]
+
+
 def test_schema_violation() -> None:
     (problem,) = validate_document(
         json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "one"}).encode(), None

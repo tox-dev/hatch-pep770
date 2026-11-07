@@ -62,6 +62,8 @@ def validate_document(
         return _problems(raw, allowed_licenses, max_components)
     except MissingExtraError:
         raise
+    except UnicodeDecodeError as error:
+        return [f"is not UTF-8: {error.reason} at byte {error.start}"]
     except json.JSONDecodeError as error:
         return [f"is not JSON: {error}"]
     except RecursionError:
