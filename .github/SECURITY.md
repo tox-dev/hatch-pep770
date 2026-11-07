@@ -1,14 +1,14 @@
 # Security policy
 
-hatch-pep770 is a hatchling build hook that writes a CycloneDX SBOM into wheels, plus a command line tool that renders
-that SBOM as SPDX and validates it. This policy says how to report a security problem and how we decide whether a report
-is one.
+hatch-pep770 writes a CycloneDX SBOM into wheels, from a hatchling build hook or from a command that rewrites a wheel
+another build backend built, and renders or validates that SBOM. This policy says how to report a security problem and
+how we decide whether a report is one.
 
 ## Reporting a vulnerability
 
 **Do not open a public issue for a security problem.** Use
-[GitHub's private vulnerability reporting](https://github.com/tox-dev/hatch-pep770/security/advisories/new). If you do
-not have a GitHub account, email [gaborjbernat@gmail.com](mailto:gaborjbernat@gmail.com).
+[GitHub's private vulnerability reporting](https://github.com/tox-dev/hatch-pep770/security/advisories/new). If neither
+works for you, email [gaborjbernat@gmail.com](mailto:gaborjbernat@gmail.com).
 
 Include what the attacker controls and what they gain, the steps or a proof of concept, and the versions and platform
 you tested. Write the report yourself; unreviewed tool or model output takes longer to triage.
@@ -27,19 +27,20 @@ Only the latest release receives fixes. Confirm the problem reproduces on it bef
 
 ## Vulnerability or bug
 
-The build hook runs inside a project's own build, with the trust that build already has: the project source, its
-`pyproject.toml`, its build requirements and the build environment are trusted. A report that needs control of one of
-those is a bug: we fix it in the open and publish no advisory.
+A report is a vulnerability when an attacker who controls only an input that the [threat model](THREAT_MODEL.md) lists
+as untrusted breaks a guarantee hatch-pep770 makes. A report that first needs control of something the threat model
+trusts, such as the project source, its `pyproject.toml` or the build environment, is a bug: we fix it in the open and
+publish no advisory. Classify by who supplies the dangerous input, not by how bad the outcome sounds.
 
 **In scope**
 
-- A wheel bundled as a data file, or an SBOM given to `hatch-pep770 spdx` or `validate`, that makes the tool write
-  outside its output file or the wheel's `.dist-info/sboms/` directory, or run code.
-- An SBOM that misstates what the wheel contains in a way the project's own inputs cannot explain, such as a wrong hash.
+- A bundled wheel, or an SBOM given to `hatch-pep770 spdx` or `validate`, that makes hatch-pep770 write outside its
+  output file or the wheel it rewrites, or run code.
+- An SBOM that misstates what a wheel holds in a way its inputs cannot explain, such as a wrong hash.
 
 **Out of scope**
 
 - Anything hatchling's own build trusts.
-- Vulnerabilities in the packages the SBOM lists; report those to their projects.
+- Vulnerabilities in the packages an SBOM lists; report those to their projects.
 
 If you cannot tell which side a finding falls on, report it privately and we will decide.
