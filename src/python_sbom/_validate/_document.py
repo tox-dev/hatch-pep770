@@ -56,8 +56,9 @@ def validate_document(
     except json.JSONDecodeError as error:
         return [f"is not JSON: {error}"]
     except RecursionError:
-        # the JSON parser recurses once per level, how deep it gets depends on the Python version
-        return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
+        # the JSON parser recurses once per level and gives up near the recursion limit, long before the depth check
+        # below sees the document
+        return ["nests too deep for the JSON parser to read"]
     except Exception as error:  # ruff: ignore[blind-except] # a hostile document may trip any check, see above
         return [f"could not be checked, {type(error).__name__}: {str(error)[:MAX_TEXT]}"]
 

@@ -240,9 +240,7 @@ def test_deep_nesting_is_reported(describe: Describe) -> None:
 
 
 def test_nesting_too_deep_to_parse_is_reported() -> None:
-    assert validate_document("[" * 1_000_000 + "]" * 1_000_000, None) == [
-        "nests more than 128 levels deep, too deep to check"
-    ]
+    assert validate_document("[" * 1_000_000 + "]" * 1_000_000, None) == ["nests too deep for the JSON parser to read"]
 
 
 @pytest.mark.parametrize(
