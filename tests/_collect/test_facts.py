@@ -122,6 +122,23 @@ def test_platform_distribution_lists_no_files(tmp_path: Path, install: Install) 
     assert facts_from(tmp_path).distributions[0].files == []
 
 
+@pytest.mark.parametrize(
+    ("wheel", "listed"),
+    [
+        pytest.param("Wheel-Version: 1.0\nroot-is-purelib:\ttrue\n", True, id="any-case-and-blank"),
+        pytest.param("Wheel-Version: 1.0\nRoot-Is-Purelib: true\nRoot-Is-Purelib: false\n", True, id="first-wins"),
+        pytest.param("Wheel-Version: 1.0\n", False, id="absent"),
+        pytest.param("Wheel-Version: 1.0\n\nRoot-Is-Purelib: true\n", False, id="after-the-headers"),
+        pytest.param("Root-Is-Purelib: true \n", False, id="trailing-space"),
+    ],
+)
+def test_wheel_file_decides_purelib(tmp_path: Path, install: Install, wheel: str, listed: bool) -> None:
+    # read as the email parser reads the field: its first occurrence, among the headers, as written after the colon
+    install(tmp_path, "Name: alpha\nVersion: 1.0\n", {})
+    (tmp_path / "alpha-1.0.dist-info" / "WHEEL").write_text(wheel, encoding="utf-8")
+    assert bool(facts_from(tmp_path).distributions[0].files) is listed
+
+
 def test_editable_distribution_lists_no_files(tmp_path: Path, install: Install) -> None:
     editable = '{"url": "file:///checkout", "dir_info": {"editable": true}}'
     install(tmp_path, "Name: local\nVersion: 1.0\n", {"local.pth": b"/checkout/src\n"}, direct_url=editable)

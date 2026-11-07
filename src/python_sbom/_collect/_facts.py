@@ -6,11 +6,12 @@ import platform
 import sys
 import time
 import warnings
+from functools import cache
 from importlib.metadata import distributions
+from itertools import takewhile
 from typing import TYPE_CHECKING, Final
 
 from installer.records import InvalidRecordEntry, parse_record_file
-from installer.utils import parse_metadata_file
 from packaging.direct_url import DirectUrl, DirectUrlValidationError
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
@@ -76,9 +77,19 @@ def _installed(path: Sequence[str] | None) -> list[InstalledDistribution]:
 def _recorded_files(distribution: Distribution) -> list[RecordRow]:
     # a platform wheel's files are built for this machine's OS and architecture, and an editable install's point at a
     # checkout, so listing either would tie the document to one machine
-    if parse_metadata_file(distribution.read_text("WHEEL") or "")["Root-Is-Purelib"] != "true" or _editable(
-        distribution
-    ):
+    # Root-Is-Purelib as the email parser takes a field, its first occurrence among the header lines, as written after
+    # the colon, without parsing the rest of WHEEL
+    headers = takewhile(bool, (distribution.read_text("WHEEL") or "").splitlines())
+    fields = (line.partition(":") for line in headers)
+    purelib = next(
+        (
+            value.lstrip(" \t") == "true"
+            for field, colon, value in fields
+            if colon and field.lower() == "root-is-purelib"
+        ),
+        False,
+    )
+    if not purelib or _editable(distribution):
         return []
     # RECORD read once and as written: Distribution.files would stat every row to drop files missing on disk, and build
     # a path object for each, while the SBOM lists what the install recorded
@@ -117,17 +128,26 @@ def _depends_on(name: str, distribution: Distribution, metadata: CoreMetadata, i
     names: Final[set[str]] = set()
     # an .egg-info states its requirements in requires.txt, which Distribution.requires reads
     for line in metadata.values("requires_dist") or distribution.requires or []:
-        try:
-            requirement = Requirement(line)
-        except InvalidRequirement as error:
-            # old distributions declare requirements, such as "pytz (>dev)", that today's syntax rejects
-            warnings.warn(f"left out the requirement {line!r} of {name}: {error}", stacklevel=2)
-            continue
-        if (required := canonicalize_name(requirement.name)) in installed and (
-            requirement.marker is None or requirement.marker.evaluate()
-        ):
-            names.add(required)
+        match _required(line):
+            case InvalidRequirement() as error:
+                # old distributions declare requirements, such as "pytz (>dev)", that today's syntax rejects
+                warnings.warn(f"left out the requirement {line!r} of {name}: {error}", stacklevel=2)
+            case str() as required if required in installed:
+                names.add(required)
     return sorted(names)
+
+
+@cache
+def _required(line: str) -> str | InvalidRequirement | None:
+    # the normalized name a requirement needs here, None when its marker rules it out, or why it does not parse; the
+    # same requirements recur across a build environment's distributions, and the verdict holds for the process
+    try:
+        requirement = Requirement(line)
+    except InvalidRequirement as error:
+        return error
+    if requirement.marker is not None and not requirement.marker.evaluate():
+        return None
+    return canonicalize_name(requirement.name)
 
 
 __all__ = [
