@@ -37,6 +37,12 @@ SBOM lists its module among the build tools, hashed, because it shapes the docum
             zlib = {'type': 'library', 'bom-ref': 'pkg:generic/zlib@1.3.1', 'name': 'zlib', 'version': '1.3.1'}
             return Contributions(components=[zlib])
 
+The context has no method that lists files. A provider that needs the wheel's file list reads its ``RECORD`` through
+:meth:`~python_sbom.ProviderContext.read`, by the path of the project's ``.dist-info`` directory, such as
+``seeder-1.0.dist-info/RECORD``; an archive holds that directory at its top level, and the path reads the same there. The
+provider knows the project's name, and a hook subclass, shown below, can hand it hatchling's ``self.metadata.version``.
+Any other member reads the same way, by its path inside the artifact.
+
 Worked example: a seeder
 ------------------------
 
