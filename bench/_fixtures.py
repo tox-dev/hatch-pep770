@@ -8,7 +8,6 @@ timed runs then read only what this wrote, listed in ``fixtures.json``.
 from __future__ import annotations
 
 import base64
-import copy
 import hashlib
 import json
 import os
@@ -145,12 +144,13 @@ def _hatchling_wheel(root: Path, directory: Path) -> Path:
 
 
 def _hostile_document(wheel: Path, target: Path, count: int) -> Path:
-    # unique components in one array, the small project's SBOM otherwise: over the default component cap the document
-    # is rejected before the schema check, at or under it the uniqueItems check compares every pair of them
+    # the small project's SBOM with every component in one array of unique ones: over the default component cap the
+    # document is rejected before the schema check, at or under it the uniqueItems check compares every pair of them.
+    # The build tools go, as their file components would count toward the cap too
     with zipfile.ZipFile(wheel) as archive:
         (name,) = (member for member in archive.namelist() if "/sboms/" in member)
-        document = json.loads(archive.read(name))
-    hostile = copy.deepcopy(document)
+        hostile = json.loads(archive.read(name))
+    hostile["metadata"]["tools"]["components"] = []
     hostile["components"] = [{"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(count)]
     target.write_text(json.dumps(hostile), encoding="utf-8")
     return target
