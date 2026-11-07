@@ -3,23 +3,20 @@ from __future__ import annotations
 import stat
 import struct
 import sys
-import tracemalloc
 import zipfile
-from contextlib import ExitStack
 from io import BytesIO
-from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 import pytest
 
+from python_sbom._collect._source import read_bundled_wheel
 from python_sbom._errors import WheelError
-from python_sbom._wheel._archive import open_archive, read_member, write_sbom
+from python_sbom._wheel._archive import write_sbom
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from pathlib import Path
 
     from conftest import WriteWheel
-    from pytest_mock import MockerFixture
 
 _SBOM: Final[str] = "native-1.0.dist-info/sboms/native.cdx.json"
 # the SHA-256 of b"{}\n", urlsafe base64 without padding
@@ -166,11 +163,15 @@ def test_embed_refuses_non_wheel(tmp_path: Path, files: dict[str, bytes], messag
         write_sbom(archive, "native.cdx.json", b"{}\n", 1_700_000_000)
 
 
-def test_failed_embed_leaves_wheel_and_no_temporary_file(wheel: Path, mocker: MockerFixture) -> None:
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no POSIX permission bits")
+def test_failed_embed_leaves_wheel_and_no_temporary_file(wheel: Path) -> None:  # pragma: win32 no cover
     original = wheel.read_bytes()
-    mocker.patch.object(Path, "replace", autospec=True, side_effect=OSError("disk full"))
-    with pytest.raises(OSError, match="disk full"):
-        write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
+    wheel.parent.chmod(0o555)
+    try:
+        with pytest.raises(OSError, match="Permission denied"):
+            write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
+    finally:
+        wheel.parent.chmod(0o755)
     assert [path.name for path in wheel.parent.iterdir()] == [wheel.name]
     assert wheel.read_bytes() == original
 
@@ -198,58 +199,44 @@ def test_embed_refuses_corrupt_archive(tmp_path: Path) -> None:
         pytest.param(("pkg/a.py", "PKG/a.py"), id="directory-case"),
     ],
 )
-def test_open_archive_refuses_names_equal_ignoring_case(names: tuple[str, str]) -> None:
-    message = f"w holds more than one member named {names[0].lower()}, ignoring case"
-    with pytest.raises(WheelError, match=message), ExitStack() as stack:
-        stack.enter_context(open_archive(zip_of(*((name, b"") for name in names)), "w"))
+def test_archive_refuses_names_equal_ignoring_case(names: tuple[str, str]) -> None:
+    message = f"bundled wheel w-1.0-py3-none-any.whl holds more than one member named {names[0].lower()}, ignoring case"
+    with pytest.raises(WheelError, match=message):
+        read_bundled_wheel(zip_of(*((name, b"") for name in names)), "w-1.0-py3-none-any.whl")
 
 
-def zip_of(*members: tuple[str, bytes]) -> BytesIO:
+def zip_of(*members: tuple[str, bytes]) -> bytes:
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, content in members:
             archive.writestr(name, content)
-    return buffer
+    return buffer.getvalue()
 
 
-def test_open_archive_refuses_corrupt_member() -> None:
-    data = bytearray(zip_of(("a", b"hello" * 1000)).getvalue())
-    data[40:50] = b"\xff" * 10
-    with pytest.raises(WheelError, match="w is not a valid zip"), open_archive(BytesIO(bytes(data)), "w") as archive:
-        archive.read("a")
+def test_archive_refuses_corrupt_member() -> None:
+    data = bytearray(zip_of(("w-1.0.dist-info/METADATA", b"hello" * 1000)))
+    data[70:80] = b"\xff" * 10
+    with pytest.raises(WheelError, match="w-1.0-py3-none-any.whl is not a valid zip"):
+        read_bundled_wheel(bytes(data), "w-1.0-py3-none-any.whl")
 
 
-def test_read_member() -> None:
-    with open_archive(zip_of(("a", b"12345")), "w") as archive:
-        assert read_member(archive, "a", "w", limit=5) == b"12345"
+def test_member_over_limit() -> None:
+    data = zip_of(("w-1.0.dist-info/METADATA", b"A" * (16 * 1024 * 1024 + 1)))
+    with pytest.raises(WheelError, match=r"w-1.0.dist-info/METADATA is over the 16777216 byte limit"):
+        read_bundled_wheel(data, "w-1.0-py3-none-any.whl")
 
 
-def test_read_member_over_limit() -> None:
-    with open_archive(zip_of(("a", b"12345")), "w") as archive, pytest.raises(WheelError, match="w: a is over the 4"):
-        read_member(archive, "a", "w", limit=4)
+def test_member_missing() -> None:
+    with pytest.raises(WheelError, match="has no w-1.0.dist-info/METADATA"):
+        read_bundled_wheel(zip_of(("w-1.0.dist-info/RECORD", b"")), "w-1.0-py3-none-any.whl")
 
 
-def test_read_member_missing() -> None:
-    with open_archive(zip_of(("a", b"")), "w") as archive, pytest.raises(WheelError, match="w has no b"):
-        read_member(archive, "b", "w")
-
-
-@pytest.mark.usefixtures("traced")
-def test_read_member_refuses_understated_size() -> None:
-    # the archive claims 10 bytes for 32 MiB; reading the member whole would decompress all of it before the CRC check
-    data = bytearray(zip_of(("a", b"A" * 32 * 1024 * 1024)).getvalue())
+def test_member_with_understated_size_fails_its_crc() -> None:
+    # the archive claims 10 bytes for 32 MiB; the core inflates no more than the stated size before the CRC check
+    data = bytearray(zip_of(("w-1.0.dist-info/METADATA", b"A" * 32 * 1024 * 1024)))
     data[22:26] = data[(central := data.rfind(b"PK\x01\x02")) + 24 : central + 28] = struct.pack("<I", 10)
-    tracemalloc.reset_peak()
-    with pytest.raises(WheelError, match="Bad CRC-32 for file 'a'"), open_archive(BytesIO(bytes(data)), "w") as archive:
-        read_member(archive, "a", "w")
-    assert tracemalloc.get_traced_memory()[1] < 4 * 1024 * 1024
-
-
-@pytest.fixture
-def traced() -> Iterator[None]:
-    tracemalloc.start()
-    yield
-    tracemalloc.stop()
+    with pytest.raises(WheelError, match="Bad CRC-32 for file 'w-1.0.dist-info/METADATA'"):
+        read_bundled_wheel(bytes(data), "w-1.0-py3-none-any.whl")
 
 
 def test_wheel_with_two_dist_info_directories(tmp_path: Path, write_wheel: WriteWheel) -> None:

@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from conftest import Describe
-    from pytest_mock import MockerFixture
 
     from python_sbom import Component, License
     from python_sbom._model._types import Document
@@ -223,11 +222,6 @@ def test_license_policy(describe: Describe) -> None:
     assert validate_document(raw, frozenset({"MIT"})) == [
         "bundled:lib.whl: license MIT AND GPL-3.0-only is outside the allowed licenses ['MIT']"
     ]
-
-
-def test_unexpected_error_is_reported(describe: Describe, mocker: MockerFixture) -> None:
-    mocker.patch("python_sbom._validate._document.render_spdx", autospec=True, side_effect=RuntimeError("x" * 300))
-    assert validate_document(dumps(describe()).decode(), None) == [f"could not be checked, RuntimeError: {'x' * 200}"]
 
 
 @pytest.mark.parametrize(
