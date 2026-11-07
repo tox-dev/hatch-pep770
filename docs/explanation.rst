@@ -92,8 +92,8 @@ launchers and uv's cache files are left out too, since they name the frontend, t
 than the distribution.
 
 Hashing each tool's ``RECORD`` instead would be smaller, but that file lists the installer metadata, so two frontends
-installing the same tools would give two hashes. The cost is size: python-sbom's own isolated build lists about 600
-files, half of them from setuptools, which setuptools-scm pulls in, for an SBOM of about 400 KB.
+installing the same tools would give two hashes. The cost is size: the file list grows with the build environment, and
+a large build tool such as setuptools adds hundreds of entries.
 
 So a rebuild reproduces the wheel byte for byte on any operating system when these match the original build: the source
 tree, as a checkout of the same commit; ``SOURCE_DATE_EPOCH``; the Python version; and the versions of the build backend
