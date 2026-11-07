@@ -1,37 +1,32 @@
 from __future__ import annotations
 
-import json
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
 import pytest
+from conftest import BUNDLED, HOOK
 
-from hatch_pep770.spdx import to_spdx
-from hatch_pep770.version import __version__
+from hatch_pep770 import __version__, to_spdx
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from pathlib import Path
 
-    from hatch_pep770.cyclonedx import Document
-    from tests.conftest import BundleWheel
+    from conftest import BuildSbom, BundleWheel
 
-_BUNDLED: Final[str] = "src/example/wheels/*.whl"
+    from hatch_pep770 import Document
+
+_SUPPLIED: Final[str] = f'{HOOK}{BUNDLED}supplier = {{ name = "Example Org" }}\n'
 
 
 @pytest.fixture
-def bundled_config(bundle_wheel: BundleWheel, config: dict[str, Any]) -> dict[str, Any]:
+def bundled(bundle_wheel: BundleWheel) -> None:
     bundle_wheel(
         {"pip/_vendor/vendor.txt": "urllib3==1.26.4\n"}, "Project-URL: Source, https://github.com/example/pip\n"
     )
-    config["tool"]["hatch"]["build"]["hooks"]["pep770"] = {
-        "bundled-wheels": [_BUNDLED],
-        "supplier": {"name": "Example Org"},
-    }
-    return config
 
 
-def test_spdx_bundled_wheel(build_sbom: Callable[[dict[str, Any]], str], bundled_config: dict[str, Any]) -> None:
-    cyclonedx: Final[Document] = json.loads(build_sbom(bundled_config))
+@pytest.mark.usefixtures("bundled")
+def test_spdx_bundled_wheel(build_sbom: BuildSbom) -> None:
+    cyclonedx: Final[Document] = build_sbom(hook=_SUPPLIED)
     assert to_spdx(cyclonedx)["packages"][1] == {
         "SPDXID": "SPDXRef-pkg-pypi-pip-1.0",
         "name": "pip",
@@ -42,7 +37,9 @@ def test_spdx_bundled_wheel(build_sbom: Callable[[dict[str, Any]], str], bundled
         "primaryPackagePurpose": "LIBRARY",
         "versionInfo": "1.0",
         "supplier": "Organization: Example Org",
-        "checksums": [{"algorithm": "SHA256", "checksumValue": cyclonedx["components"][0]["hashes"][0]["content"]}],
+        "checksums": [
+            {"algorithm": "SHA256", "checksumValue": cyclonedx["components"][0].get("hashes", [])[0]["content"]}
+        ],
         "comment": "example:bundled-wheel: src/example/wheels/pip-1.0-py3-none-any.whl",
         "externalRefs": [
             {"referenceCategory": "PACKAGE-MANAGER", "referenceType": "purl", "referenceLocator": "pkg:pypi/pip@1.0"}
@@ -50,10 +47,10 @@ def test_spdx_bundled_wheel(build_sbom: Callable[[dict[str, Any]], str], bundled
     }
 
 
-def test_spdx_root_package(sbom_document: Document) -> None:
-    assert to_spdx(sbom_document)["packages"][0] == {
+def test_spdx_root_package(build_sbom: BuildSbom) -> None:
+    assert to_spdx(build_sbom())["packages"][0] == {
         "SPDXID": "SPDXRef-pkg-pypi-example-1.0",
-        "name": "example",
+        "name": "Example",
         "downloadLocation": "NOASSERTION",
         "filesAnalyzed": False,
         "licenseConcluded": "NOASSERTION",
@@ -62,7 +59,7 @@ def test_spdx_root_package(sbom_document: Document) -> None:
         "versionInfo": "1.0",
         "copyrightText": "Copyright (c) 2026 Example",
         "summary": "an example",
-        "comment": "example:requires-python: >=3.9",
+        "comment": "example:requires-python: >=3.11",
         "externalRefs": [
             {
                 "referenceCategory": "PACKAGE-MANAGER",
@@ -73,10 +70,11 @@ def test_spdx_root_package(sbom_document: Document) -> None:
     }
 
 
-def test_spdx_relationships(build_sbom: Callable[[dict[str, Any]], str], bundled_config: dict[str, Any]) -> None:
+@pytest.mark.usefixtures("bundled")
+def test_spdx_relationships(build_sbom: BuildSbom) -> None:
     assert [
         relationship
-        for relationship in to_spdx(_load(build_sbom(bundled_config)))["relationships"]
+        for relationship in to_spdx(build_sbom(hook=_SUPPLIED))["relationships"]
         if not relationship["spdxElementId"].startswith("SPDXRef-tool-")
     ] == [
         {
@@ -112,10 +110,10 @@ def test_spdx_relationships(build_sbom: Callable[[dict[str, Any]], str], bundled
     ]
 
 
-def test_spdx_build_tools(sbom_document: Document) -> None:
+def test_spdx_build_tools(build_sbom: BuildSbom) -> None:
     assert {
         relationship["relatedSpdxElement"]
-        for relationship in to_spdx(sbom_document)["relationships"]
+        for relationship in to_spdx(build_sbom())["relationships"]
         if relationship["relationshipType"] == "BUILD_TOOL_OF"
     } == {"SPDXRef-pkg-pypi-example-1.0"}
 
@@ -138,60 +136,40 @@ def test_spdx_build_tools(sbom_document: Document) -> None:
     ],
 )
 def test_spdx_declared_license(
-    build_sbom: Callable[[dict[str, Any]], str],
-    bundle_wheel: BundleWheel,
-    config: dict[str, Any],
-    metadata: str,
-    expected: tuple[str, str, str | None],
+    build_sbom: BuildSbom, bundle_wheel: BundleWheel, metadata: str, expected: tuple[str, str, str | None]
 ) -> None:
     bundle_wheel({}, metadata)
-    config["tool"]["hatch"]["build"]["hooks"]["pep770"] = {"bundled-wheels": [_BUNDLED]}
-    package: Final[dict[str, Any]] = dict(to_spdx(_load(build_sbom(config)))["packages"][1])
+    package = to_spdx(build_sbom(hook=f"{HOOK}{BUNDLED}"))["packages"][1]
     assert (package["licenseDeclared"], package["licenseConcluded"], package.get("licenseComments")) == expected
 
 
 @pytest.mark.parametrize(
-    ("urls", "hooks", "expected"),
+    ("hook", "expected"),
     [
         pytest.param(
-            {"Source": "https://github.com/example/example"},
-            {"pep770": {"supplier": {"name": "Example Org"}}},
-            ("https://github.com/example/example/sboms/example-1.0-", ["Organization: Example Org"]),
+            f'{HOOK}supplier = {{ name = "Example Org" }}\n',
+            ("https://github.com/example/example/sboms/Example-1.0-", ["Organization: Example Org"]),
             id="repository-and-supplier",
         ),
-        pytest.param({}, {"pep770": {}}, ("https://spdx.org/spdxdocs/sboms/example-1.0-", []), id="neither"),
         pytest.param(
-            {},
-            {"custom": {}},
-            ("https://spdx.org/spdxdocs/sboms/example-1.0-", ["Tool: hatch_build.py-1.0"]),
+            '[tool.hatch.build.hooks.custom]\npath = "build.py"\n',
+            ("https://github.com/example/example/sboms/Example-1.0-", ["Tool: build.py-1.0"]),
             id="custom-build-script",
         ),
     ],
 )
 def test_spdx_creation_info(
-    root: Path,
-    build_sbom: Callable[[dict[str, Any]], str],
-    config: dict[str, Any],
-    monkeypatch: pytest.MonkeyPatch,
-    urls: dict[str, str],
-    hooks: dict[str, Any],
-    expected: tuple[str, list[str]],
+    root: Path, build_sbom: BuildSbom, monkeypatch: pytest.MonkeyPatch, hook: str, expected: tuple[str, list[str]]
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
-    (root / "hatch_build.py").write_text(
-        "from hatch_pep770 import plugin\n\n\ndef get_build_hook():\n    return plugin.Pep770BuildHook\n",
+    (root / "build.py").write_text(
+        "from hatch_pep770 import Pep770BuildHook\n\n\ndef get_build_hook():\n    return Pep770BuildHook\n",
         encoding="utf-8",
     )
-    config["project"]["urls"] = urls
-    config["tool"]["hatch"]["build"]["hooks"] = hooks
-    cyclonedx: Final[Document] = json.loads(build_sbom(config))
-    document: Final[dict[str, Any]] = dict(to_spdx(cyclonedx))
+    cyclonedx: Final[Document] = build_sbom(hook=hook)
+    spdx = to_spdx(cyclonedx)
     namespace, creators = expected
-    assert (
-        document["documentNamespace"],
-        document["creationInfo"],
-        document["comment"],
-    ) == (
+    assert (spdx["documentNamespace"], spdx["creationInfo"], spdx["comment"]) == (
         f"{namespace}{cyclonedx['serialNumber'].removeprefix('urn:uuid:')}",
         {"created": "2023-11-14T22:13:20Z", "creators": [*creators, f"Tool: hatch-pep770-{__version__}"]},
         (
@@ -201,5 +179,8 @@ def test_spdx_creation_info(
     )
 
 
-def _load(content: str) -> Document:
-    return json.loads(content)
+def test_spdx_namespace_without_repository(build_sbom: BuildSbom) -> None:
+    cyclonedx: Final[Document] = build_sbom(project='[project]\nname = "Example"\nversion = "1.0"\n')
+    assert to_spdx(cyclonedx)["documentNamespace"] == (
+        f"https://spdx.org/spdxdocs/sboms/Example-1.0-{cyclonedx['serialNumber'].removeprefix('urn:uuid:')}"
+    )

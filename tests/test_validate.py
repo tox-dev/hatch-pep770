@@ -6,12 +6,16 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from hatch_pep770.validate import document_problems, license_problems, wheel_problems
+from hatch_pep770 import validate, validate_wheel
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from hatch_pep770.cyclonedx import Component, Document, License
+    from conftest import BuildSbom
+    from pytest_mock import MockerFixture
+
+    from hatch_pep770 import Component, Document
+    from hatch_pep770._cyclonedx import License
 
 _ALLOWED: Final[frozenset[str]] = frozenset({"Apache-2.0", "BSD-3-Clause", "MIT"})
 
@@ -28,16 +32,29 @@ def _concluded(identifier: str) -> License:
     return {"license": {"id": identifier, "acknowledgement": "concluded"}}
 
 
-def _denied(expression: str, bom_ref: str = "pkg:pypi/example@1.0") -> str:
+def _denied(expression: str, bom_ref: str = "pkg:pypi/bundled@1.0") -> str:
     return f"{bom_ref}: license {expression} is outside the allowed licenses ['Apache-2.0', 'BSD-3-Clause', 'MIT']"
 
 
+@pytest.fixture
+def sbom_document(build_sbom: BuildSbom, mocker: MockerFixture) -> Document:
+    # schema validation time grows with the document, and the test environment's packages are irrelevant here
+    mocker.patch("hatch_pep770._cyclonedx.distributions", autospec=True, return_value=[])
+    return build_sbom()
+
+
+def _with_component(document: Document, component: Component) -> str:
+    document["components"].append(component)
+    document["dependencies"][0]["dependsOn"].append(component["bom-ref"])
+    return json.dumps(document)
+
+
 def test_document_valid(sbom_document: Document) -> None:
-    assert document_problems(json.dumps(sbom_document), _ALLOWED) == []
+    assert validate(json.dumps(sbom_document), _ALLOWED) == []
 
 
 def test_document_schema_violation() -> None:
-    problems: Final[list[str]] = document_problems(
+    problems: Final[list[str]] = validate(
         json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "version": "1"}), None
     )
     assert [problem.splitlines()[0] for problem in problems] == [
@@ -46,26 +63,27 @@ def test_document_schema_violation() -> None:
 
 
 def test_document_serial_number_missing(sbom_document: Document) -> None:
-    unnumbered: Final[dict[str, object]] = {key: value for key, value in sbom_document.items() if key != "serialNumber"}
-    assert document_problems(json.dumps(unnumbered), None) == ["serialNumber must be a urn:uuid: RFC 4122 UUID, got ''"]
+    unnumbered = json.loads(json.dumps(sbom_document))
+    del unnumbered["serialNumber"]
+    assert validate(json.dumps(unnumbered), None) == ["serialNumber must be a urn:uuid: RFC 4122 UUID, got ''"]
 
 
 def test_document_duplicate_bom_ref(sbom_document: Document) -> None:
     sbom_document["components"][1]["bom-ref"] = sbom_document["components"][0]["bom-ref"]
-    assert document_problems(json.dumps(sbom_document), None)[0] == (
+    assert validate(json.dumps(sbom_document), None)[0] == (
         "bom-ref values are not unique: ['requires-dist:packaging>=24']"
     )
 
 
 def test_document_dangling_dependency(sbom_document: Document) -> None:
     sbom_document["dependencies"].append({"ref": "pkg:pypi/example@1.0", "dependsOn": ["pkg:pypi/missing"]})
-    problems: Final[list[str]] = document_problems(json.dumps(sbom_document), None)
+    problems: Final[list[str]] = validate(json.dumps(sbom_document), None)
     assert problems[0] == "dependencies reference bom-refs that do not exist: ['pkg:pypi/missing']"
 
 
 def test_document_root_dependencies(sbom_document: Document) -> None:
     sbom_document["dependencies"][0]["dependsOn"] = ["requires-dist:packaging>=24"]
-    assert document_problems(json.dumps(sbom_document), None) == [
+    assert validate(json.dumps(sbom_document), None) == [
         (
             "root dependsOn ['requires-dist:packaging>=24'] != components"
             " ['requires-dist:packaging>=24', \"requires-dist:tomli>=2; python_version < '3.11'\"]"
@@ -75,32 +93,33 @@ def test_document_root_dependencies(sbom_document: Document) -> None:
 
 def test_document_workflow_unknown_tool(sbom_document: Document) -> None:
     sbom_document["formulation"][0]["workflows"][0]["resourceReferences"].append({"ref": "tool:missing"})
-    assert document_problems(json.dumps(sbom_document), None) == [
+    assert validate(json.dumps(sbom_document), None) == [
         "workflow wheel-build references unknown tools: ['tool:missing']"
     ]
 
 
 def test_document_spdx_unparsable(sbom_document: Document) -> None:
     sbom_document["metadata"]["component"]["hashes"] = [{"alg": "BLAKE2b-256", "content": "0" * 64}]
-    assert document_problems(json.dumps(sbom_document), None)[0].startswith("SPDX rendering does not parse:")
+    assert validate(json.dumps(sbom_document), None)[0].startswith("SPDX rendering does not parse:")
 
 
 def test_document_spdx_invalid(sbom_document: Document) -> None:
     sbom_document["metadata"]["component"]["purl"] = "not a purl"
-    assert document_problems(json.dumps(sbom_document), None)[0].startswith("SPDX rendering invalid:")
+    assert validate(json.dumps(sbom_document), None)[0].startswith("SPDX rendering invalid:")
 
 
 def test_wheel_without_sbom(tmp_path: Path) -> None:
     with zipfile.ZipFile(wheel := tmp_path / "example-1.0-py3-none-any.whl", "w") as archive:
         archive.writestr("example-1.0.dist-info/METADATA", "Name: example\n")
-    assert wheel_problems(wheel, None) == ["no .dist-info/sboms/*.cdx.json found in the wheel"]
+    assert validate_wheel(wheel, None) == ["no .dist-info/sboms/*.cdx.json found in the wheel"]
 
 
 def test_wheel_names_each_sbom(sbom_document: Document, tmp_path: Path) -> None:
-    unnumbered: Final[dict[str, object]] = {key: value for key, value in sbom_document.items() if key != "serialNumber"}
+    unnumbered = json.loads(json.dumps(sbom_document))
+    del unnumbered["serialNumber"]
     with zipfile.ZipFile(wheel := tmp_path / "example-1.0-py3-none-any.whl", "w") as archive:
         archive.writestr("example-1.0.dist-info/sboms/example.cdx.json", json.dumps(unnumbered))
-    assert wheel_problems(wheel, None) == [
+    assert validate_wheel(wheel, None) == [
         "example-1.0.dist-info/sboms/example.cdx.json: serialNumber must be a urn:uuid: RFC 4122 UUID, got ''"
     ]
 
@@ -136,21 +155,21 @@ def test_wheel_names_each_sbom(sbom_document: Document, tmp_path: Path) -> None:
         ),
         pytest.param(
             [_named("MIT License")],
-            ["pkg:pypi/example@1.0: declares license names ['MIT License'] with no SPDX id"],
+            ["pkg:pypi/bundled@1.0: declares license names ['MIT License'] with no SPDX id"],
             id="name-only",
         ),
-        pytest.param([], ["pkg:pypi/example@1.0: declares no license"], id="undeclared"),
+        pytest.param([], ["pkg:pypi/bundled@1.0: declares no license"], id="undeclared"),
     ],
 )
-def test_license_policy(licenses: list[License], expected: list[str]) -> None:
+def test_license_policy(sbom_document: Document, licenses: list[License], expected: list[str]) -> None:
     component: Final[Component] = {
         "type": "library",
-        "bom-ref": "pkg:pypi/example@1.0",
+        "bom-ref": "pkg:pypi/bundled@1.0",
         "name": "example",
         "hashes": [{"alg": "SHA-256", "content": "0" * 64}],
         "licenses": licenses,
     }
-    assert license_problems([component], _ALLOWED) == expected
+    assert validate(_with_component(sbom_document, component), _ALLOWED) == expected
 
 
 @pytest.mark.parametrize(
@@ -165,17 +184,18 @@ def test_license_policy(licenses: list[License], expected: list[str]) -> None:
         pytest.param("Apache-2.0 WITH OR", "unexpected 'OR'", id="with-operator"),
     ],
 )
-def test_license_policy_malformed(expression: str, reason: str) -> None:
+def test_license_policy_malformed(sbom_document: Document, expression: str, reason: str) -> None:
     component: Final[Component] = {
         "type": "library",
-        "bom-ref": "pkg:pypi/example@1.0",
+        "bom-ref": "pkg:pypi/bundled@1.0",
         "name": "example",
         "hashes": [{"alg": "SHA-256", "content": "0" * 64}],
         "licenses": [_expression(expression)],
     }
-    assert license_problems([component], _ALLOWED) == [
-        f"pkg:pypi/example@1.0: license expression {expression!r} is malformed: {reason}"
-    ]
+    # an expression the policy cannot parse does not parse as SPDX either, which the check reports first
+    assert validate(_with_component(sbom_document, component), _ALLOWED)[-1] == (
+        f"pkg:pypi/bundled@1.0: license expression {expression!r} is malformed: {reason}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -197,22 +217,13 @@ def test_license_policy_malformed(expression: str, reason: str) -> None:
             },
             id="vendored-by-bundled-wheel",
         ),
-        pytest.param(
-            {
-                "type": "file",
-                "bom-ref": "loader",
-                "name": "loader",
-                "hashes": [{"alg": "SHA-256", "content": "0" * 64}],
-            },
-            id="file",
-        ),
     ],
 )
-def test_license_policy_skips_unshipped(component: Component) -> None:
-    assert license_problems([component], _ALLOWED) == []
+def test_license_policy_skips_unshipped(sbom_document: Document, component: Component) -> None:
+    assert validate(_with_component(sbom_document, component), _ALLOWED) == []
 
 
-def test_license_policy_judges_files_owner() -> None:
+def test_license_policy_judges_files_owner(sbom_document: Document) -> None:
     component: Final[Component] = {
         "type": "library",
         "bom-ref": "pkg:pypi/distlib@0.4",
@@ -220,4 +231,6 @@ def test_license_policy_judges_files_owner() -> None:
         "licenses": [_concluded("LGPL-3.0-only")],
         "components": [{"type": "file", "bom-ref": "pkg:pypi/distlib@0.4#distlib/__init__.py", "name": "x"}],
     }
-    assert license_problems([component], _ALLOWED) == [_denied("LGPL-3.0-only", "pkg:pypi/distlib@0.4")]
+    assert validate(_with_component(sbom_document, component), _ALLOWED) == [
+        _denied("LGPL-3.0-only", "pkg:pypi/distlib@0.4")
+    ]

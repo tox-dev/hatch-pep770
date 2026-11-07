@@ -4,35 +4,61 @@ import base64
 import csv
 import hashlib
 import json
+import shutil
 import zipfile
 from io import StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final, Protocol
+from typing import TYPE_CHECKING, Final, Protocol
 
 import pytest
 from hatchling.builders.wheel import WheelBuilder
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
+from hatch_pep770 import Project
 
-    from hatch_pep770.cyclonedx import Document
+if TYPE_CHECKING:
+    from hatch_pep770 import Document
+
+_PROJECT: Final[str] = """\
+[project]
+name = "Example"
+version = "1.0"
+description = "an example"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+maintainers = [{ name = "Maintainer", email = "maintainer@example.com" }]
+keywords = ["sample", "demo"]
+classifiers = ["Programming Language :: Python :: 3"]
+dependencies = ["packaging>=24", "tomli>=2; python_version<'3.11'"]
+optional-dependencies.cli = ["click>=8"]
+urls.Changelog = "https://example.com/changelog"
+urls.Source = "https://github.com/example/example"
+"""
+HOOK: Final[str] = "[tool.hatch.build.hooks.pep770]\n"
+BUNDLED: Final[str] = 'bundled-wheels = ["src/example/wheels/*.whl"]\n'
+_SEEDER: Final[Path] = Path(__file__).parent / "seeder"
+
+
+class WriteProject(Protocol):
+    def __call__(self, *, hook: str = HOOK, project: str = _PROJECT) -> Path: ...
 
 
 class BundleWheel(Protocol):
     def __call__(self, files: dict[str, str], metadata: str = "", name: str = "pip") -> Path: ...
 
 
+class MakeWheel(Protocol):
+    def __call__(self, metadata: str) -> Path: ...
+
+
 class InstallTool(Protocol):
     def __call__(self, site: Path, name: str, purelib: bool, files: dict[str, bytes]) -> None: ...
 
 
-@pytest.fixture(autouse=True)
-def _clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
-
-
 @pytest.fixture
-def root(tmp_path: Path) -> Path:
+def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    # an exported SOURCE_DATE_EPOCH would move every timestamp the tests expect
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
     (package := tmp_path / "project" / "src" / "example").mkdir(parents=True)
     (package / "__init__.py").write_text("", encoding="utf-8")
     (tmp_path / "project" / "LICENSE").write_text("Copyright (c) 2026 Example\n\nMIT terms\n", encoding="utf-8")
@@ -40,54 +66,52 @@ def root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def config() -> dict[str, Any]:
-    return {
-        "project": {
-            "name": "Example",
-            "version": "1.0",
-            "description": "an example",
-            "requires-python": ">=3.9",
-            "license": "MIT",
-            "license-files": ["LICENSE"],
-            "maintainers": [{"name": "Maintainer", "email": "maintainer@example.com"}],
-            "keywords": ["sample"],
-            "classifiers": ["Programming Language :: Python :: 3"],
-            "dependencies": ["packaging>=24", "tomli>=2; python_version<'3.11'"],
-            "urls": {"Changelog": "https://example.com/changelog", "Source": "https://github.com/example/example"},
-        },
-        "tool": {
-            "hatch": {
-                "build": {
-                    "targets": {"wheel": {"packages": ["src/example"]}},
-                    "hooks": {"pep770": {}},
-                }
-            }
-        },
-    }
+def write_project(root: Path) -> WriteProject:
+    def write(*, hook: str = HOOK, project: str = _PROJECT) -> Path:
+        targets = '[tool.hatch.build.targets.wheel]\npackages = ["src/example"]\n'
+        (root / "pyproject.toml").write_text(f"{project}\n{targets}\n{hook}", encoding="utf-8")
+        return root
+
+    return write
 
 
 @pytest.fixture
-def build_sbom(root: Path) -> Callable[[dict[str, Any]], str]:
-    # drives the hook through hatchling's own wheel builder, also on hatchling releases that predate `sbom_files`
-    def build(config: dict[str, Any]) -> str:
-        builder: Final[WheelBuilder] = WheelBuilder(str(root), config=config)
-        build_data: Final[dict[str, Any]] = {**builder.get_default_build_data(), "sbom_files": []}
-        (hook,) = builder.get_build_hooks(str(root / "dist")).values()
-        hook.initialize("standard", build_data)
-        content = Path(build_data["sbom_files"][0]).read_text(encoding="utf-8")
-        hook.finalize("standard", build_data, str(root / "dist" / "example.whl"))
-        return content
+def build_sbom(write_project: WriteProject) -> BuildSbom:
+    def build(*, hook: str = HOOK, project: str = _PROJECT) -> Document:
+        return build_hook_sbom(write_project(hook=hook, project=project))
 
     return build
 
 
-@pytest.fixture
-def build_wheel(root: Path, tmp_path: Path) -> Callable[[dict[str, Any], str], Path]:
-    def build(config: dict[str, Any], out: str) -> Path:
-        (artifact,) = WheelBuilder(str(root), config=config).build(directory=str(tmp_path / out), versions=["standard"])
-        return Path(artifact)
+class BuildSbom(Protocol):
+    def __call__(self, *, hook: str = HOOK, project: str = _PROJECT) -> Document: ...
 
-    return build
+
+def build_hook_sbom(root: Path) -> Document:
+    builder: Final[WheelBuilder] = WheelBuilder(str(root))
+    build_data = builder.get_default_build_data()
+    (hook,) = builder.get_build_hooks(str(root / "dist")).values()
+    hook.initialize("standard", build_data)
+    (sbom,) = build_data["sbom_files"]
+    document: Final[Document] = json.loads(Path(sbom).read_text(encoding="utf-8"))
+    hook.finalize("standard", build_data, str(root / "dist" / "example.whl"))
+    return document
+
+
+@pytest.fixture
+def seeder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    # a copy, so the build cannot leave files in the source tree; the build script it loads stays the checked-in one
+    shutil.copytree(_SEEDER, target := tmp_path / "seeder", ignore=shutil.ignore_patterns("hatch_build.py"))
+    pyproject = (target / "pyproject.toml").read_text(encoding="utf-8")
+    script = (_SEEDER / "hatch_build.py").as_posix()
+    (target / "pyproject.toml").write_text(
+        pyproject.replace(
+            "build.hooks.custom.supplier", f'build.hooks.custom.path = "{script}"\nbuild.hooks.custom.supplier'
+        ),
+        encoding="utf-8",
+    )
+    return target
 
 
 @pytest.fixture
@@ -114,14 +138,45 @@ def bundle_wheel(root: Path) -> BundleWheel:
 
 
 @pytest.fixture
+def make_wheel(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MakeWheel:
+    # the layout another build backend, such as meson-python, writes: module first, .dist-info last, RECORD at the end
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+
+    def make(metadata: str) -> Path:
+        files: Final[dict[str, bytes]] = {
+            "native/__init__.py": b"",
+            "native-1.0.dist-info/METADATA": f"Metadata-Version: 2.4\nName: native\nVersion: 1.0\n{metadata}".encode(),
+            "native-1.0.dist-info/WHEEL": (
+                b"Wheel-Version: 1.0\nGenerator: meson\nRoot-Is-Purelib: false\nTag: py3-none-any\n"
+            ),
+        }
+        record = "".join(f"{name},{digest(content)},{len(content)}\n" for name, content in files.items())
+        (dist := tmp_path / "dist").mkdir(exist_ok=True)
+        with zipfile.ZipFile(wheel := dist / "native-1.0-py3-none-any.whl", "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, content in {
+                **files,
+                "native-1.0.dist-info/RECORD": f"{record}native-1.0.dist-info/RECORD,,\n".encode(),
+            }.items():
+                info = zipfile.ZipInfo(name, (2024, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, content)
+        return wheel
+
+    return make
+
+
+def digest(content: bytes) -> str:
+    return f"sha256={base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b'=').decode()}"
+
+
+@pytest.fixture
 def install_tool() -> InstallTool:
     def install(site: Path, name: str, purelib: bool, files: dict[str, bytes]) -> None:
         record: Final[StringIO] = StringIO(newline="")
+        csv.writer(record).writerows((path, digest(content), len(content)) for path, content in files.items())
         for path, content in files.items():
             (target := site / path).parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(content)
-            digest = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode()
-            csv.writer(record).writerow((path, f"sha256={digest}", len(content)))
         (dist_info := site / f"{name}-1.0.dist-info").mkdir(exist_ok=True)
         (dist_info / "METADATA").write_text(f"Metadata-Version: 2.4\nName: {name}\nVersion: 1.0\n", encoding="utf-8")
         (dist_info / "WHEEL").write_text(
@@ -133,5 +188,5 @@ def install_tool() -> InstallTool:
 
 
 @pytest.fixture
-def sbom_document(build_sbom: Callable[[dict[str, Any]], str], config: dict[str, Any]) -> Document:
-    return json.loads(build_sbom(config))
+def plain_project(tmp_path: Path) -> Project:
+    return Project.from_table({}, root=tmp_path, where="[tool.hatch-pep770]")

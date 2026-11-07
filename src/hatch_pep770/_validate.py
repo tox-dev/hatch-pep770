@@ -1,5 +1,3 @@
-"""Check an SBOM against the CycloneDX 1.6 schema, its own references, its SPDX rendering and a license policy."""
-
 from __future__ import annotations
 
 import json
@@ -7,40 +5,22 @@ import re
 import zipfile
 from typing import TYPE_CHECKING, Final
 
-from cyclonedx.schema import SchemaVersion
-from cyclonedx.validation.json import JsonStrictValidator
-from spdx_tools.spdx.parser.error import SPDXParsingError
-from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
-from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
-
-from .spdx import to_spdx
+from ._spdx import to_spdx
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
 
-    from .cyclonedx import Component, Document, License
+    from ._cyclonedx import Component, Document, License
 
-_SERIAL_PATTERN: Final[re.Pattern[str]] = re.compile(
-    r"""
-    ^urn:uuid:
-    (?P<time_low>[0-9a-f]{8})-
-    (?P<time_mid>[0-9a-f]{4})-
-    (?P<time_high_and_version>[0-9a-f]{4})-
-    (?P<clock_seq>[0-9a-f]{4})-
-    (?P<node>[0-9a-f]{12})
-    $
-    """,
-    re.VERBOSE,
-)
 # SPDX matches operators only in upper case
 _OPERATORS: Final[frozenset[str]] = frozenset({"AND", "OR", "WITH", "(", ")"})
 _TOKEN: Final[re.Pattern[str]] = re.compile(r"[()]|[^\s()]+")
 
 
-def wheel_problems(wheel: Path, allowed_licenses: frozenset[str] | None) -> list[str]:
+def validate_wheel(wheel: Path, allowed_licenses: frozenset[str] | None) -> list[str]:
     """
-    Check every PEP 770 CycloneDX SBOM in a wheel.
+    Check every PEP 770 CycloneDX SBOM in a wheel; needs the ``validate`` extra.
 
     :param wheel: the wheel to read
     :param allowed_licenses: SPDX license ids the shipped components may use, or ``None`` to skip the license policy
@@ -55,12 +35,12 @@ def wheel_problems(wheel: Path, allowed_licenses: frozenset[str] | None) -> list
         }
     if not sboms:
         return ["no .dist-info/sboms/*.cdx.json found in the wheel"]
-    return [f"{name}: {problem}" for name, raw in sboms.items() for problem in document_problems(raw, allowed_licenses)]
+    return [f"{name}: {problem}" for name, raw in sboms.items() for problem in validate(raw, allowed_licenses)]
 
 
-def document_problems(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
+def validate(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
     """
-    Check one CycloneDX SBOM.
+    Check one CycloneDX SBOM; needs the ``validate`` extra.
 
     Beyond the schema it requires the ``urn:uuid`` serial number ``actions/attest`` needs to recognize the format,
     unique and resolvable ``bom-ref`` values, a root that depends on exactly the top-level components, and an SPDX 2.3
@@ -71,22 +51,29 @@ def document_problems(raw: str, allowed_licenses: frozenset[str] | None) -> list
     :returns: one message per problem, empty when the document is valid
 
     """
-    if schema_error := JsonStrictValidator(SchemaVersion.V1_6).validate_str(raw):
-        return [f"does not conform to the CycloneDX 1.6 schema: {schema_error}"]
+    from ._extra import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level]  # optional extra
+
+    if error := schema_error(raw):
+        return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
     document: Final[Document] = json.loads(raw)
-    if problems := _serial_problems(document.get("serialNumber", "")):
-        return problems
-    problems = _reference_problems(document)
-    problems += _spdx_problems(document)
-    if allowed_licenses is not None:
-        problems += license_problems(document["components"], allowed_licenses)
-    return problems
-
-
-def _serial_problems(serial: str) -> list[str]:
     # optional in the CycloneDX spec itself, but actions/attest's format sniffer requires it to recognize the document
     # as CycloneDX at all, and silently rejects anything missing it as an unknown format
-    return [] if _SERIAL_PATTERN.match(serial) else [f"serialNumber must be a urn:uuid: RFC 4122 UUID, got {serial!r}"]
+    if not re.fullmatch(
+        r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        serial := document.get("serialNumber", ""),
+    ):
+        return [f"serialNumber must be a urn:uuid: RFC 4122 UUID, got {serial!r}"]
+    problems = _reference_problems(document)
+    problems.extend(spdx_problems(to_spdx(document)))
+    if allowed_licenses is not None:
+        # only what the artifact carries bytes for is judged: a declared requirement resolves at install time, and a
+        # library a bundled wheel vendors ships under that wheel's terms
+        problems.extend(
+            f"{component['bom-ref']}: {problem}"
+            for component in _shipped(document["components"])
+            if (problem := _judge(component, allowed_licenses))
+        )
+    return problems
 
 
 def _reference_problems(document: Document) -> list[str]:
@@ -95,8 +82,8 @@ def _reference_problems(document: Document) -> list[str]:
     every_ref = list(_bom_refs([document["metadata"]["component"], *document["components"], *tools]))
     if duplicates := {ref for ref in every_ref if every_ref.count(ref) > 1}:
         return [f"bom-ref values are not unique: {sorted(duplicates)}"]
-    problems = []
     dependencies = {entry["ref"]: set(entry["dependsOn"]) for entry in document["dependencies"]}
+    problems = []
     if unknown := (set(dependencies) | set().union(*dependencies.values())) - set(every_ref):
         problems.append(f"dependencies reference bom-refs that do not exist: {sorted(unknown)}")
     if dependencies.get(root_ref) != (component_refs := {component["bom-ref"] for component in document["components"]}):
@@ -116,34 +103,6 @@ def _bom_refs(components: list[Component]) -> Iterator[str]:
     for component in components:
         yield component["bom-ref"]
         yield from _bom_refs(component.get("components", []))
-
-
-def _spdx_problems(document: Document) -> list[str]:
-    try:
-        spdx = JsonLikeDictParser().parse(dict(to_spdx(document)))
-    except SPDXParsingError as error:
-        return [f"SPDX rendering does not parse: {message}" for message in error.get_messages()]
-    return [f"SPDX rendering invalid: {message.validation_message}" for message in validate_full_spdx_document(spdx)]
-
-
-def license_problems(components: list[Component], allowed_licenses: frozenset[str]) -> list[str]:
-    """
-    Judge the licenses of what an artifact ships against a policy.
-
-    Only components the artifact carries bytes for are judged: a bundled wheel, or a component with files. A declared
-    requirement resolves at install time, and a library a bundled wheel vendors ships under that wheel's terms.
-
-    :param components: the document's top-level components
-    :param allowed_licenses: SPDX license ids a shipped component may use; an expression passes when the ids it needs
-        are allowed, and ``WITH`` exceptions only grant extra permissions so the license they modify decides
-    :returns: one message per component that fails the policy
-
-    """
-    return [
-        f"{component['bom-ref']}: {problem}"
-        for component in _shipped(components)
-        if (problem := _judge(component, allowed_licenses))
-    ]
 
 
 def _shipped(components: list[Component]) -> Iterator[Component]:
@@ -232,7 +191,6 @@ def _pop(tokens: list[str]) -> str:
 
 
 __all__ = [
-    "document_problems",
-    "license_problems",
-    "wheel_problems",
+    "validate",
+    "validate_wheel",
 ]

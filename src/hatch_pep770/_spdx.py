@@ -1,17 +1,15 @@
-"""Render a CycloneDX SBOM written by the build hook as an SPDX 2.3 JSON document."""
-
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Final, TypedDict
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
-from .version import __version__
+from .version import version
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from .cyclonedx import Component, Document, License
+    from ._cyclonedx import Component, Document, License
 
 
 class _Checksum(TypedDict):
@@ -25,7 +23,7 @@ class _ExternalRef(TypedDict):
     referenceLocator: str
 
 
-class _PackageKeys(TypedDict):
+class _Package(TypedDict):
     SPDXID: str
     name: str
     downloadLocation: str
@@ -33,18 +31,15 @@ class _PackageKeys(TypedDict):
     licenseConcluded: str
     licenseDeclared: str
     primaryPackagePurpose: str
-
-
-class _Package(_PackageKeys, total=False):
-    versionInfo: str
-    supplier: str
-    checksums: list[_Checksum]
-    homepage: str
-    copyrightText: str
-    summary: str
-    comment: str
-    externalRefs: list[_ExternalRef]
-    licenseComments: str
+    versionInfo: NotRequired[str]
+    supplier: NotRequired[str]
+    checksums: NotRequired[list[_Checksum]]
+    homepage: NotRequired[str]
+    copyrightText: NotRequired[str]
+    summary: NotRequired[str]
+    comment: NotRequired[str]
+    externalRefs: NotRequired[list[_ExternalRef]]
+    licenseComments: NotRequired[str]
 
 
 class _Relationship(TypedDict):
@@ -59,6 +54,8 @@ class _CreationInfo(TypedDict):
 
 
 class Spdx(TypedDict):
+    """An SPDX 2.3 JSON document."""
+
     spdxVersion: str
     dataLicense: str
     SPDXID: str
@@ -70,13 +67,6 @@ class Spdx(TypedDict):
     relationships: list[_Relationship]
 
 
-_PURPOSES: Final[dict[str, str]] = {
-    "application": "APPLICATION",
-    "library": "LIBRARY",
-    "platform": "OTHER",
-}
-
-
 def to_spdx(bom: Document) -> Spdx:
     """
     Render a CycloneDX document as SPDX 2.3.
@@ -85,7 +75,7 @@ def to_spdx(bom: Document) -> Spdx:
     over. Per-file hashes stay behind, because SPDX 2.3 requires a SHA-1 for every file and wheel ``RECORD`` files hold
     SHA-256, and so does the build formulation, which SPDX 2.3 has no field for.
 
-    :param bom: a CycloneDX document as the build hook writes it
+    :param bom: a CycloneDX document as this package writes it
     :returns: the SPDX document, whose namespace ends in the CycloneDX serial number so both name the same build
 
     """
@@ -116,12 +106,12 @@ def to_spdx(bom: Document) -> Spdx:
         "creationInfo": {
             "created": datetime
             .fromisoformat(bom["metadata"]["timestamp"])
-            .astimezone(timezone.utc)
+            .astimezone(UTC)
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "creators": [
                 *supplier,
                 *(f"Tool: {tool['name']}-{tool['version']}" for tool in tools if tool["type"] == "application"),
-                f"Tool: hatch-pep770-{__version__}",
+                f"Tool: hatch-pep770-{version}",
             ],
         },
         "packages": [_package(component, f"{namespace}:") for component in components],
@@ -165,7 +155,9 @@ def _package(component: Component, property_prefix: str) -> _Package:
         "filesAnalyzed": False,
         "licenseConcluded": " AND ".join(concluded) or "NOASSERTION",
         "licenseDeclared": next((entry["expression"] for entry in licenses if "expression" in entry), "NOASSERTION"),
-        "primaryPackagePurpose": _PURPOSES[component["type"]],
+        "primaryPackagePurpose": {"application": "APPLICATION", "library": "LIBRARY", "platform": "OTHER"}[
+            component["type"]
+        ],
     }
     if version := component.get("version"):
         package["versionInfo"] = version
