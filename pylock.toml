@@ -1,6 +1,6 @@
 lock-version = "1.0"
 environments = [
-    "python_version == \"3.15\" and sys_platform == \"linux\" and platform_machine == \"x86_64\" and implementation_name == \"cpython\" and platform_python_implementation == \"CPython\" and platform_system == \"Linux\"",
+    "python_version == \"3.15\" and sys_platform == \"linux\" and platform_machine == \"x86_64\" and implementation_name == \"cpython\" and os_name == \"posix\" and platform_python_implementation == \"CPython\" and platform_system == \"Linux\"",
 ]
 requires-python = ">=3.11"
 extras = [
@@ -8,6 +8,7 @@ extras = [
     "validate",
 ]
 dependency-groups = [
+    "bench",
     "build",
     "dev",
     "docs",
@@ -106,7 +107,7 @@ sha256 = "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0"
 [[packages]]
 name = "arrow"
 version = "1.4.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.8"
 dependencies = [
     { name = "python-dateutil" },
@@ -135,7 +136,7 @@ sha256 = "749f0769958ebdc79c173ff0b0670d59051a535fa26e8eba02953dc19eb43205"
 [[packages]]
 name = "attrs"
 version = "26.1.0"
-marker = "\"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -185,7 +186,7 @@ sha256 = "e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35"
 [[packages]]
 name = "beartype"
 version = "0.23.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -239,7 +240,7 @@ sha256 = "d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9"
 [[packages]]
 name = "boolean-py"
 version = "5.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
@@ -416,7 +417,7 @@ sha256 = "5ae39c8c434b972f0740d04610759168590713175aab584b012b1b84f6771874"
 [[packages]]
 name = "click"
 version = "8.5.0"
-marker = "\"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -441,7 +442,7 @@ sha256 = "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360"
 [[packages]]
 name = "covdefaults"
 version = "2.3.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.7"
 dependencies = [
     { name = "coverage" },
@@ -469,7 +470,7 @@ sha256 = "2832961f6ffcfe4b57c338bc3418a3526f495c26fb9c54565409c5532f7c41be"
 [[packages]]
 name = "coverage"
 version = "7.17.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.11"
 index = "https://pypi.org/simple/"
 
@@ -603,7 +604,7 @@ sha256 = "1981f1db4630889b9ef7803fadef12b056f428cb6b85c27ba57b774793b6093c"
 [[packages]]
 name = "cyclonedx-python-lib"
 version = "11.12.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "<4.0,>=3.9"
 dependencies = [
     { name = "jsonschema" },
@@ -636,7 +637,7 @@ sha256 = "0e807521a921a5c3cb8ce1153f8a61d29eedfe76a46aac2796b7c6b573391a54"
 [[packages]]
 name = "defusedxml"
 version = "0.7.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 index = "https://pypi.org/simple/"
 
@@ -735,7 +736,7 @@ sha256 = "46ce42d27e5cdde09ee7197349663e97cb106679bd9e75db3a09679fbc7aa1a8"
 [[packages]]
 name = "fqdn"
 version = "1.6.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,<4,>=2.7"
 index = "https://pypi.org/simple/"
 
@@ -792,7 +793,7 @@ sha256 = "bb0ead5309f9500130665a26bee87693c41ce4dbdff864dbfb6b0dae4673d24f"
 [[packages]]
 name = "hatch-fancy-pypi-readme"
 version = "25.1.0"
-marker = "\"build\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.8"
 dependencies = [
     { name = "hatchling" },
@@ -820,7 +821,7 @@ sha256 = "ce0134c40d63d874ac48f48ccc678b8f3b62b8e50e9318520d2bffc752eedaf3"
 [[packages]]
 name = "hatch-vcs"
 version = "0.5.0"
-marker = "\"build\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.9"
 dependencies = [
     { name = "hatchling" },
@@ -849,7 +850,7 @@ sha256 = "b49677dbdc597460cc22d01b27ab3696f5e16a21ecf2700fb01bc28e1f2a04a7"
 [[packages]]
 name = "hatchling"
 version = "1.33.0"
-marker = "\"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.10"
 dependencies = [
     { name = "packaging" },
@@ -934,7 +935,7 @@ sha256 = "6a16b69b93187244e0548cbfd25b3e4a6f9a7a2ad784625c3bec2b8d27b81aaa"
 [[packages]]
 name = "idna"
 version = "3.20"
-marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -984,7 +985,7 @@ sha256 = "ea0c9a0384df69ed86a943a15cde37d0360b82491b3910dc2215e202e62b5b02"
 [[packages]]
 name = "iniconfig"
 version = "2.3.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1009,7 +1010,7 @@ sha256 = "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
 [[packages]]
 name = "installer"
 version = "1.1.0"
-marker = "\"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1034,7 +1035,7 @@ sha256 = "f55f5728ff61d3dd54dbc5a397cf3f7307cb64b180c20b72afbebf01c9e2c8a0"
 [[packages]]
 name = "isoduration"
 version = "20.11.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.7"
 dependencies = [
     { name = "arrow" },
@@ -1196,7 +1197,7 @@ sha256 = "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
 [[packages]]
 name = "jsonpointer"
 version = "3.6"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1221,7 +1222,7 @@ sha256 = "a45c858f8a9e171f6b3790ed9446c9382782f6c4cb4589176813c5a553f4cfcd"
 [[packages]]
 name = "jsonschema"
 version = "4.26.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 dependencies = [
     { name = "attrs" },
@@ -1261,7 +1262,7 @@ sha256 = "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce"
 [[packages]]
 name = "jsonschema-specifications"
 version = "2025.9.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 dependencies = [
     { name = "referencing" },
@@ -1321,7 +1322,7 @@ sha256 = "be4a0b195f149690c166e850609a477c532ddbfbaed96a404d4e43f8d5e2689f"
 [[packages]]
 name = "lark"
 version = "1.3.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
@@ -1346,7 +1347,7 @@ sha256 = "c629b661023a014c37da873b4ff58a817398d12635d3bbb2c5a03be7fe5d1e12"
 [[packages]]
 name = "license-expression"
 version = "30.4.4"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 dependencies = [
     { name = "boolean-py" },
@@ -1614,7 +1615,7 @@ sha256 = "bc0fb085d8ed0d67a6471892535f3d9b795eb911b7cd129d3a24967aab7a538f"
 [[packages]]
 name = "packageurl-python"
 version = "0.17.6"
-marker = "\"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"project-runtime\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
@@ -1639,7 +1640,7 @@ sha256 = "31a85c2717bc41dd818f3c62908685ff9eebcb68588213745b14a6ee9e7df7c9"
 [[packages]]
 name = "packaging"
 version = "26.3"
-marker = "\"hatch\" in extras or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"lint\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"project-runtime\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"hatch\" in extras or \"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"lint\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"project-runtime\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1664,7 +1665,7 @@ sha256 = "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
 [[packages]]
 name = "pathspec"
 version = "1.1.1"
-marker = "\"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1714,7 +1715,7 @@ sha256 = "1dadfc59a8a5d7565b3d9270ae8fa71c065595352c4277b41c11ee6c222c4b91"
 [[packages]]
 name = "pluggy"
 version = "1.7.0"
-marker = "\"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1739,7 +1740,7 @@ sha256 = "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec"
 [[packages]]
 name = "ply"
 version = "3.11"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
@@ -1847,9 +1848,34 @@ size = 5942047
 sha256 = "1ef04fd7b4bae3a31e1180bc87e877a3a5584063fe79320a125267afee47090d"
 
 [[packages]]
+name = "psutil"
+version = "7.2.2"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.6"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "psutil-7.2.2.tar.gz"
+upload-time = 2026-01-28 18:14:54.428400+00:00
+url = "https://files.pythonhosted.org/packages/aa/c6/d1ddf4abb55e93cebc4f2ed8b5d6dbad109ecb8d63748dd2b20ab5e57ebe/psutil-7.2.2.tar.gz"
+size = 493740
+
+[packages.sdist.hashes]
+sha256 = "0746f5f8d406af344fd547f1c8daa5f5c33dbc293bb8d6a16d80b4bb88f59372"
+
+[[packages.wheels]]
+name = "psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl"
+upload-time = 2026-01-28 18:15:25.976610+00:00
+url = "https://files.pythonhosted.org/packages/b5/70/5d8df3b09e25bce090399cf48e452d25c935ab72dad19406c77f4e828045/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl"
+size = 155560
+
+[packages.wheels.hashes]
+sha256 = "076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9"
+
+[[packages]]
 name = "py-serializable"
 version = "2.1.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "<4.0,>=3.8"
 dependencies = [
     { name = "defusedxml" },
@@ -1961,7 +1987,7 @@ sha256 = "5299296ff5cafcb69851fd652de8f9268a0bb036bcbedbfcaa94cf743baf3986"
 [[packages]]
 name = "pygments"
 version = "2.21.0"
-marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1986,7 +2012,7 @@ sha256 = "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9"
 [[packages]]
 name = "pyparsing"
 version = "3.3.3"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -2009,9 +2035,37 @@ size = 126420
 sha256 = "ece8c00a69cf01b45d0b1dedabb469c90d8caf996d4fda40f147627a122849a4"
 
 [[packages]]
+name = "pyperf"
+version = "2.10.0"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.9"
+dependencies = [
+    { name = "psutil" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "pyperf-2.10.0.tar.gz"
+upload-time = 2026-02-07 11:35:14.693655+00:00
+url = "https://files.pythonhosted.org/packages/16/91/39ca77aa58f13e8c65d747ac7e06584b55acabfa98987fb8d546bc24860d/pyperf-2.10.0.tar.gz"
+size = 227609
+
+[packages.sdist.hashes]
+sha256 = "dd93ccfda79214725293e95f1fa6e00cb4a64adcf1326039486d4e1f91caaa62"
+
+[[packages.wheels]]
+name = "pyperf-2.10.0-py3-none-any.whl"
+upload-time = 2026-02-07 11:35:12.636042+00:00
+url = "https://files.pythonhosted.org/packages/91/26/f7bd5e37c254c2671f4dfff316d123eba13663bdfee941a01b09ab02d72d/pyperf-2.10.0-py3-none-any.whl"
+size = 144430
+
+[packages.wheels.hashes]
+sha256 = "79196bc4a11e3c926dd4c6b14c80136c6b37f884fe913cbc57037f37636e9841"
+
+[[packages]]
 name = "pytest"
 version = "9.2.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.10"
 dependencies = [
     { name = "iniconfig" },
@@ -2042,7 +2096,7 @@ sha256 = "07acdcf88ec174f907dc01af70bf52d49b014bbab03faeeade31c96b18c2e588"
 [[packages]]
 name = "pytest-cov"
 version = "7.1.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.9"
 dependencies = [
     { name = "coverage" },
@@ -2072,7 +2126,7 @@ sha256 = "a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678"
 [[packages]]
 name = "pytest-mock"
 version = "3.17.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.10"
 dependencies = [
     { name = "pytest" },
@@ -2100,7 +2154,7 @@ sha256 = "1b82aa4b37137248bd687055e109723debeb07b489de1565297dc9589c5f2d6b"
 [[packages]]
 name = "python-dateutil"
 version = "3.0.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 dependencies = [
     { name = "six" },
@@ -2157,7 +2211,7 @@ sha256 = "fb65edfff3541b7ceb3a39be334a0f69f4cb5148287a053e1874748742fda93b"
 [[packages]]
 name = "pyyaml"
 version = "6.0.3"
-marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"lint\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"lint\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
@@ -2173,7 +2227,7 @@ sha256 = "d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f"
 [[packages]]
 name = "rdflib"
 version = "7.6.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.8.1"
 dependencies = [
     { name = "pyparsing" },
@@ -2231,7 +2285,7 @@ sha256 = "d0dae1f74bb273b534770cb4cccb6bb78735540afdb03c2146f4e19dcd412560"
 [[packages]]
 name = "referencing"
 version = "0.37.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 dependencies = [
     { name = "attrs" },
@@ -2352,7 +2406,7 @@ sha256 = "cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06"
 [[packages]]
 name = "rfc3339-validator"
 version = "0.1.4"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 dependencies = [
     { name = "six" },
@@ -2405,7 +2459,7 @@ sha256 = "50b1502b60e289cb37883f3dfd34532b8873c7de9f49bb546641ce9cbd256ebd"
 [[packages]]
 name = "rfc3986-validator"
 version = "0.1.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 index = "https://pypi.org/simple/"
 
@@ -2430,7 +2484,7 @@ sha256 = "2f235c432ef459970b4306369336b9d5dbdda31b510ca1e327636e01f528bfa9"
 [[packages]]
 name = "rfc3987-syntax"
 version = "1.1.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 dependencies = [
     { name = "lark" },
@@ -2512,7 +2566,7 @@ sha256 = "647ba99caddc2cc1e55a51e4360689115551bf4476d90e8162cf8c345fe233c7"
 [[packages]]
 name = "rpds-py"
 version = "2026.9.1"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.11"
 index = "https://pypi.org/simple/"
 
@@ -2566,7 +2620,7 @@ sha256 = "0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137"
 [[packages]]
 name = "semantic-version"
 version = "2.10.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=2.7"
 index = "https://pypi.org/simple/"
 
@@ -2591,7 +2645,7 @@ sha256 = "de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177"
 [[packages]]
 name = "setuptools"
 version = "84.2.1"
-marker = "\"build\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -2616,7 +2670,7 @@ sha256 = "ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2"
 [[packages]]
 name = "setuptools-scm"
 version = "10.3.4"
-marker = "\"build\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.8"
 dependencies = [
     { name = "packaging" },
@@ -2646,7 +2700,7 @@ sha256 = "82f34c3e3084fc2b57d397200637cc13f2338004052d2fee47baa5f0e902464e"
 [[packages]]
 name = "six"
 version = "1.17.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 index = "https://pypi.org/simple/"
 
@@ -2696,7 +2750,7 @@ sha256 = "7e207fa178741da09cdee59d3ecec3827ad5f92b1fc5c9ff3755b639f71f5752"
 [[packages]]
 name = "sortedcontainers"
 version = "2.4.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
@@ -2745,7 +2799,7 @@ sha256 = "8412826614f9c632227067d0985aeb9f584bd15efc852955430e097a9fe7afbf"
 [[packages]]
 name = "spdx-tools"
 version = "0.8.5"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 dependencies = [
     { name = "beartype" },
@@ -3088,7 +3142,7 @@ sha256 = "6e2cb0eef194e10c27ec0023bfeb25badbbb5868244cf5bc5bdc04e4464bf331"
 [[packages]]
 name = "tomlkit"
 version = "0.15.2"
-marker = "\"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -3142,7 +3196,7 @@ sha256 = "ae4d223e6aadaff98d29b7f09e58d9c9ccf4cd3b455a2d2e0486d432cd8bf660"
 [[packages]]
 name = "trove-classifiers"
 version = "2026.9.21.13"
-marker = "\"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
@@ -3280,7 +3334,7 @@ sha256 = "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147"
 [[packages]]
 name = "tzdata"
 version = "2026.6"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=2"
 index = "https://pypi.org/simple/"
 
@@ -3305,7 +3359,7 @@ sha256 = "0a10eec6e13ef16b627fabed9a5f2ba61a62b1c67f327305f4e7e412a70b4aec"
 [[packages]]
 name = "uri-template"
 version = "1.3.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.7"
 index = "https://pypi.org/simple/"
 
@@ -3330,7 +3384,7 @@ sha256 = "a44a133ea12d44a0c0f06d7d42a52d71282e77e2f937d8abd5655b8d56fc1363"
 [[packages]]
 name = "uritools"
 version = "6.1.3"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -3405,7 +3459,7 @@ sha256 = "22759b8895e1103578de6fb4cd27e94b4399d021023378d29f01333717751fba"
 [[packages]]
 name = "vcs-versioning"
 version = "2.6.0"
-marker = "\"build\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.8"
 dependencies = [
     { name = "packaging" },
@@ -3499,7 +3553,7 @@ sha256 = "901eace6d2dd25ebb917d0ce5db18e5c537e1504c905cf32f0d006c12098b05d"
 [[packages]]
 name = "webcolors"
 version = "25.10.0"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -3549,7 +3603,7 @@ sha256 = "3fa599046443d4ca830d06e3d180cd0a675d5871af0a68daa5623318bb4d17e3"
 [[packages]]
 name = "xmltodict"
 version = "1.0.4"
-marker = "\"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
