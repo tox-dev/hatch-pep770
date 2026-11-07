@@ -71,6 +71,28 @@ def test_embed_keeps_other_entries(wheel: Path) -> None:
     assert {name: after[name] for name in before} == before
 
 
+def test_embed_keeps_other_members_compressed_as_they_were(tmp_path: Path) -> None:
+    # level 9 over repetitive text gives other bytes than zipfile's default level, so a recompressed member would differ
+    with zipfile.ZipFile(wheel := tmp_path / "native-1.0-py3-none-any.whl", "w", compresslevel=9) as handle:
+        handle.writestr(
+            "native/data.txt", b"".join(b"line %d\n" % number for number in range(5000)), zipfile.ZIP_DEFLATED
+        )
+        handle.writestr("native-1.0.dist-info/METADATA", b"Name: native\nVersion: 1.0\n")
+        handle.writestr("native-1.0.dist-info/RECORD", b"native-1.0.dist-info/RECORD,,\n")
+    before = _stored(wheel, "native/data.txt")
+    write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
+    assert _stored(wheel, "native/data.txt") == before
+
+
+def _stored(wheel: Path, name: str) -> bytes:
+    with zipfile.ZipFile(wheel) as archive:
+        info = archive.getinfo(name)
+    data = wheel.read_bytes()
+    name_length, extra_length = struct.unpack("<HH", data[info.header_offset + 26 : info.header_offset + 30])
+    start = info.header_offset + 30 + name_length + extra_length
+    return data[start : start + info.compress_size]
+
+
 @pytest.mark.parametrize(
     ("epoch", "date_time"),
     [

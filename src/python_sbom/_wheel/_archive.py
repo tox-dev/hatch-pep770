@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import os
+import shutil
 import stat
 import tempfile
 import time
@@ -14,6 +15,7 @@ from io import BytesIO, StringIO
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Final
 
+import zipremove
 from installer.records import Hash, RecordEntry
 from installer.sources import WheelFile
 from installer.utils import copyfileobj_with_hashing, parse_metadata_file
@@ -32,33 +34,31 @@ _CHUNK: Final[int] = 1024 * 1024
 def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
     with open_archive(wheel, str(wheel)) as archive:
         _, dist_info = _wheel_source(archive, str(wheel))
-        entries: Final[list[tuple[zipfile.ZipInfo, bytes]]] = [
-            (info, archive.read(info)) for info in archive.infolist()
-        ]
-    record: Final[str] = f"{dist_info}/RECORD"
-    if missing := sorted({f"{dist_info}/METADATA", record} - {info.filename for info, _ in entries}):
-        msg = f"{wheel} has no {', '.join(missing)}"
-        raise WheelError(msg)
+        record: Final[str] = f"{dist_info}/RECORD"
+        if missing := sorted({f"{dist_info}/METADATA", record} - set(archive.namelist())):
+            msg = f"{wheel} has no {', '.join(missing)}"
+            raise WheelError(msg)
+        record_info: Final[zipfile.ZipInfo] = archive.getinfo(record)
+        record_data: Final[bytes] = archive.read(record_info)
     sbom: Final[str] = f"{dist_info}/sboms/{name}"
     # zip timestamps start at 1980
     entry = zipfile.ZipInfo(sbom, time.gmtime(max(epoch, 315532800))[:6])
     entry.compress_type = zipfile.ZIP_DEFLATED
     entry.create_system = 3  # Unix, whichever system writes the entry, so the bytes match across operating systems
     entry.external_attr = (stat.S_IFREG | 0o644) << 16
-    # the SBOM goes right before RECORD, which stays the last entry
-    members: Final[list[tuple[zipfile.ZipInfo, bytes]]] = []
-    for info, data in entries:
-        if info.filename == record:
-            members.extend([(entry, content), (info, _rewritten_record(data, record, sbom, content))])
-        elif info.filename != sbom:
-            members.append((info, data))
+    rewritten: Final[bytes] = _rewritten_record(record_data, record, sbom, content)
     # a name no "dist/*.whl" glob matches, in the wheel's directory so the final rename stays on one file system
     descriptor, temporary = tempfile.mkstemp(dir=wheel.parent, prefix=".python-sbom-", suffix=".tmp")
     os.close(descriptor)
-    try:
-        with zipfile.ZipFile(temporary, "w") as archive:
-            for info, data in members:
-                archive.writestr(info, data)
+    try:  # ruff: ignore[too-many-statements-in-try-clause] # whichever step fails, the temporary file goes
+        shutil.copyfile(wheel, temporary)
+        # the other members keep their bytes as stored, still compressed, so only the SBOM and RECORD get compressed
+        # here; both go last, RECORD after the SBOM
+        with zipremove.ZipFile(temporary, "a") as archive:
+            stale = [info for info in archive.infolist() if info.filename in {record, sbom}]
+            archive.repack([archive.remove(info) for info in stale])  # ty: ignore[unresolved-attribute] # zipremove adds both
+            archive.writestr(entry, content)
+            archive.writestr(record_info, rewritten)
         Path(temporary).chmod(stat.S_IMODE(wheel.stat().st_mode))
         Path(temporary).replace(wheel)
     except BaseException:

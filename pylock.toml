@@ -3571,6 +3571,31 @@ size = 13580
 [packages.wheels.hashes]
 sha256 = "a4a00d300b0e1c59fc2bfccb53d7b2e88c32f200df138a0dd2229f842497026a"
 
+[[packages]]
+name = "zipremove"
+version = "0.10.0"
+marker = "\"project-runtime\" in dependency_groups"
+requires-python = "~=3.7"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "zipremove-0.10.0.tar.gz"
+upload-time = 2026-07-17 15:50:45.516180+00:00
+url = "https://files.pythonhosted.org/packages/92/30/47d65b9213f52df8a51f603cb0a2e5ef02c22172a8a17805e46c3beabb0d/zipremove-0.10.0.tar.gz"
+size = 25448
+
+[packages.sdist.hashes]
+sha256 = "3c5957c115447b54299d3a23128764b59c4558fc98c4b878ff2dbc5db8a62021"
+
+[[packages.wheels]]
+name = "zipremove-0.10.0-py3-none-any.whl"
+upload-time = 2026-07-17 15:50:44.653422+00:00
+url = "https://files.pythonhosted.org/packages/0a/e4/2225c1890ce6e239ca23efabb80a3481229a14a2deaa489f5e89723a5aa6/zipremove-0.10.0-py3-none-any.whl"
+size = 11280
+
+[packages.wheels.hashes]
+sha256 = "04e15df7083642d5b791e51f597cffef8a92d770ecf5160c529b5a7b53b40100"
+
 [tool.nab]
 nab-version = "0.0.23"
 created-at = 2026-11-07 05:12:05.951651+00:00

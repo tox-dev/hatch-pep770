@@ -6,6 +6,7 @@ requires = [
   "hatchling>=1.32.4",
   "installer>=1.1",
   "packageurl-python>=0.11.1",
+  "zipremove>=0.10",
 ]
 
 [project]
@@ -51,6 +52,7 @@ dependencies = [
   "installer>=1.1",
   "packageurl-python>=0.11.1",
   "packaging>=26.3",
+  "zipremove>=0.10",
 ]
 optional-dependencies.hatch = [
   "hatchling>=1.28",
