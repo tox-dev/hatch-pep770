@@ -58,9 +58,9 @@ commands = [
     "--color",
     "-b",
     "html",
-    { replace = "posargs", default = [
-      "-W",
-    ], extend = true },
+    "-W",
+    "--keep-going",
+    { replace = "posargs", extend = true },
   ],
   [
     "python",
@@ -114,10 +114,12 @@ commands = [
   [
     "python",
     "-c",
-    # the project's own wheel carries the SBOM its hook writes
+    # the project's own wheel carries the SBOM its hook writes, which lists that hook script among the build tools
     """\
-  import glob, zipfile; (wheel,) = glob.glob(r'{env_tmp_dir}{/}*.whl'); assert any('/sboms/' in name for name in \
-  zipfile.ZipFile(wheel).namelist()), f'no SBOM in {wheel}'\
+  import glob, json, zipfile; (wheel,) = glob.glob(r'{env_tmp_dir}{/}*.whl'); archive = zipfile.ZipFile(wheel); \
+  (sbom,) = (name for name in archive.namelist() if '/sboms/' in name); tools = \
+  json.loads(archive.read(sbom))['metadata']['tools']['components']; assert any(tool['name'] == 'hatch_build.py' for \
+  tool in tools), f'hatch_build.py missing from {sbom}'\
   """,
   ],
 ]

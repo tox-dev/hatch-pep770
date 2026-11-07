@@ -6,23 +6,17 @@ from urllib.parse import urlsplit
 
 from packaging.requirements import Requirement
 
-from ._components import (
-    bundled_wheel_component,
-    component_from_metadata,
-    purl,
-    pypi_url,
-    sbom_file_name,
-    script_tool,
-)
-from ._document import document, formulation, project_identity, timestamp
+from ._components import bundled_wheel_component, component_from_metadata, script_tool, vendored_dependencies
+from ._document import contributed_properties, formulation, timestamp, with_header
+from ._identity import project_identity
 from ._markers import applies_without_extras
+from ._names import SBOM_FILE, SBOM_REPOSITORY, purl, pypi_url, sbom_file_name, sbom_property
 from ._tools import tool_components
-from ._types import Dependency
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from ._document import ProjectIdentity
+    from ._identity import ProjectIdentity
     from ._inputs import BuildFacts, BundledWheelInfo, Contributions, SbomRequest, Settings, SourceTree
     from ._types import Component, Document, ExternalReference, Metadata, Property
 
@@ -36,12 +30,20 @@ def describe(
 ) -> Document:
     project = project_identity(request.metadata, request.settings)
     root = _root_component(request, source, facts, project, contributions)
-    bundled = [bundled_wheel_component(wheel, project.namespace, bundled_info[wheel.path]) for wheel in source.bundled]
+    bundled = [
+        bundled_wheel_component(
+            wheel,
+            project.property_prefix,
+            bundled_info[wheel.path].properties,
+            bundled_info[wheel.path].supplier,
+        )
+        for wheel in source.bundled
+    ]
     components = [
         *bundled,
         # hatchling repeats a Requires-Dist when a hook re-adds a dependency, and each bom-ref must be unique
         *(
-            _declared_dependency(text, requirement, project.namespace)
+            _declared_dependency(text, requirement, project.property_prefix)
             for text in dict.fromkeys(request.metadata.get_all("Requires-Dist", []))
             if applies_without_extras(requirement := Requirement(text))
         ),
@@ -61,21 +63,13 @@ def describe(
         *environment,
         *contributions.tools,
     ]
-    return document(
+    return with_header(
         {
             "metadata": _metadata(root, tools, request, project, facts),
             "components": components,
             "dependencies": [
                 {"ref": root["bom-ref"], "dependsOn": [component["bom-ref"] for component in components]},
-                *(
-                    Dependency(ref=component["bom-ref"], dependsOn=vendored)
-                    for component in bundled
-                    if (
-                        vendored := [
-                            child["bom-ref"] for child in component.get("components", []) if child["type"] == "library"
-                        ]
-                    )
-                ),
+                *vendored_dependencies(bundled),
                 *tool_dependencies,
                 *contributions.dependencies,
             ],
@@ -112,7 +106,10 @@ def _root_component(
         link := _file_link(project, settings, license_files[0])
     ):
         references.append({"type": "license", "url": link})
-    properties: Final[list[Property]] = [*root["properties"], *contributions.root_properties]
+    properties: Final[list[Property]] = [
+        *root["properties"],
+        *contributed_properties(contributions.root_properties, project.property_prefix),
+    ]
     if (revision := facts.revision) is not None:
         if project.repository:
             comment = "source revision, with uncommitted changes" if revision.dirty else "exact source revision"
@@ -121,9 +118,9 @@ def _root_component(
                 "url": f"{project.repository}/tree/{revision.commit}",
                 "comment": comment,
             })
-        properties.append({"name": f"{project.namespace}:vcs-commit", "value": revision.commit})
+        properties.append({"name": f"{project.property_prefix}:vcs-commit", "value": revision.commit})
         if revision.dirty:
-            properties.append({"name": f"{project.namespace}:vcs-dirty", "value": "true"})
+            properties.append({"name": f"{project.property_prefix}:vcs-dirty", "value": "true"})
     root["externalReferences"] = references
     root["properties"] = properties
     return root
@@ -165,11 +162,14 @@ def _metadata(
     if "licenses" in root:
         metadata["licenses"] = root["licenses"]
     properties: Final[list[Property]] = [
-        {"name": f"{project.namespace}:sbom:scope", "value": _scope(settings)},
-        {"name": f"{project.namespace}:sbom:file", "value": sbom_file_name(request.metadata["Name"])},
+        {"name": sbom_property(project.property_prefix, "sbom:scope"), "value": _scope(settings)},
+        {"name": sbom_property(project.property_prefix, SBOM_FILE), "value": sbom_file_name(request.metadata["Name"])},
     ]
     if project.repository is not None:
-        properties.append({"name": f"{project.namespace}:sbom:repository", "value": project.repository})
+        properties.append({
+            "name": sbom_property(project.property_prefix, SBOM_REPOSITORY),
+            "value": project.repository,
+        })
     metadata["properties"] = properties
     return metadata
 

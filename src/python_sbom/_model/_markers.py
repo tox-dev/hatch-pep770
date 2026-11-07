@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from packaging._parser import Op, Value, Variable  # ruff: ignore[import-private-name] # packaging exposes the parsed marker tree only privately
 from packaging.markers import Marker
@@ -34,8 +34,9 @@ def _extra_verdict(markers: MarkerList | MarkerAtom) -> bool | None:
                     groups[-1].append(Marker(f"{value!r} {operator} extra").evaluate({"extra": ""}))
                 case _:
                     groups[-1].append(None)
-    verdicts = [False if False in group else (None if None in group else True) for group in groups]
-    return True if True in verdicts else (None if None in verdicts else False)
+    # ranked False < unknown < True: "and" takes the lowest verdict of a group, "or" the highest of the groups
+    verdicts: Final[tuple[bool | None, ...]] = (False, None, True)
+    return verdicts[max(min(map(verdicts.index, group), default=2) for group in groups)]
 
 
 __all__ = [

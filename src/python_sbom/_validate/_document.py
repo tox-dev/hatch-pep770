@@ -5,17 +5,21 @@ import re
 from collections import Counter
 from typing import TYPE_CHECKING, Final, TypeAlias
 
-from python_sbom._formats._spdx import to_spdx
+from python_sbom._errors import MissingExtraError
+from python_sbom._formats._spdx import render_spdx
+from python_sbom._model._names import SBOM_FILE
 from python_sbom.version import __version__
 
 from ._licenses import license_problems
 
 if TYPE_CHECKING:
+    from typing import TypeIs  # new in 3.13; annotations here are never evaluated
+
     from python_sbom._model._types import Component, Document
 
 # a JSON value, as json.loads hands it over
 _Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
-# the schema leaves these optional, yet the checks below and the SPDX rendering read them
+# the schema leaves these optional, yet every document python-sbom writes carries them and the checks below read them
 _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("metadata", "timestamp"),
     ("metadata", "tools", "components"),
@@ -24,48 +28,84 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("components",),
     ("dependencies",),
 )
+_SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+# the archive reader stops at the same size
+_MAX_CHARACTERS: Final[int] = 16 * 1024 * 1024
+# the schema's uniqueItems compares every pair of items, so an array this long already takes half a minute
+_MAX_ITEMS: Final[int] = 10_000
+# an exception's message can quote the hostile value that caused it
+_MAX_TEXT: Final[int] = 200
 
 
-def validate(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
-    """
-    Check one CycloneDX SBOM; needs the ``validate`` extra.
+def validate_document(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
+    if len(raw) > _MAX_CHARACTERS:
+        return [f"is {len(raw)} characters long, over the {_MAX_CHARACTERS} character limit"]
+    # one document's problem never stops the others from being checked, so whatever the checks raise is reported
+    try:
+        return _problems(raw, allowed_licenses)
+    except MissingExtraError:
+        raise
+    except json.JSONDecodeError as error:
+        return [f"is not JSON: {error}"]
+    except RecursionError:
+        # the JSON parser and the schema validator recurse once per level, how deep depends on the Python version
+        return ["does not conform to the CycloneDX 1.6 schema: it nests too deeply to check"]
+    except Exception as error:  # ruff: ignore[blind-except] # a hostile document may trip any check, see above
+        return [f"could not be checked, {type(error).__name__}: {str(error)[:_MAX_TEXT]}"]
 
-    Every document must conform to the CycloneDX 1.6 schema. A document python-sbom wrote must also carry the
-    ``urn:uuid`` serial number ``actions/attest`` needs to recognize the format, unique and resolvable ``bom-ref``
-    values, a root that depends on exactly the top-level components, an SPDX 2.3 rendering that validates, and, with
-    ``allowed_licenses``, licenses the policy allows; documents other tools wrote get the schema check alone.
 
-    :param raw: the JSON text of the document
-    :param allowed_licenses: SPDX license ids the shipped components may use, or ``None`` to skip the license policy
-    :returns: one message per problem, empty when the document is valid
-    :raises MissingExtraError: when the ``validate`` extra is not installed
-
-    """
+def _problems(raw: str, allowed_licenses: frozenset[str] | None) -> list[str]:
+    # every document must conform to the CycloneDX 1.6 schema; one python-sbom wrote must also carry the urn:uuid serial
+    # actions/attest needs, resolvable and unique bom-refs and a valid SPDX rendering, and meet the license policy
     from ._schemas import schema_error, spdx_problems  # ruff: ignore[import-outside-top-level] # the optional extra loads on first use
 
+    loaded: Final = json.loads(raw)
+    if census := _census_problems(loaded):
+        return census
     if error := schema_error(raw):
         return [f"does not conform to the CycloneDX 1.6 schema: {error}"]
-    loaded = json.loads(raw)
     # python-sbom names its file in a metadata property, so documents other tools wrote get the schema check alone; the
     # schema already guarantees the shape of what this reads
     if not any(
-        prop.get("name", "").endswith(":sbom:file") for prop in loaded.get("metadata", {}).get("properties", [])
+        prop.get("name", "").endswith(f":{SBOM_FILE}") for prop in loaded.get("metadata", {}).get("properties", [])
     ):
         return []
-    if missing := [".".join(path) for path in _REQUIRED if not _has(loaded, path)]:
+    missing: Final[list[str]] = [".".join(path) for path in _REQUIRED if not _has(loaded, path)]
+    # is_document holds once nothing is missing; asking it narrows the loaded JSON to a document
+    if missing or not is_document(loaded):
         return [f"lacks {', '.join(missing)}, which every document python-sbom writes carries"]
     # optional in the CycloneDX spec itself, but actions/attest's format sniffer requires it to recognize the document
     # as CycloneDX at all, and silently rejects anything missing it as an unknown format
-    if not re.fullmatch(
-        r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
-        serial := loaded.get("serialNumber", ""),
-    ):
+    if not _SERIAL.fullmatch(serial := loaded.get("serialNumber", "")):
         return [f"serialNumber must be a urn:uuid: RFC 4122 UUID, got {serial!r}"]
     # the SPDX rendering of a document whose references are broken only repeats those problems
-    problems = _reference_problems(loaded) or spdx_problems(to_spdx(loaded, __version__))
+    problems: Final[list[str]] = _reference_problems(loaded) or spdx_problems(render_spdx(loaded, __version__))
     if allowed_licenses is not None:
         problems.extend(license_problems(loaded["components"], allowed_licenses))
     return problems
+
+
+def _census_problems(document: _Json) -> list[str]:
+    # counts the longest components array and every bom-ref before the schema vouches for any shape; iterative, so
+    # deep nesting cannot exhaust the stack
+    largest = 0
+    refs: Final[Counter[str]] = Counter()
+    pending: Final[list[_Json]] = [document]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, list):
+            pending.extend(node)
+        elif isinstance(node, dict):
+            if isinstance(ref := node.get("bom-ref"), str):
+                refs[ref] += 1
+            if isinstance(components := node.get("components"), list):
+                largest = max(largest, len(components))
+            pending.extend(node.values())
+    if largest > _MAX_ITEMS:
+        return [f"lists {largest} components in one array, over the {_MAX_ITEMS} the schema check can take"]
+    if duplicates := sorted(ref for ref, count in refs.items() if count > 1):
+        return [f"bom-ref values are not unique: {duplicates}"]
+    return []
 
 
 def _has(value: _Json, path: tuple[str, ...]) -> bool:
@@ -76,39 +116,53 @@ def _has(value: _Json, path: tuple[str, ...]) -> bool:
     return True
 
 
+def is_document(value: object) -> TypeIs[Document]:
+    # what the SPDX rendering reads without a fallback; the schema leaves even these optional
+    return isinstance(value, dict) and all(_has(value, ("metadata", "component", key)) for key in ("bom-ref", "name"))
+
+
 def _reference_problems(document: Document) -> list[str]:
-    root_ref = document["metadata"]["component"]["bom-ref"]
-    tools = document["metadata"]["tools"]["components"]
-    every_ref = _bom_refs([document["metadata"]["component"], *document["components"], *tools])
-    if duplicates := sorted(ref for ref, count in Counter(every_ref).items() if count > 1):
-        return [f"bom-ref values are not unique: {duplicates}"]
+    root: Final[Component] = document["metadata"]["component"]
+    tools: Final[list[Component]] = document["metadata"]["tools"]["components"]
+    components: Final[list[Component]] = _walk([root, *document["components"], *tools])
+    if nameless := sorted(component["name"] for component in components if "bom-ref" not in component):
+        return [f"components lack a bom-ref: {nameless}"]
     problems: Final[list[str]] = []
-    dependencies = {entry["ref"]: set(entry.get("dependsOn", [])) for entry in document["dependencies"]}
-    if unknown := (set(dependencies) | set().union(*dependencies.values())) - set(every_ref):
+    dependencies: Final[dict[str, set[str]]] = {
+        entry["ref"]: set(entry.get("dependsOn", [])) for entry in document["dependencies"]
+    }
+    refs: Final[set[str]] = {component["bom-ref"] for component in components}
+    if unknown := (set(dependencies) | set().union(*dependencies.values())) - refs:
         problems.append(f"dependencies reference bom-refs that do not exist: {sorted(unknown)}")
-    if dependencies.get(root_ref) != (component_refs := {component["bom-ref"] for component in document["components"]}):
+    direct: Final[set[str]] = {component["bom-ref"] for component in document["components"]}
+    if dependencies.get(root["bom-ref"]) != direct:
         problems.append(
-            f"root dependsOn {sorted(dependencies.get(root_ref, []))} != components {sorted(component_refs)}"
+            f"root dependsOn {sorted(dependencies.get(root['bom-ref'], []))} != components {sorted(direct)}"
         )
-    tool_refs = {tool["bom-ref"] for tool in tools}
+    tool_refs: Final[set[str]] = {tool["bom-ref"] for tool in tools}
     for formula in document.get("formulation", []):
         for workflow in formula.get("workflows", []):
-            if unknown := {reference["ref"] for reference in workflow["resourceReferences"]} - tool_refs:
+            # a workflow may also name an external resource, which no tool can be
+            referenced = {
+                reference["ref"] for reference in workflow.get("resourceReferences", []) if "ref" in reference
+            }
+            if unknown := referenced - tool_refs:
                 problems.append(f"workflow {workflow['uid']} references unknown tools: {sorted(unknown)}")
     return problems
 
 
-def _bom_refs(components: list[Component]) -> list[str]:
+def _walk(components: list[Component]) -> list[Component]:
     # iterative, so a deeply nested hostile document cannot exhaust the stack
-    found: Final[list[str]] = []
-    pending = list(components)
+    found: Final[list[Component]] = []
+    pending: Final[list[Component]] = list(components)
     while pending:
         component = pending.pop()
-        found.append(component["bom-ref"])
+        found.append(component)
         pending.extend(component.get("components", []))
     return found
 
 
 __all__ = [
-    "validate",
+    "is_document",
+    "validate_document",
 ]

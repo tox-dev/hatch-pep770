@@ -2,67 +2,36 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
+from collections import Counter
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
-from packaging.utils import canonicalize_name
-
-from ._components import project_urls, reference_type
+from python_sbom._errors import SbomError
 
 if TYPE_CHECKING:
-    from email.message import Message
-
-    from ._inputs import BuildFacts, Settings
-    from ._types import Body, Component, Document, Formula
+    from ._inputs import BuildFacts
+    from ._types import Body, Component, Document, Formula, Property
 
 
-def project_identity(metadata: Message, settings: Settings) -> ProjectIdentity:
-    """
-    Name a project the way its documents do, so other documents about it, such as a zipapp's, agree.
-
-    :param metadata: the project's core metadata
-    :param settings: the project's options, whose ``repository`` wins over the project URLs
-    :returns: the identity
-
-    """
-    namespace = canonicalize_name(metadata["Name"])
-    repository = settings.repository or next(
-        (url.rstrip("/") for label, url in project_urls(metadata) if reference_type(label) == "vcs"), None
-    )
-    base = repository or f"https://pypi.org/project/{namespace}"
-    return ProjectIdentity(
-        namespace=namespace,
-        repository=repository,
-        serial_namespace=uuid.uuid5(uuid.NAMESPACE_URL, f"{base}/sboms"),
-    )
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class ProjectIdentity:
-    """
-    How documents name a project.
-
-    :param namespace: the normalized project name, which prefixes the properties this package writes
-    :param repository: the repository URL, or ``None``
-    :param serial_namespace: the UUID namespace of the serial numbers of the project's documents
-
-    """
-
-    namespace: str
-    repository: str | None
-    serial_namespace: uuid.UUID
-
-
-def document(body: Body, namespace: uuid.UUID) -> Document:
-    """
-    Add the CycloneDX 1.6 header to a document body.
-
-    :param body: the metadata, components, dependencies and formulation
-    :param namespace: the UUID namespace of the serial number, see :func:`project_identity`
-    :returns: the document; its serial number derives from the body, so identical bodies share one
-
-    """
+def with_header(body: Body, namespace: uuid.UUID) -> Document:
+    # a provider contributes refs of its own, so the document is checked before it is written rather than by validate
+    refs: Final[Counter[str]] = Counter()
+    pending: Final[list[Component]] = [
+        body["metadata"]["component"],
+        *body["components"],
+        *body["metadata"]["tools"]["components"],
+    ]
+    while pending:
+        component = pending.pop()
+        refs[component["bom-ref"]] += 1
+        pending.extend(component.get("components", []))
+    if repeated := sorted(ref for ref, count in refs.items() if count > 1):
+        msg = f"bom-ref values repeat: {', '.join(repeated)}"
+        raise SbomError(msg)
+    named = {ref for entry in body["dependencies"] for ref in (entry["ref"], *entry.get("dependsOn", []))}
+    if unknown := sorted(named - refs.keys()):
+        msg = f"dependencies name bom-refs no component has: {', '.join(unknown)}"
+        raise SbomError(msg)
     return {
         "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
         "bomFormat": "CycloneDX",
@@ -73,19 +42,15 @@ def document(body: Body, namespace: uuid.UUID) -> Document:
     }
 
 
+def contributed_properties(properties: list[Property], prefix: str) -> list[Property]:
+    if claimed := sorted(prop["name"] for prop in properties if prop["name"].startswith(f"{prefix}:")):
+        msg = f"contributed root properties {', '.join(claimed)} use the {prefix}: prefix python-sbom writes"
+        raise SbomError(msg)
+    return properties
+
+
 def formulation(uid: str, name: str, tools: list[Component], output_ref: str, facts: BuildFacts) -> Formula:
-    """
-    Record how an artifact was built: one workflow with its tools, its output and the build time it read.
-
-    :param uid: the workflow's identifier, such as ``wheel-build``
-    :param name: what the workflow does
-    :param tools: the build tools it used
-    :param output_ref: the ``bom-ref`` of the artifact it produced
-    :param facts: the build facts; ``SOURCE_DATE_EPOCH`` is listed as an input only when it set the build time
-    :returns: the formula
-
-    """
-    workflow: Formula = {
+    formula: Formula = {
         "bom-ref": f"formula:{uid}",
         "workflows": [
             {
@@ -99,10 +64,10 @@ def formulation(uid: str, name: str, tools: list[Component], output_ref: str, fa
         ],
     }
     if facts.epoch_from_environment:
-        workflow["workflows"][0]["inputs"] = [
+        formula["workflows"][0]["inputs"] = [
             {"environmentVars": [{"name": "SOURCE_DATE_EPOCH", "value": str(facts.epoch)}]}
         ]
-    return workflow
+    return formula
 
 
 def timestamp(facts: BuildFacts) -> str:
@@ -110,9 +75,8 @@ def timestamp(facts: BuildFacts) -> str:
 
 
 __all__ = [
-    "ProjectIdentity",
-    "document",
+    "contributed_properties",
     "formulation",
-    "project_identity",
     "timestamp",
+    "with_header",
 ]

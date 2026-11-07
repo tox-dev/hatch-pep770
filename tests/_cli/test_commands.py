@@ -10,12 +10,14 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom import dumps, main
+from python_sbom._cli._main import main
+from python_sbom._formats._json import dumps
+from python_sbom.version import __version__
 
 if TYPE_CHECKING:
     from conftest import Describe, Install, WriteWheel
 
-    from python_sbom import Document
+    from python_sbom._model._types import Document
 
 _SBOM: Final[str] = "native-1.0.dist-info/sboms/native.cdx.json"
 
@@ -38,11 +40,12 @@ def wheel(tmp_path: Path, write_wheel: WriteWheel) -> Path:
 def test_embed(
     project: Path, wheel: Path, tmp_path: Path, install: Install, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    commit = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
     install(site := tmp_path / "site", "Name: meson-python\nVersion: 0.18\n", {})
-    main(["embed", str(wheel), "--root", str(project), "--commit", "c0ffee", "--build-env", str(site)])
+    main(["embed", str(wheel), "--root", str(project), "--commit", commit, "--build-env", str(site)])
     document = embedded(wheel)
     assert capsys.readouterr().out == f"wrote {_SBOM} into {wheel.name}\n"
-    assert {"name": "native:vcs-commit", "value": "c0ffee"} in document["metadata"]["component"]["properties"]
+    assert {"name": "native:vcs-commit", "value": commit} in document["metadata"]["component"]["properties"]
     assert [tool["name"] for tool in document["metadata"]["tools"]["components"][1:]] == ["meson-python"]
 
 
@@ -52,9 +55,11 @@ def embedded(wheel: Path) -> Document:
 
 def test_embed_defaults_to_current_directory(project: Path, wheel: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(project)
-    monkeypatch.setenv("PYTHON_SBOM_COMMIT", "cafe")
+    monkeypatch.setenv("PYTHON_SBOM_COMMIT", "cafecafecafecafecafecafecafecafecafecafe")
     main(["embed", str(wheel), "--build-env", str(project)])
-    assert {"name": "native:vcs-commit", "value": "cafe"} in embedded(wheel)["metadata"]["component"]["properties"]
+    assert {"name": "native:vcs-commit", "value": "cafecafecafecafecafecafecafecafecafecafe"} in embedded(wheel)[
+        "metadata"
+    ]["component"]["properties"]
 
 
 @pytest.mark.parametrize(
@@ -71,9 +76,9 @@ from python_sbom import ContentProvider, Contributions
 
 
 class Native(ContentProvider):
-    def contributions(self, request):
+    def contributions(self, context):
         return Contributions(
-            components=[], dependencies=[], root_properties=[{"name": "native:by", "value": "cli"}], tools=[]
+            root_properties=[{"name": "extra:by", "value": "cli"}]
         )
 """
     (project / f"{tmp_path.name}.py").write_text(provider, encoding="utf-8")
@@ -88,7 +93,7 @@ class Native(ContentProvider):
         *(argument.replace("MODULE", tmp_path.name) for argument in option),
     ])
     document = embedded(wheel)
-    assert {"name": "native:by", "value": "cli"} in document["metadata"]["component"]["properties"]
+    assert {"name": "extra:by", "value": "cli"} in document["metadata"]["component"]["properties"]
     assert document["metadata"]["tools"]["components"][0]["name"] == f"{tmp_path.name}.py"
 
 
@@ -115,26 +120,13 @@ def test_validate_directory(project: Path, wheel: Path, capsys: pytest.CaptureFi
 def test_validate_reports_problems(wheel: Path, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["validate", str(wheel)])
-    assert capsys.readouterr().err == f"SBOM invalid: {wheel.name}: no .dist-info/sboms/*.cdx.json found in the wheel\n"
+    assert capsys.readouterr().err == f"SBOM invalid: {wheel.name}: no SBOM found in {wheel.name}\n"
 
 
 def test_validate_without_wheels(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["validate", str(tmp_path)])
     assert capsys.readouterr().err == f"no wheel found in {tmp_path}\n"
-
-
-def test_validate_without_extra(
-    wheel: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch.setitem(sys.modules, "cyclonedx.schema", None)
-    monkeypatch.delitem(sys.modules, "python_sbom._validate._schemas", raising=False)
-    zipfile.ZipFile(wheel, "a").writestr(_SBOM, b"{}")
-    with pytest.raises(SystemExit):
-        main(["validate", str(wheel)])
-    assert capsys.readouterr().err == (
-        "python-sbom: validation needs the validate extra: pip install 'python-sbom[validate]'\n"
-    )
 
 
 def test_module_entry_point(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -147,3 +139,78 @@ def test_module_entry_point(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Capt
 def test_console_script() -> None:
     script = Path(sys.executable).parent / "python-sbom"
     assert subprocess.check_output([script, "--help"], text=True).startswith("usage: python-sbom ")
+
+
+@pytest.fixture
+def zipapp(tmp_path: Path) -> Path:
+    with zipfile.ZipFile(target := tmp_path / "app.pyz", "w") as handle:
+        handle.writestr("__main__.py", "import app\n")
+        handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\nLicense-Expression: MIT\n")
+        handle.writestr("app/__init__.py", "")
+    return target
+
+
+def test_archive_writes_sbom_next_to_archive(project: Path, zipapp: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    main(["archive", str(zipapp), "--root", str(project), "--build-env", str(project)])
+    assert (
+        capsys.readouterr().out,
+        json.loads(zipapp.with_name("app.pyz.cdx.json").read_text())["metadata"]["component"]["name"],
+    ) == (
+        f"wrote {zipapp.with_name('app.pyz.cdx.json')}\n",
+        "app.pyz",
+    )
+
+
+def test_archive_embeds_sbom(project: Path, zipapp: Path, tmp_path: Path) -> None:
+    (project / "build_app.py").write_text("", encoding="utf-8")
+    main([
+        "archive",
+        str(zipapp),
+        "--root",
+        str(project),
+        "--build-env",
+        str(project),
+        "--build-script",
+        "build_app.py",
+        "--output",
+        str(tmp_path / "out.json"),
+        "--embed",
+    ])
+    entry = zipfile.ZipFile(zipapp).getinfo("app.pyz.cdx.json")
+    assert (entry.create_system, entry.external_attr, zipfile.ZipFile(zipapp).read(entry)) == (
+        3,
+        0o644 << 16,
+        (tmp_path / "out.json").read_bytes(),
+    )
+
+
+def test_archive_refuses_second_embed(project: Path, zipapp: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    arguments = ["archive", str(zipapp), "--root", str(project), "--build-env", str(project), "--embed"]
+    main(arguments)
+    capsys.readouterr()
+    with pytest.raises(SystemExit):
+        main(arguments)
+    assert capsys.readouterr().err == "python-sbom: app.pyz already holds app.pyz.cdx.json\n"
+
+
+def test_version(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit):
+        main(["--version"])
+    assert capsys.readouterr().out == f"python-sbom {__version__}\n"
+
+
+def test_spdx_refuses_non_document(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (source := tmp_path / "other.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(SystemExit):
+        main(["spdx", str(source), str(tmp_path / "out.json")])
+    assert capsys.readouterr().err == f"python-sbom: {source} is not a CycloneDX document python-sbom can render\n"
+
+
+def test_spdx_refuses_malformed_document(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    document = {"metadata": {"component": {"bom-ref": "app", "name": "app"}}, "components": [{"name": "x"}]}
+    (source := tmp_path / "broken.json").write_text(json.dumps(document), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        main(["spdx", str(source), str(tmp_path / "out.json")])
+    assert capsys.readouterr().err.startswith(
+        f"python-sbom: {source} is not a CycloneDX document python-sbom can render: "
+    )

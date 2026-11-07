@@ -19,15 +19,6 @@ Toml: TypeAlias = "str | int | float | bool | datetime | date | time | list[Toml
 
 
 def settings_from_pyproject(root: Path, overrides: Mapping[str, Toml]) -> Settings:
-    """
-    Read the options from ``[tool.python-sbom]`` of a project's ``pyproject.toml``.
-
-    :param root: the project directory
-    :param overrides: options that win over the table, such as a hatchling hook's own table
-    :returns: the settings
-    :raises SettingsError: when ``pyproject.toml`` is missing or not TOML, or an option is unknown or has the wrong type
-
-    """
     pyproject = root / "pyproject.toml"
     try:
         loaded = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -42,16 +33,6 @@ def settings_from_pyproject(root: Path, overrides: Mapping[str, Toml]) -> Settin
 
 
 def settings_from_table(table: Mapping[str, Toml], where: str) -> Settings:
-    """
-    Read the options from a configuration table.
-
-    :param table: the table, with any of ``supplier``, ``repository``, ``default-branch``, ``bundled-wheels`` and
-        ``content-provider``
-    :param where: where the table lives, named in error messages
-    :returns: the settings
-    :raises SettingsError: when a key is unknown or an option has the wrong type
-
-    """
     known = {"bundled-wheels", "content-provider", "default-branch", "repository", "supplier"}
     if unknown := sorted(table.keys() - known):
         msg = f"{where} has unknown option(s) {', '.join(unknown)}; known: {', '.join(sorted(known))}"

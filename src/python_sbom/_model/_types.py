@@ -17,11 +17,27 @@ class OrganizationalEntity(TypedDict):
 
 
 class Contact(TypedDict):
+    """
+    A person who wrote or maintains a component.
+
+    :ivar name: the person's name
+    :ivar email: the person's email address
+
+    """
+
     name: NotRequired[str]
     email: NotRequired[str]
 
 
-class _Hash(TypedDict):
+class Hash(TypedDict):
+    """
+    A digest of a component's bytes.
+
+    :ivar alg: the algorithm as CycloneDX names it, such as ``SHA-256``
+    :ivar content: the digest as lowercase hex
+
+    """
+
     alg: str
     content: str
 
@@ -30,7 +46,7 @@ class Property(TypedDict):
     """
     A name and value pair attached to a component or the document.
 
-    :ivar name: the property's name; names this package writes start with the project name or ``python:``
+    :ivar name: the property's name; names this package writes start with the project's prefix or ``python:``
     :ivar value: the property's value
 
     """
@@ -40,12 +56,30 @@ class Property(TypedDict):
 
 
 class ExternalReference(TypedDict):
+    """
+    A link from a component to something about it.
+
+    :ivar type: the CycloneDX reference type, such as ``vcs`` or ``website``
+    :ivar url: the link
+    :ivar comment: what the link is, such as the Project-URL label it came from
+
+    """
+
     type: str
     url: str
     comment: NotRequired[str]
 
 
 class LicenseInfo(TypedDict):
+    """
+    One license, by SPDX id or by name.
+
+    :ivar id: the SPDX license id
+    :ivar name: the license's name, when it has no SPDX id
+    :ivar acknowledgement: ``declared`` when the metadata names it, ``concluded`` when python-sbom resolved it
+
+    """
+
     id: NotRequired[str]
     name: NotRequired[str]
     acknowledgement: str
@@ -53,9 +87,9 @@ class LicenseInfo(TypedDict):
 
 class License(TypedDict):
     """
-    One license entry: either a license by SPDX id or name, or an SPDX expression.
+    One license entry of a component: a license or an SPDX expression.
 
-    :ivar license: the license, by ``id`` or ``name``
+    :ivar license: the license, by SPDX id or by name
     :ivar expression: an SPDX license expression
     :ivar acknowledgement: ``declared`` or ``concluded``, for an expression
 
@@ -66,23 +100,51 @@ class License(TypedDict):
     acknowledgement: NotRequired[str]
 
 
-class _Method(TypedDict):
+class IdentityMethod(TypedDict):
+    """
+    How a component's identity was established.
+
+    :ivar technique: the CycloneDX technique, such as ``manifest-analysis`` or ``hash-comparison``
+    :ivar confidence: from 0 to 1
+    :ivar value: what the technique read, such as the path of a ``METADATA`` file or a digest
+
+    """
+
     technique: str
     confidence: int
     value: str
 
 
 class Identity(TypedDict):
+    """
+    The evidence for one field of a component's identity.
+
+    :ivar field: the field it supports, such as ``purl`` or ``hash``
+    :ivar confidence: from 0 to 1
+    :ivar methods: how it was established
+
+    """
+
     field: str
     confidence: int
-    methods: list[_Method]
+    methods: list[IdentityMethod]
 
 
-class _Evidence(TypedDict):
+class Evidence(TypedDict):
+    """
+    Why a component is what it says it is.
+
+    :ivar identity: the evidence per field
+
+    """
+
     identity: list[Identity]
 
 
-#: A CycloneDX component: a distribution, an application, the interpreter or a file.
+#: A CycloneDX 1.6 component: a distribution, an application, the interpreter or a file, as a dictionary with the
+#: keys the CycloneDX component object defines, of which python-sbom uses ``type``, ``bom-ref``, ``name``,
+#: ``version``, ``purl``, ``supplier``, ``authors``, ``description``, ``licenses``, ``copyright``, ``hashes``,
+#: ``externalReferences``, ``properties``, ``evidence`` and the nested ``components``.
 Component = TypedDict(
     "Component",
     {
@@ -96,10 +158,10 @@ Component = TypedDict(
         "description": NotRequired[str],
         "licenses": NotRequired[list[License]],
         "copyright": NotRequired[str],
-        "hashes": NotRequired[list[_Hash]],
+        "hashes": NotRequired[list[Hash]],
         "externalReferences": NotRequired[list[ExternalReference]],
         "properties": NotRequired[list[Property]],
-        "evidence": NotRequired[_Evidence],
+        "evidence": NotRequired[Evidence],
         "components": NotRequired[list["Component"]],
     },
 )
@@ -175,17 +237,6 @@ class Composition(TypedDict):
 
 
 class Body(TypedDict):
-    """
-    The content of a document, everything but the header :func:`~python_sbom.document` adds.
-
-    :ivar metadata: the document's metadata, with the described component at ``component``
-    :ivar components: the components the described component holds or depends on
-    :ivar dependencies: the dependency graph, by ``bom-ref``
-    :ivar compositions: how complete the inventory is
-    :ivar formulation: how the described component was built
-
-    """
-
     metadata: Metadata
     components: list[Component]
     dependencies: list[Dependency]
@@ -193,22 +244,14 @@ class Body(TypedDict):
     formulation: NotRequired[list[Formula]]
 
 
-#: A complete CycloneDX 1.6 JSON document.
-Document = TypedDict(
-    "Document",
-    {
-        "$schema": str,
-        "bomFormat": str,
-        "specVersion": str,
-        "serialNumber": str,
-        "version": int,
-        "metadata": Metadata,
-        "components": list[Component],
-        "dependencies": list[Dependency],
-        "compositions": NotRequired[list[Composition]],
-        "formulation": NotRequired[list[Formula]],
-    },
+_Header = TypedDict(
+    "_Header",
+    {"$schema": str, "bomFormat": str, "specVersion": str, "serialNumber": str, "version": int},
 )
+
+
+class Document(Body, _Header):
+    pass
 
 
 __all__ = [
@@ -218,9 +261,12 @@ __all__ = [
     "Contact",
     "Dependency",
     "Document",
+    "Evidence",
     "ExternalReference",
     "Formula",
+    "Hash",
     "Identity",
+    "IdentityMethod",
     "License",
     "LicenseInfo",
     "Lifecycle",

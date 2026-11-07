@@ -11,12 +11,15 @@ from typing import TYPE_CHECKING, Protocol
 
 import pytest
 
-from python_sbom import BuildFacts, ContentProvider, Interpreter, SbomRequest, Settings, SourceTree, build_sbom
+from python_sbom import ContentProvider, ProviderContext
+from python_sbom._generate._pipeline import build_sbom
+from python_sbom._model._identity import project_identity
+from python_sbom._model._inputs import BuildFacts, Interpreter, SbomRequest, Settings, SourceTree
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from python_sbom import Document
+    from python_sbom._model._types import Document
 
 
 class WriteWheel(Protocol):
@@ -31,6 +34,10 @@ class Install(Protocol):
 
 class Git(Protocol):
     def __call__(self, *arguments: str) -> str: ...
+
+
+class ContextFor(Protocol):
+    def __call__(self, root: Path, artifact: Path) -> ProviderContext: ...
 
 
 class Describe(Protocol):
@@ -141,11 +148,27 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
             settings=settings,
             build_scripts=(),
         )
+        context = ProviderContext(
+            root=Path(),
+            settings=settings,
+            identity=project_identity(request.metadata, settings),
+            artifact=Path(),
+        )
         return build_sbom(
             request,
             source or SourceTree(copyright=None, bundled=[], build_scripts=[]),
             facts,
             content or ContentProvider(),
+            context,
         ).document
 
     return describe
+
+
+@pytest.fixture
+def context_for(settings: Settings) -> ContextFor:
+    def context(root: Path, artifact: Path) -> ProviderContext:
+        identity = project_identity(message_from_string("Name: Example\nVersion: 1.0\n"), settings)
+        return ProviderContext(root=root, settings=settings, identity=identity, artifact=artifact)
+
+    return context

@@ -21,6 +21,9 @@ classifiers = [
 urls.Source = "https://github.com/example/seeder"
 
 [tool.hatch]
-build.hooks.custom.supplier = { name = "Example Org", url = [ "https://example.org" ] }
-build.hooks.custom.bundled-wheels = [ "src/seeder/embed/*.whl" ]
+build.hooks.custom = {}
 build.targets.wheel.packages = [ "src/seeder" ]
+
+[tool.python-sbom]
+supplier = { name = "Example Org", url = [ "https://example.org" ] }
+bundled-wheels = [ "src/seeder/embed/*.whl" ]

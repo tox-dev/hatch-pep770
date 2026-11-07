@@ -5,26 +5,20 @@ class SbomError(Exception):
     """Base of the errors this package raises; the command line reports them without a traceback."""
 
 
-class SettingsError(SbomError, TypeError):
-    """A setting has the wrong type."""
+# callers catch these as SbomError, or as the built-in some of them also are; SettingsError covers every option,
+# file or variable the project sets wrongly
+class SettingsError(SbomError): ...  # simplint: ignore[SMP704] # see above
 
 
-class WheelError(SbomError, ValueError):
-    """A wheel, built or bundled, lacks what its SBOM needs to describe it."""
+class WheelError(SbomError, ValueError): ...  # simplint: ignore[SMP704] # see above
 
 
-class SourceRevisionError(SbomError):
-    """The project is a git checkout, but git cannot read its revision."""
-
-
-class MissingExtraError(SbomError, ImportError):
-    """A feature needs an optional extra that is not installed."""
+class MissingExtraError(SbomError, ImportError): ...  # simplint: ignore[SMP704] # see above
 
 
 __all__ = [
     "MissingExtraError",
     "SbomError",
     "SettingsError",
-    "SourceRevisionError",
     "WheelError",
 ]

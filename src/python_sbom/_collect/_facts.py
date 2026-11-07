@@ -8,55 +8,35 @@ import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import] # runs git to read the source revision
 import sys
 import time
+import warnings
 from email.parser import Parser
 from importlib.metadata import distributions
 from typing import TYPE_CHECKING, Final, Protocol
 
-from packaging.requirements import Requirement
+from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from python_sbom._errors import SettingsError, SourceRevisionError
+from python_sbom._errors import SettingsError
 from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, RecordRow, Revision
 from python_sbom._wheel._record import decode_digest
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from importlib.metadata import Distribution
+    from collections.abc import Container, Sequence
+    from importlib.metadata import Distribution, PackageMetadata
     from pathlib import Path
+
+#: the file an sdist carries its source revision in, as ``node: <commit>``, for the wheel built from it
+REVISION_FILE: Final[str] = ".python-sbom-revision"
+_COMMIT: Final[re.Pattern[str]] = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 
 
 class RevisionReader(Protocol):
-    """Reads the source revision of a project directory."""
-
-    def __call__(self, root: Path, /) -> Revision | None:
-        """
-        Read the revision.
-
-        :param root: the project directory
-        :returns: the revision, or ``None`` when it is unknown
-        :raises SourceRevisionError: when version control holds the directory but cannot read its revision
-
-        """
+    def __call__(self, root: Path, /) -> Revision | None: ...
 
 
 def collect_facts(
-    root: Path, revision: RevisionReader, path: Sequence[str] | None, default_epoch: int | None
+    root: Path, revision: RevisionReader, *, path: Sequence[str] | None = None, default_epoch: int | None = None
 ) -> BuildFacts:
-    """
-    Gather what the environment says about a build.
-
-    Nothing about the machine goes in: the same toolchain, revision and build time give the same facts on any
-    operating system.
-
-    :param root: the project directory
-    :param revision: reads the source revision, such as :func:`default_revision`
-    :param path: the directories to find the build environment's distributions in, or ``None`` for :data:`sys.path`
-    :param default_epoch: the build time when ``SOURCE_DATE_EPOCH`` is unset, such as the fixed time of a reproducible
-        hatchling build, or ``None`` for the current time
-    :returns: the facts
-    :raises SettingsError: when ``SOURCE_DATE_EPOCH`` is not an integer
-
-    """
     if from_environment := bool(raw := os.environ.get("SOURCE_DATE_EPOCH", "")):
         try:
             epoch = int(raw)
@@ -79,22 +59,24 @@ def collect_facts(
 
 
 def _installed(path: Sequence[str] | None) -> list[InstalledDistribution]:
-    found: Final[dict[str, Distribution]] = {}
+    found: Final[dict[str, tuple[Distribution, PackageMetadata]]] = {}
     for distribution in distributions(path=list(path)) if path is not None else distributions():
+        try:
+            metadata = distribution.metadata
+        # a .dist-info without METADATA, which newer Pythons refuse to read
+        except FileNotFoundError:  # pragma: >=3.15 cover
+            continue
         # the first on the path is the one imports load, so a shadowed copy further down is left out
-        found.setdefault(canonicalize_name(distribution.metadata["Name"]), distribution)
+        if "Name" in metadata and "Version" in metadata:
+            found.setdefault(canonicalize_name(metadata["Name"]), (distribution, metadata))
     return [
         InstalledDistribution(
-            metadata=Parser().parsestr(distribution.read_text("METADATA") or ""),
+            name=name,
+            metadata=metadata,
             files=_recorded_files(distribution),
-            depends_on=sorted({
-                name
-                for requirement in map(Requirement, distribution.requires or [])
-                if (name := canonicalize_name(requirement.name)) in found
-                and (requirement.marker is None or requirement.marker.evaluate())
-            }),
+            depends_on=_depends_on(name, distribution, found),
         )
-        for distribution in found.values()
+        for name, (distribution, metadata) in found.items()
     ]
 
 
@@ -124,64 +106,82 @@ def _describes_distribution(path: str, parent_suffix: str, name: str) -> bool:
     )
 
 
+def _depends_on(name: str, distribution: Distribution, installed: Container[str]) -> list[str]:
+    names: Final[set[str]] = set()
+    for line in distribution.requires or []:
+        try:
+            requirement = Requirement(line)
+        except InvalidRequirement as error:
+            # old distributions declare requirements, such as "pytz (>dev)", that today's syntax rejects
+            warnings.warn(f"left out the requirement {line!r} of {name}: {error}", stacklevel=2)
+            continue
+        if (required := canonicalize_name(requirement.name)) in installed and (
+            requirement.marker is None or requirement.marker.evaluate()
+        ):
+            names.add(required)
+    return sorted(names)
+
+
 def default_revision(root: Path, /) -> Revision | None:
-    """
-    Read the source revision from the first source that knows it.
-
-    The sources, in order: the ``PYTHON_SBOM_COMMIT`` environment variable, for builds from an sdist; git, for a
-    checkout or a directory inside one; and the ``node`` of an expanded ``.git_archival.txt``, for a ``git archive``.
-
-    :param root: the project directory
-    :returns: the revision, or ``None`` when no source knows it
-    :raises SourceRevisionError: when a git checkout holds the directory but git cannot read its revision
-
-    """
+    # the variable exists for builds from an sdist, so it wins over whatever checkout the sdist was unpacked into
     if commit := os.environ.get("PYTHON_SBOM_COMMIT"):
-        return Revision(commit=commit, dirty=False)
+        return commit_revision(commit, "PYTHON_SBOM_COMMIT")
     if (found := git_revision(root)) is not None:
         return found
+    # the sdist build wrote it from the revision it resolved, so it is at least as exact as an archival file
+    if (recorded := root / REVISION_FILE).is_file():
+        return commit_revision(recorded.read_text(encoding="utf-8").strip().removeprefix("node: "), REVISION_FILE)
     archival = root / ".git_archival.txt"
     if archival.is_file() and (
-        match := re.search(r"^node: ([0-9a-f]{40,64})$", archival.read_text(encoding="utf-8"), re.MULTILINE)
+        match := re.search(rf"^node: ({_COMMIT.pattern})$", archival.read_text(encoding="utf-8"), re.MULTILINE)
     ):
         return Revision(commit=match[1], dirty=False)
     return None
 
 
+def commit_revision(commit: str, origin: str) -> Revision:
+    # the commit lands in the source link, so anything but a full hash could point the link elsewhere
+    if not _COMMIT.fullmatch(commit):
+        msg = f"{origin} must be a full lowercase hex commit hash of 40 or 64 characters, got {commit!r}"
+        raise SettingsError(msg)
+    return Revision(commit=commit, dirty=False)
+
+
 def git_revision(root: Path, /) -> Revision | None:
-    """
-    Read the commit of the git checkout that holds a directory.
-
-    :param root: the project directory, or any directory inside a checkout
-    :returns: the commit and whether tracked files changed, or ``None`` outside a checkout, without git, or before the
-        first commit
-    :raises SourceRevisionError: when git cannot read the checkout, such as one it considers unsafe
-
-    """
     resolved = root.resolve()
     if (git := shutil.which("git")) is None or not any(
         (directory / ".git").exists() for directory in (resolved, *resolved.parents)
     ):
         return None
-    head = _git(git, root, "rev-parse", "--verify", "--quiet", "HEAD")
-    if head.returncode == 1:  # a checkout before its first commit
+    try:
+        # a project unpacked into another checkout, such as an sdist under its build directory, is not its source
+        _git(git, root, "ls-files", "--error-unmatch", "--", "pyproject.toml")
+        commit = _git(git, root, "rev-parse", "--verify", "--quiet", "HEAD")
+        # untracked files count, since the build packages every file .gitignore lets through
+        changes = _git(git, root, "status", "--porcelain", "--", ".")
+    except subprocess.CalledProcessError as error:
+        if error.returncode != 1:  # 1: the project is untracked, or the checkout has no commit yet
+            warnings.warn(f"git cannot read the source revision in {root}: {error.stderr.strip()}", stacklevel=2)
         return None
-    if head.returncode:
-        msg = f"git rev-parse HEAD failed in {root}: {head.stderr.strip()}"
-        raise SourceRevisionError(msg)
-    status = _git(git, root, "status", "--porcelain", "--untracked-files=no")
-    return Revision(commit=head.stdout.strip(), dirty=bool(status.stdout.strip()))
+    return Revision(commit=commit, dirty=bool(changes))
 
 
-def _git(git: str, root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+def _git(git: str, root: Path, *arguments: str) -> str:
+    # git first runs in whichever repository encloses the project, whose fsmonitor hook would run a command from its
+    # config; no optional locks, so status never rewrites the index under another git process
     return subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true] # git from PATH with fixed arguments
-        [git, "-C", str(root), *arguments], check=False, capture_output=True, text=True
-    )
+        [git, "-c", "core.fsmonitor=false", "--no-optional-locks", "-C", str(root), *arguments],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
 
 
 __all__ = [
+    "REVISION_FILE",
     "RevisionReader",
     "collect_facts",
+    "commit_revision",
     "default_revision",
     "git_revision",
 ]

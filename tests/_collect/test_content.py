@@ -1,36 +1,12 @@
 from __future__ import annotations
 
-from email import message_from_string
 from pathlib import Path, PurePosixPath
 
 import pytest
 
-from python_sbom import (
-    BundledWheel,
-    BundledWheelInfo,
-    ContentProvider,
-    Contributions,
-    SbomRequest,
-    Settings,
-    SettingsError,
-    load_content_provider,
-)
-
-
-def test_default_provider_adds_nothing_to_bundled_wheels() -> None:
-    wheel = BundledWheel(
-        path="a.whl", sha256="", metadata_name="", metadata=message_from_string(""), files=[], vendored=[]
-    )
-    assert ContentProvider().bundled_wheel(wheel) == BundledWheelInfo(properties=[], supplier=None)
-
-
-def test_default_provider_contributes_nothing(settings: Settings) -> None:
-    request = SbomRequest(
-        root=Path(), metadata=message_from_string(""), wheel_name="", settings=settings, build_scripts=()
-    )
-    assert ContentProvider().contributions(request) == Contributions(
-        components=[], dependencies=[], root_properties=[], tools=[]
-    )
+from python_sbom import ContentProvider
+from python_sbom._collect._content import load_content_provider, provider_script
+from python_sbom._errors import SettingsError
 
 
 @pytest.fixture
@@ -54,15 +30,23 @@ other = object()
 
 @pytest.mark.parametrize("attribute", [pytest.param("Content", id="class"), pytest.param("instance", id="instance")])
 def test_load_from_project(tmp_path: Path, module: str, attribute: str) -> None:
-    provider, script = load_content_provider(f"{module}:{attribute}", tmp_path)
-    assert type(provider).__name__ == "Content"
-    assert script == PurePosixPath(f"tools/{tmp_path.name}.py")
+    provider = load_content_provider(f"{module}:{attribute}", tmp_path)
+    assert (type(provider).__name__, provider_script(provider, tmp_path)) == (
+        "Content",
+        PurePosixPath(f"tools/{tmp_path.name}.py"),
+    )
 
 
-def test_load_from_outside_project(tmp_path: Path) -> None:
-    provider, script = load_content_provider("python_sbom:ContentProvider", tmp_path)
-    assert type(provider) is ContentProvider
-    assert script is None
+def test_provider_outside_project_is_no_tool(tmp_path: Path) -> None:
+    provider = load_content_provider("python_sbom:ContentProvider", tmp_path)
+    assert (type(provider), provider_script(provider, tmp_path)) == (ContentProvider, None)
+
+
+def test_provider_class_outside_project_is_no_tool(tmp_path: Path) -> None:
+    class Local(ContentProvider):
+        pass
+
+    assert provider_script(Local(), tmp_path) is None
 
 
 @pytest.mark.parametrize(
@@ -78,3 +62,8 @@ def test_load_from_outside_project(tmp_path: Path) -> None:
 def test_load_refuses(tmp_path: Path, module: str, spec: str, message: str) -> None:
     with pytest.raises(SettingsError, match=message):
         load_content_provider(spec.replace("MODULE", module), tmp_path)
+
+
+def test_provider_without_source_is_no_tool(tmp_path: Path) -> None:
+    provider = type("Generated", (ContentProvider,), {"__module__": "not_a_loaded_module"})()
+    assert provider_script(provider, tmp_path) is None

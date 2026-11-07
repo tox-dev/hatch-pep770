@@ -57,7 +57,7 @@ optional-dependencies.validate = [
 ]
 urls.Changelog = "https://python-sbom.readthedocs.io/en/latest/changelog.html"
 urls.Documentation = "https://python-sbom.readthedocs.io"
-urls.Homepage = "https://python-sbom.readthedocs.io"
+urls.Homepage = "https://github.com/tox-dev/python-sbom"
 urls.Source = "https://github.com/tox-dev/python-sbom"
 urls.Tracker = "https://github.com/tox-dev/python-sbom/issues"
 scripts.python-sbom = "python_sbom._cli._main:main"
@@ -137,17 +137,24 @@ lint.select = [
 ]
 lint.ignore = [
   "CPY",                                       # The project does not add copyright headers to individual files
-  "D1",                                        # names and types document the code; simplint asks for public API docs
   "DOC",                                       # Public API documentation is generated from signatures
   "incorrect-blank-line-before-class",         # `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
   "missing-trailing-comma",                    # Conflict with formatter
   "multi-line-summary-first-line",             # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
   "single-line-implicit-string-concatenation", # Conflict with formatter
+  "undocumented-magic-method",                 # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-class",                 # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-function",              # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-init",                  # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-method",                # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-nested-class",          # undocumented-public-api (simplint SMP903) covers the public API instead
 ]
 lint.per-file-ignores."tests/**/*.py" = [
   "assert",                               # Tests use assertions
+  "D",                                    # Test names document behavior
   "FBT",                                  # Boolean parameters keep parameterized cases compact
   "implicit-namespace-package",           # The tests directory is not a package
+  "import-private-name",                  # Unit tests cover the private modules behind the small public API
   "magic-value-comparison",               # Literal expected values keep assertions local
   "subprocess-without-shell-equals-true", # Entry-point arguments are fixed by the tests
   "suspicious-subprocess-import",         # Entry-point tests invoke a local Python executable
@@ -174,8 +181,8 @@ environment.python-version = "3.15"
 
 [tool.pytest]
 ini_options.testpaths = [ "tests" ]
-# the tests run the examples under docs/examples that the documentation includes
-ini_options.pythonpath = [ "." ]
+# test modules mirror the source modules, so their names repeat across directories
+ini_options.addopts = [ "--import-mode=importlib" ]
 ini_options.filterwarnings = [
   "error",
 ]
@@ -218,6 +225,9 @@ type = [
   { directory = "removal", name = "Removed", showcontent = true },
   { directory = "packaging", name = "Packaging", showcontent = true },
 ]
+
+[tool.python-sbom]
+supplier = { name = "tox-dev", url = [ "https://github.com/tox-dev" ] }
 
 [tool.simplint]
 docstring-style = "rst"

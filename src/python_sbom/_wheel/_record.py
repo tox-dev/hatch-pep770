@@ -5,6 +5,7 @@ import binascii
 import csv
 import hashlib
 from io import StringIO
+from pathlib import PurePosixPath
 from typing import Final
 
 from python_sbom._errors import WheelError
@@ -18,21 +19,30 @@ _ALGORITHMS: Final[dict[str, str]] = {
     "sha384": "SHA-384",
     "sha512": "SHA-512",
 }
+# the hashlib name of each algorithm, by its CycloneDX spelling
+HASHLIB_NAMES: Final[dict[str, str]] = {cyclonedx: name for name, cyclonedx in _ALGORITHMS.items()}
+# the files of a .dist-info the wheel specification leaves without a digest: RECORD and its signatures
+UNHASHED: Final[frozenset[str]] = frozenset({"RECORD", "RECORD.jws", "RECORD.p7s"})
 
 
 def parse_record(text: str, where: str) -> list[RecordRow]:
-    # the row of RECORD itself has no digest and is left out
+    # the rows without a digest, which only RECORD and its signatures may have, are left out
     rows: Final[list[RecordRow]] = []
     for number, columns in enumerate(csv.reader(StringIO(text, newline="")), start=1):
-        if not columns:
-            continue
-        if len(columns) != 3:  # ruff: ignore[magic-value-comparison] # path, digest and size, as the wheel specification lays out a row
-            msg = f"{where}: RECORD row {number} has {len(columns)} columns, not 3"
-            raise WheelError(msg)
-        path, digest, size = columns
-        if digest:
-            algorithm, hexdigest = decode_digest(digest, f"{where}: RECORD row {number}")
-            rows.append(RecordRow(path=path, algorithm=algorithm, digest=hexdigest, size=size))
+        match columns:
+            case []:
+                pass
+            case [path, "", _] if PurePosixPath(path).name in UNHASHED:
+                pass
+            case [path, "", _]:
+                msg = f"{where}: RECORD row {number} gives no digest for {path}"
+                raise WheelError(msg)
+            case [path, digest, size]:
+                algorithm, hexdigest = decode_digest(digest, f"{where}: RECORD row {number}")
+                rows.append(RecordRow(path=path, algorithm=algorithm, digest=hexdigest, size=size))
+            case _:
+                msg = f"{where}: RECORD row {number} has {len(columns)} columns, not 3"
+                raise WheelError(msg)
     return rows
 
 
@@ -55,6 +65,8 @@ def record_line(name: str, content: bytes) -> str:
 
 
 __all__ = [
+    "HASHLIB_NAMES",
+    "UNHASHED",
     "decode_digest",
     "parse_record",
     "record_line",

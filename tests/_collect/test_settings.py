@@ -4,12 +4,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from python_sbom import Settings, SettingsError, settings_from_pyproject, settings_from_table
+from python_sbom._collect._settings import settings_from_pyproject, settings_from_table
+from python_sbom._errors import SettingsError
+from python_sbom._model._inputs import Settings
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from python_sbom import Toml
+    from python_sbom._collect._settings import Toml
 
 
 def test_missing_pyproject(tmp_path: Path) -> None:

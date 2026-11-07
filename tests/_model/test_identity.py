@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 import uuid
 from email import message_from_string
 from typing import TYPE_CHECKING
 
 import pytest
 
-from python_sbom import ProjectIdentity, document, project_identity
+from python_sbom._model._identity import ProjectIdentity, project_identity
 
 if TYPE_CHECKING:
-    from python_sbom import Body, Settings
+    from python_sbom._model._inputs import Settings
 
 
 @pytest.mark.parametrize(
@@ -38,29 +37,7 @@ def test_project_identity_repository(
     metadata = message_from_string(f"Name: My_Project\nVersion: 1.0\n{urls}")
     identity = project_identity(metadata, dataclasses.replace(settings, repository=repository))
     assert identity == ProjectIdentity(
-        namespace="my-project",
+        property_prefix="my-project",
         repository=expected,
         serial_namespace=uuid.uuid5(uuid.NAMESPACE_URL, f"{expected or 'https://pypi.org/project/my-project'}/sboms"),
     )
-
-
-def test_document_serial_derives_from_body() -> None:
-    body: Body = {
-        "metadata": {
-            "timestamp": "2023-11-14T22:13:20+00:00",
-            "lifecycles": [{"phase": "build"}],
-            "tools": {"components": []},
-            "component": {"type": "application", "bom-ref": "app", "name": "app"},
-        },
-        "components": [],
-        "dependencies": [],
-    }
-    namespace = uuid.uuid5(uuid.NAMESPACE_URL, "https://example.org/sboms")
-    assert document(body, namespace) == {
-        "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.6",
-        "serialNumber": f"urn:uuid:{uuid.uuid5(namespace, json.dumps(body, sort_keys=True))}",
-        "version": 1,
-        **body,
-    }

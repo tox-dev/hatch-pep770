@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from itertools import accumulate
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
@@ -9,11 +10,13 @@ if TYPE_CHECKING:
 # SPDX matches operators only in upper case
 _OPERATORS: Final[frozenset[str]] = frozenset({"AND", "OR", "WITH", "(", ")"})
 _TOKEN: Final[re.Pattern[str]] = re.compile(r"[()]|[^\s()]+")
+# the parser spends three stack frames per parenthesis, and real expressions nest a level or two
+_MAX_NESTING: Final[int] = 32
 
 
 def license_problems(components: list[Component], allowed: frozenset[str]) -> list[str]:
     return [
-        f"{component['bom-ref']}: {problem}"
+        f"{component.get('bom-ref', component['name'])}: {problem}"
         for component in _shipped(components)
         if (problem := _judge(component, allowed))
     ]
@@ -24,7 +27,7 @@ def _shipped(components: list[Component]) -> list[Component]:
     # library a bundled wheel vendors ships under that wheel's terms; iterative, so deep nesting cannot exhaust the
     # stack
     found: Final[list[Component]] = []
-    pending = list(reversed(components))
+    pending: Final[list[Component]] = list(reversed(components))
     while pending:
         component = pending.pop()
         if component["type"] == "library" and (
@@ -59,13 +62,21 @@ def _judge(component: Component, allowed: frozenset[str]) -> str | None:
 
 
 def _allowed(expression: str, allowed: frozenset[str]) -> bool:
-    # reversed, so the parser takes the next token with a cheap pop from the end
-    tokens: Final[list[str]] = _TOKEN.findall(expression)[::-1]
+    tokens: Final[list[str]] = _tokens(expression)
     verdict: Final[bool] = _license_any_of(tokens, allowed)
     if tokens:
-        msg = f"unexpected {tokens[-1]!r}"
+        msg: Final[str] = f"unexpected {tokens[-1]!r}"
         raise ValueError(msg)
     return verdict
+
+
+def _tokens(expression: str) -> list[str]:
+    found: Final[list[str]] = _TOKEN.findall(expression)
+    if (depth := max(accumulate({"(": 1, ")": -1}.get(token, 0) for token in found), default=0)) > _MAX_NESTING:
+        msg: Final[str] = f"it nests {depth} levels deep, over the {_MAX_NESTING} level limit"
+        raise ValueError(msg)
+    # reversed, so the parser takes the next token with a cheap pop from the end
+    return found[::-1]
 
 
 def _license_any_of(tokens: list[str], allowed: frozenset[str]) -> bool:

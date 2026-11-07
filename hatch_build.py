@@ -1,3 +1,5 @@
+"""Write python-sbom's own SBOM into its wheel with the hook the package ships."""
+
 from __future__ import annotations
 
 import sys
@@ -22,4 +24,6 @@ class SelfSbomHook(BuildHookInterface):  # simplint: ignore[SMP409] # hatchling 
         hook = SbomBuildHook(
             self.root, self.config, self.build_config, self.metadata, self.directory, self.target_name, self.app
         )
+        # as hatchling names a custom hook, so the SBOM lists this script among the build tools
+        hook.PLUGIN_NAME = self.PLUGIN_NAME
         hook.finalize(version, build_data, artifact_path)

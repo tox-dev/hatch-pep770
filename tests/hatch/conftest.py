@@ -61,8 +61,8 @@ def seeder(tmp_path: Path, write_wheel: WriteWheel) -> Path:
     pyproject = target / "pyproject.toml"
     pyproject.write_text(
         pyproject.read_text(encoding="utf-8").replace(
-            "build.hooks.custom.supplier",
-            f'build.hooks.custom.path = "{(_SEEDER / "hatch_build.py").as_posix()}"\nbuild.hooks.custom.supplier',
+            "build.hooks.custom = {}",
+            f'build.hooks.custom.path = "{(_SEEDER / "hatch_build.py").as_posix()}"',
         ),
         encoding="utf-8",
     )

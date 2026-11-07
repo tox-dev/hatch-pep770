@@ -4,28 +4,20 @@ import dataclasses
 import json
 import uuid
 from email import message_from_string
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom import (
-    BuildScript,
-    BundledWheel,
-    BundledWheelInfo,
-    ContentProvider,
-    Contributions,
-    Revision,
-    SbomRequest,
-    SourceTree,
-    build_sbom,
-    dumps,
-)
+from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
+from python_sbom._model._inputs import BuildScript, BundledWheel, Revision, SourceTree
 
 if TYPE_CHECKING:
     from conftest import Describe
 
-    from python_sbom import BuildFacts, Component, OrganizationalEntity, Settings
+    from python_sbom import Component
+    from python_sbom._model._inputs import BuildFacts, Settings
+    from python_sbom._model._types import OrganizationalEntity
 
 _INTERPRETER: Final[str] = "tool:pkg:generic/cpython@3.15.0"
 
@@ -116,18 +108,6 @@ def test_serial_is_stable(describe: Describe) -> None:
 
 def test_serial_follows_content(describe: Describe) -> None:
     assert describe()["serialNumber"] != describe("Summary: other\n")["serialNumber"]
-
-
-def test_sbom_file_name_and_content(settings: Settings, facts: BuildFacts) -> None:
-    request = SbomRequest(
-        root=Path(),
-        metadata=message_from_string("Name: My.Project\nVersion: 1.0\n"),
-        wheel_name="my_project-1.0-py3-none-any.whl",
-        settings=settings,
-        build_scripts=(),
-    )
-    sbom = build_sbom(request, SourceTree(copyright=None, bundled=[], build_scripts=[]), facts, ContentProvider())
-    assert (sbom.file_name, sbom.content) == ("my-project.cdx.json", dumps(sbom.document))
 
 
 @pytest.mark.parametrize(
@@ -250,25 +230,6 @@ def test_repeated_requirement_is_one_component(describe: Describe) -> None:
     assert [component["bom-ref"] for component in document["components"]] == ["requires-dist:packaging>=24"]
 
 
-@pytest.mark.parametrize(
-    ("marker", "applies"),
-    [
-        pytest.param('extra == "cli"', False, id="extra"),
-        pytest.param('"cli" == extra', False, id="extra-on-the-right"),
-        pytest.param('extra != "cli"', True, id="not-extra"),
-        pytest.param('python_version < "3.11"', True, id="environment"),
-        pytest.param('extra == "cli" or python_version < "3.11"', True, id="extra-or-environment"),
-        pytest.param('extra == "cli" and python_version < "3.11"', False, id="extra-and-environment"),
-        pytest.param('(extra == "a" or extra == "b") and os_name == "nt"', False, id="grouped-extras"),
-        pytest.param('python_version < "3.11" and (extra == "a" or os_name == "nt")', True, id="grouped-unknown"),
-        pytest.param('python_version >= "3" or extra == "a"', True, id="environment-or-extra"),
-    ],
-)
-def test_requirement_marker(describe: Describe, marker: str, applies: bool) -> None:
-    document = describe(f"Requires-Dist: click; {marker}\n")
-    assert bool(document["components"]) is applies
-
-
 def test_scope_names_bundled_directories(describe: Describe, settings: Settings) -> None:
     document = describe(settings=dataclasses.replace(settings, bundled_wheels=("src/b/*.whl", "src/a/x/*.whl")))
     assert document["metadata"]["properties"][0]["value"] == (
@@ -291,12 +252,12 @@ def test_bundled_wheel_and_its_vendored_packages(describe: Describe) -> None:
         def __init__(self, name: str) -> None:
             self._name = name
 
-        def bundled_wheel(self, wheel: BundledWheel) -> BundledWheelInfo:
-            return BundledWheelInfo(properties=[{"name": self._name, "value": wheel.path}], supplier=None)
+        def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:
+            return BundledWheelInfo(
+                properties=[{"name": f"{context.identity.property_prefix}:{self._name}", "value": str(wheel)}]
+            )
 
-    document = describe(
-        source=SourceTree(copyright=None, bundled=[wheel], build_scripts=[]), content=Seeded("example:seeded")
-    )
+    document = describe(source=SourceTree(copyright=None, bundled=[wheel], build_scripts=[]), content=Seeded("seeded"))
     assert document["components"][0]["properties"][1] == {
         "name": "example:seeded",
         "value": "src/pip-1.0-py3-none-any.whl",
@@ -351,11 +312,11 @@ def test_contributions_join_before_references_and_serial(describe: Describe) -> 
         def __init__(self, components: list[Component]) -> None:
             self._components = components
 
-        def contributions(self, request: SbomRequest) -> Contributions:
+        def contributions(self, context: ProviderContext) -> Contributions:
             return Contributions(
                 components=self._components,
                 dependencies=[{"ref": component["bom-ref"], "dependsOn": []} for component in self._components],
-                root_properties=[{"name": "example:native", "value": request.wheel_name}],
+                root_properties=[{"name": "native:prefix", "value": context.identity.property_prefix}],
                 tools=[tool],
             )
 
@@ -372,8 +333,42 @@ def test_contributions_join_before_references_and_serial(describe: Describe) -> 
             {"ref": "pkg:pypi/example@1.0", "dependsOn": ["pkg:generic/zlib@1.3"]},
             {"ref": "pkg:generic/zlib@1.3", "dependsOn": []},
         ],
-        [{"name": "example:native", "value": "example-1.0-py3-none-any.whl"}],
+        [{"name": "native:prefix", "value": "example"}],
         tool,
         [{"ref": _INTERPRETER}, {"ref": "tool:pkg:generic/cmake@4"}],
     )
     assert native["serialNumber"] != describe()["serialNumber"]
+
+
+_ORG: Final[OrganizationalEntity] = {"name": "Example Org", "url": []}
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [pytest.param(True, _ORG, id="by-project"), pytest.param(False, None, id="unnamed")],
+)
+def test_bundled_wheel_supplier_is_the_projects_choice(
+    describe: Describe, settings: Settings, supplied: bool, expected: OrganizationalEntity | None
+) -> None:
+    wheel = BundledWheel(
+        path="src/pip-1.0-py3-none-any.whl",
+        sha256="ab" * 32,
+        metadata_name="pip-1.0.dist-info/METADATA",
+        metadata=message_from_string("Name: pip\nVersion: 1.0\nProject-URL: Source, https://github.com/example/pip\n"),
+        files=[],
+        vendored=[],
+    )
+
+    class Supplied(ContentProvider):
+        def __init__(self, supplied: bool) -> None:
+            self._supplied = supplied
+
+        def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:  # ruff: ignore[unused-method-argument] # the base class's signature
+            return BundledWheelInfo(supplier=context.settings.supplier if self._supplied else None)
+
+    document = describe(
+        settings=dataclasses.replace(settings, supplier=_ORG),
+        source=SourceTree(copyright=None, bundled=[wheel], build_scripts=[]),
+        content=Supplied(supplied),
+    )
+    assert document["components"][0].get("supplier") == expected

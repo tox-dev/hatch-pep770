@@ -7,18 +7,17 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom import (
-    BundledWheel,
-    BundledWheelInfo,
-    RecordRow,
+from python_sbom._model._components import (
     bundled_wheel_component,
     component_from_metadata,
     file_component_from_bytes,
     script_tool,
 )
+from python_sbom._model._inputs import BundledWheel, RecordRow
 
 if TYPE_CHECKING:
-    from python_sbom import Component, License, OrganizationalEntity
+    from python_sbom import Component, Property
+    from python_sbom._model._types import License, OrganizationalEntity
 
 _WHEEL: Final[str] = "src/example/wheels/pip-1.0-py3-none-any.whl"
 
@@ -150,6 +149,36 @@ def test_component_ignores_license_text() -> None:
             id="normalized-label",
         ),
         pytest.param(
+            "Project-URL: Source Code, https://example.com/x\n",
+            [{"type": "vcs", "url": "https://example.com/x", "comment": "Project-URL: Source Code"}],
+            id="pep-753-source-code",
+        ),
+        pytest.param(
+            "Project-URL: Bugs, https://example.com/x\n",
+            [{"type": "issue-tracker", "url": "https://example.com/x", "comment": "Project-URL: Bugs"}],
+            id="pep-753-bugs",
+        ),
+        pytest.param(
+            "Project-URL: Issue, https://example.com/x\n",
+            [{"type": "issue-tracker", "url": "https://example.com/x", "comment": "Project-URL: Issue"}],
+            id="pep-753-issue",
+        ),
+        pytest.param(
+            "Project-URL: Release Notes, https://example.com/x\n",
+            [{"type": "release-notes", "url": "https://example.com/x", "comment": "Project-URL: Release Notes"}],
+            id="pep-753-release-notes",
+        ),
+        pytest.param(
+            "Project-URL: What's New, https://example.com/x\n",
+            [{"type": "release-notes", "url": "https://example.com/x", "comment": "Project-URL: What's New"}],
+            id="pep-753-whats-new",
+        ),
+        pytest.param(
+            "Project-URL: History, https://example.com/x\n",
+            [{"type": "release-notes", "url": "https://example.com/x", "comment": "Project-URL: History"}],
+            id="pep-753-history",
+        ),
+        pytest.param(
             "Project-URL: Funding, https://example.com/fund\n",
             [{"type": "other", "url": "https://example.com/fund", "comment": "Project-URL: Funding"}],
             id="unknown-label",
@@ -171,8 +200,8 @@ def test_bundled_wheel_component() -> None:
         vendored=[],
     )
     supplier: OrganizationalEntity = {"name": "PyPA", "url": ["https://www.pypa.io"]}
-    info = BundledWheelInfo(properties=[{"name": "example:seeded-for-python", "value": "3.15"}], supplier=supplier)
-    assert bundled_wheel_component(wheel, "example", info) == {
+    properties: list[Property] = [{"name": "example:seeded-for-python", "value": "3.15"}]
+    assert bundled_wheel_component(wheel, "example", properties, supplier) == {
         "type": "library",
         "bom-ref": f"bundled:{_WHEEL}",
         "name": "pip",
@@ -227,7 +256,7 @@ def test_bundled_wheel_vendored_metadata_wins_over_manifest() -> None:
             (dist_info, message_from_string("Name: urllib3\nVersion: 1.26.4\nLicense-Expression: MIT\n")),
         ],
     )
-    component = bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=[], supplier=None))
+    component = bundled_wheel_component(wheel, "example", [], None)
     assert component["components"] == [
         {
             "type": "library",
@@ -261,7 +290,7 @@ def test_bundled_wheel_component_ref_tells_copies_apart() -> None:
             files=[],
             vendored=[],
         )
-        return bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=[], supplier=None))
+        return bundled_wheel_component(wheel, "example", [], None)
 
     refs = {component(f"src/{directory}/pip-1.0-py3-none-any.whl")["bom-ref"] for directory in ("a", "b")}
     assert refs == {"bundled:src/a/pip-1.0-py3-none-any.whl", "bundled:src/b/pip-1.0-py3-none-any.whl"}
@@ -276,7 +305,7 @@ def test_bundled_wheel_supplier_never_comes_from_the_wheel() -> None:
         files=[],
         vendored=[],
     )
-    component = bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=[], supplier=None))
+    component = bundled_wheel_component(wheel, "example", [], None)
     assert "supplier" not in component
 
 

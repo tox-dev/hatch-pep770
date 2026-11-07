@@ -1,0 +1,199 @@
+from __future__ import annotations
+
+import io
+import json
+import zipfile
+from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING, Final
+
+import pytest
+
+from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
+from python_sbom._collect._facts import collect_facts
+from python_sbom._errors import WheelError
+from python_sbom._generate._archive import describe_archive
+from python_sbom._generate._embed import revision_reader
+from python_sbom._validate._artifact import validate
+
+if TYPE_CHECKING:
+    from conftest import WriteWheel
+
+    from python_sbom import Component
+    from python_sbom._model._types import Document
+
+_COMMIT: Final[str] = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
+_LIBRARY: Final[str] = "__bundled__/distlib-0.4-py3-none-any"
+_WHEEL: Final[str] = "app/wheels/pip-1.0-py3-none-any.whl"
+
+
+@pytest.fixture
+def project(tmp_path: Path) -> Path:
+    (root := tmp_path / "project").mkdir()
+    (root / "pyproject.toml").write_text(
+        "[tool.python-sbom]\nsupplier = { name = 'Example Org' }\nrepository = 'https://github.com/example/app'\n",
+        encoding="utf-8",
+    )
+    (root / "build_app.py").write_text("print('build')\n", encoding="utf-8")
+    return root
+
+
+@pytest.fixture
+def archive(tmp_path: Path, write_wheel: WriteWheel) -> Path:
+    wheel = write_wheel(
+        tmp_path / "pip-1.0-py3-none-any.whl",
+        {"pip/__init__.py": b"", "pip-1.0.dist-info/METADATA": b"Name: pip\nVersion: 1.0\nLicense-Expression: MIT\n"},
+    )
+    with zipfile.ZipFile(target := tmp_path / "app.pyz", "w") as handle:
+        handle.writestr("__main__.py", "import app\n")
+        handle.writestr("loaded.json", json.dumps({_LIBRARY: ["3.14"]}))
+        handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\nLicense-Expression: MIT\n")
+        handle.writestr("app/__init__.py", "")
+        handle.writestr("app/", "")
+        handle.writestr(_WHEEL, wheel.read_bytes())
+        handle.writestr(
+            f"{_LIBRARY}/distlib-0.4.dist-info/METADATA", "Name: distlib\nVersion: 0.4\nLicense-Expression: MIT\n"
+        )
+        handle.writestr(f"{_LIBRARY}/distlib/__init__.py", "")
+        handle.writestr("app.pyz.cdx.json", "{}")
+    return target
+
+
+@pytest.fixture
+def document(project: Path, archive: Path) -> Document:
+    facts = collect_facts(project, revision_reader(_COMMIT))
+    return describe_archive(
+        project, archive, facts=facts, content=Bundles("loaded.json"), build_scripts=(PurePosixPath("build_app.py"),)
+    )
+
+
+class Bundles(ContentProvider):
+    def __init__(self, table: str) -> None:
+        self._table = table
+
+    def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:
+        # reads the archive, as a real provider reads its tables
+        loaded = json.loads(context.read(PurePosixPath(self._table)))
+        return BundledWheelInfo(
+            properties=[{"name": "app:loaded-for", "value": python} for python in loaded.get(str(wheel), [])],
+            supplier=context.settings.supplier,
+        )
+
+    def contributions(self, context: ProviderContext) -> Contributions:
+        zlib: Component = {"type": "library", "bom-ref": "pkg:generic/zlib@1.3", "name": "zlib", "version": "1.3"}
+        return Contributions(
+            components=[zlib],
+            dependencies=[{"ref": "pkg:generic/zlib@1.3", "dependsOn": []}],
+            root_properties=[
+                {"name": "extra:project", "value": context.root.name},
+                {"name": "extra:table", "value": self._table},
+            ],
+        )
+
+
+def test_archive_document_validates(document: Document, tmp_path: Path) -> None:
+    (sbom := tmp_path / "app.pyz.cdx.json").write_text(json.dumps(document), encoding="utf-8")
+    assert validate(sbom, frozenset({"MIT"})) == []
+
+
+def test_archive_root(document: Document) -> None:
+    root = document["metadata"]["component"]
+    assert {key: value for key, value in root.items() if key != "components"} == {
+        "type": "application",
+        "bom-ref": "pkg:generic/app.pyz@1.0",
+        "name": "app.pyz",
+        "version": "1.0",
+        "purl": "pkg:generic/app.pyz@1.0",
+        "supplier": {"name": "Example Org", "url": []},
+        "properties": [
+            {"name": "extra:project", "value": "project"},
+            {"name": "extra:table", "value": "loaded.json"},
+            {"name": "app:vcs-commit", "value": _COMMIT},
+        ],
+    }
+
+
+def test_archive_loose_files_belong_to_the_archive(document: Document) -> None:
+    files = document["metadata"]["component"].get("components", [])
+    assert [file["name"] for file in files] == ["__main__.py", "loaded.json"]
+
+
+def test_archive_project_distribution(document: Document) -> None:
+    app = document["components"][0]
+    assert [(child["type"], child["name"]) for child in app.get("components", [])] == [
+        ("file", "app-1.0.dist-info/METADATA"),
+        ("file", "app/__init__.py"),
+        ("library", "pip"),
+    ]
+
+
+def test_archive_bundled_wheel(document: Document) -> None:
+    pip = document["components"][0].get("components", [])[2]
+    assert (pip["bom-ref"], pip.get("supplier"), pip.get("properties", [])[0]) == (
+        f"bundled:{_WHEEL}",
+        {"name": "Example Org", "url": []},
+        {"name": "app:bundled-wheel", "value": _WHEEL},
+    )
+
+
+def test_archive_unpacked_wheel(document: Document) -> None:
+    distlib = document["components"][1]
+    assert (
+        distlib["bom-ref"],
+        "supplier" in distlib,
+        distlib.get("properties", []),
+        [child["name"] for child in distlib.get("components", [])],
+    ) == (
+        f"bundled:{_LIBRARY}",
+        True,
+        [{"name": "app:bundled-wheel", "value": _LIBRARY}, {"name": "app:loaded-for", "value": "3.14"}],
+        [f"{_LIBRARY}/distlib-0.4.dist-info/METADATA", f"{_LIBRARY}/distlib/__init__.py"],
+    )
+
+
+def test_archive_tools_and_metadata(document: Document) -> None:
+    metadata = document["metadata"]
+    script = metadata["tools"]["components"][0]
+    assert (script["name"], script.get("externalReferences"), metadata.get("properties"), metadata.get("supplier")) == (
+        "build_app.py",
+        [{"type": "vcs", "url": "https://github.com/example/app/blob/main/build_app.py"}],
+        [{"name": "app:sbom:file", "value": "app.pyz.cdx.json"}],
+        {"name": "Example Org", "url": []},
+    )
+
+
+def test_archive_contributions(document: Document) -> None:
+    assert (document["components"][-1]["name"], document["dependencies"][-1]) == (
+        "zlib",
+        {"ref": "pkg:generic/zlib@1.3", "dependsOn": []},
+    )
+
+
+def test_archive_defaults(tmp_path: Path, archive: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'app'\n", encoding="utf-8")
+    document = describe_archive(tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)))
+    assert ("supplier" in document["metadata"], document["metadata"]["component"].get("properties")) == (False, [])
+
+
+def test_archive_content_provider_option(tmp_path: Path, archive: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        f"[tool.python-sbom]\ncontent-provider = '{tmp_path.name}:Provider'\n", encoding="utf-8"
+    )
+    (tmp_path / f"{tmp_path.name}.py").write_text(
+        "from python_sbom import ContentProvider\n\n\nclass Provider(ContentProvider):\n    pass\n", encoding="utf-8"
+    )
+    tools = describe_archive(tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)))["metadata"][
+        "tools"
+    ]["components"]
+    assert tools[0]["name"] == f"{tmp_path.name}.py"
+
+
+def test_archive_without_project_distribution(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("", encoding="utf-8")
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as handle:
+        handle.writestr("__main__.py", "")
+    (archive := tmp_path / "bare.pyz").write_bytes(buffer.getvalue())
+    with pytest.raises(
+        WheelError, match=r"bare\.pyz holds 0 top-level \.dist-info/METADATA, not the one naming the project"
+    ):
+        describe_archive(tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)))
