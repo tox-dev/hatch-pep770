@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import sys
+from importlib.resources import files
 from typing import TypeAlias
 
 import pytest
@@ -11,6 +13,39 @@ from python_sbom._validate._schemas import schema_error
 
 # a JSON value, as json.loads hands it over
 _Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
+
+
+@pytest.mark.parametrize(
+    ("path", "release", "digest"),
+    [
+        pytest.param(
+            "schema/bom-1.6.schema.json",
+            "1.6.2",
+            "18f57f7482593bad9f21b4feed09084640cbeff419d62ad5090c5ceccca5b37d",
+            id="bom-1.6",
+        ),
+        pytest.param(
+            "schema/jsf-0.82.schema.json",
+            "1.6.2",
+            "8bae002c25e723db7ee1f26afde680ae1a2b1a8f6b4b4b0fd65dc3becb090aae",
+            id="jsf-0.82",
+        ),
+        pytest.param(
+            "schema/spdx.schema.json",
+            "1.7.2",
+            "4b345e2329f209f34e960ae2a8e7cb46a166907e6a45e94978565925dc47b359",
+            id="spdx",
+        ),
+        pytest.param(
+            "LICENSE", "1.7.2", "6c29f22a4a7385285c6f579ec9f33c5e989f00739d6b257243a0b082ec9447ae", id="license"
+        ),
+    ],
+)
+def test_schema_files_are_the_upstream_release(path: str, release: str, digest: str) -> None:
+    # the SHA-256 of https://raw.githubusercontent.com/CycloneDX/specification/<release>/<path>, so the shipped copy
+    # stays the released file byte for byte; a newer release replaces the file and its digest together
+    shipped = files("python_sbom._validate") / "schemas" / path.rpartition("/")[2]
+    assert hashlib.sha256(shipped.read_bytes()).hexdigest() == digest, f"not the file of the {release} release"
 
 
 def test_validate_without_extra(monkeypatch: pytest.MonkeyPatch) -> None:

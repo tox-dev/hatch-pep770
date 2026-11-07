@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from importlib.resources import files
 from typing import TYPE_CHECKING, Final, TypeAlias
 
 from python_sbom._errors import MissingExtraError
 
 try:
-    from cyclonedx.schema._res import CRYPTOGRAPHY_DEFS, JSF, SPDX_JSON  # ruff: ignore[import-private-name] # its bundled schemas
     from jsonschema_rs import Draft7Validator, Registry
     from spdx_tools.spdx.parser.error import SPDXParsingError
     from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
@@ -17,6 +16,8 @@ except ImportError as error:
     raise MissingExtraError(_MESSAGE) from error
 
 if TYPE_CHECKING:
+    from importlib.resources.abc import Traversable
+
     from jsonschema_rs import ValidationError
 
     from python_sbom._formats._spdx import Spdx
@@ -46,18 +47,20 @@ def spdx_problems(spdx: Spdx) -> list[str]:
     return [f"SPDX rendering invalid: {message.validation_message}" for message in validate_full_spdx_document(parsed)]
 
 
-# the schema and the files it references are the ones cyclonedx's own Draft 7 validator reads, with format assertion on
-# as there; offline, so a reference missing from the registry fails instead of reaching the network
+# the official CycloneDX schema files, unchanged: bom-1.6 and the jsf-0.82 it references from the specification's 1.6.2
+# release, and the spdx license list from its 1.7.2 release, the newest, as the cyclonedx.org URL every schema version
+# references serves the newest; Apache-2.0, see the LICENSE beside them. Format assertion is on, as in CycloneDX's own
+# Draft 7 validation, and offline, so a reference missing from the registry fails instead of reaching the network
+_SCHEMAS: Final[Traversable] = files(__package__) / "schemas"
+_REFERENCED: Final[list[dict[str, _Json]]] = [
+    json.loads((_SCHEMAS / name).read_text(encoding="utf-8")) for name in ("spdx.schema.json", "jsf-0.82.schema.json")
+]
 _VALIDATOR: Final[Draft7Validator] = Draft7Validator(
-    json.loads(Path(SPDX_JSON).with_name("bom-1.6.SNAPSHOT.schema.json").read_text(encoding="utf-8")),
+    json.loads((_SCHEMAS / "bom-1.6.schema.json").read_text(encoding="utf-8")),
     validate_formats=True,
     offline=True,
-    registry=Registry([
-        (f"http://cyclonedx.org/schema/{Path(path).name}", json.loads(Path(path).read_text(encoding="utf-8")))
-        for path in (SPDX_JSON, CRYPTOGRAPHY_DEFS, JSF)
-    ]),
+    registry=Registry([(str(schema["$id"]), schema) for schema in _REFERENCED]),
 )
-
 
 __all__ = [
     "schema_error",

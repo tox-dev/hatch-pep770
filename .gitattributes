@@ -1,2 +1,3 @@
 .git_archival.txt export-subst
 tests/_generate/pinned/** -text
+src/python_sbom/_validate/schemas/** -text

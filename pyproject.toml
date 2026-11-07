@@ -58,7 +58,6 @@ optional-dependencies.hatch = [
   "hatchling>=1.28",
 ]
 optional-dependencies.validate = [
-  "cyclonedx-python-lib>=11.12",
   "jsonschema-rs>=0.60.3",
   "license-expression>=30",
   "spdx-tools>=0.8.5",
@@ -80,7 +79,6 @@ dev = [
 ]
 test = [
   "covdefaults>=2.3",
-  "cyclonedx-python-lib>=11.12",
   "hatchling>=1.28",
   "installer>=1.1",
   "jsonschema-rs>=0.60.3",
