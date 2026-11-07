@@ -9,10 +9,10 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import] # runs git to re
 import sys
 import time
 import warnings
-from email.parser import Parser
 from importlib.metadata import distributions
 from typing import TYPE_CHECKING, Final, Protocol
 
+from installer.utils import parse_metadata_file
 from packaging.direct_url import DirectUrl, DirectUrlValidationError
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
@@ -84,7 +84,9 @@ def _installed(path: Sequence[str] | None) -> list[InstalledDistribution]:
 def _recorded_files(distribution: Distribution) -> list[RecordRow]:
     # a platform wheel's files are built for this machine's OS and architecture, and an editable install's point at a
     # checkout, so listing either would tie the document to one machine
-    if Parser().parsestr(distribution.read_text("WHEEL") or "")["Root-Is-Purelib"] != "true" or _editable(distribution):
+    if parse_metadata_file(distribution.read_text("WHEEL") or "")["Root-Is-Purelib"] != "true" or _editable(
+        distribution
+    ):
         return []
     rows: Final[list[RecordRow]] = []
     for file in distribution.files or []:
