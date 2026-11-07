@@ -8,15 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._collect._content import load_content_provider
-from python_sbom._collect._facts import collect_facts
 from python_sbom._errors import SbomError
-from python_sbom._formats._json import dumps
-from python_sbom._formats._spdx import to_spdx
-from python_sbom._generate._archive import describe_archive
-from python_sbom._generate._embed import embed_sbom, revision_reader
-from python_sbom._validate._artifact import validate as validate_artifact
-from python_sbom._validate._document import MAX_COMPONENTS, is_document
+from python_sbom._validate._document import MAX_COMPONENTS
 
 if TYPE_CHECKING:
     from argparse import ArgumentParser, _SubParsersAction
@@ -41,6 +34,9 @@ def add_embed(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _embed(options: Options) -> bool:
+    from python_sbom._collect._content import load_content_provider  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._generate._embed import embed_sbom  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+
     root = Path.cwd() if options.root is None else options.root
     content = None if options.content_provider is None else load_content_provider(options.content_provider, root)
     for wheel in options.wheels:
@@ -97,6 +93,12 @@ def add_archive(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _archive(options: Options) -> bool:
+    from python_sbom._collect._content import load_content_provider  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._formats._json import dumps  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._generate._archive import describe_archive  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._generate._embed import revision_reader  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+
     root = Path.cwd() if options.root is None else options.root
     facts = collect_facts(root, revision_reader(options.commit), path=options.build_env)
     document = describe_archive(
@@ -136,6 +138,9 @@ def add_spdx(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _spdx(options: Options) -> bool:
+    from python_sbom._formats._spdx import to_spdx  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+    from python_sbom._validate._document import is_document  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+
     if not is_document(loaded := json.loads(options.source.read_text(encoding="utf-8"))):
         msg = f"{options.source} is not a CycloneDX document python-sbom can render"
         raise SbomError(msg)
@@ -180,6 +185,8 @@ def add_validate(commands: _SubParsersAction[ArgumentParser]) -> None:
 
 
 def _validate(options: Options) -> bool:
+    from python_sbom._validate._artifact import validate as validate_artifact  # ruff: ignore[import-outside-top-level] # each command loads only what it runs
+
     allowed = None if options.allowed_licenses is None else frozenset(options.allowed_licenses)
     if not (
         artifacts := sorted(
