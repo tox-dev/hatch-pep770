@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 from python_sbom._errors import SbomError
 
-from ._parser import Options, build_parser
+from ._options import Options
+from ._parser import build_parser
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

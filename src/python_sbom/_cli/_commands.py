@@ -21,7 +21,7 @@ from python_sbom.version import __version__
 if TYPE_CHECKING:
     from python_sbom._collect._facts import RevisionReader
 
-    from ._parser import Options
+    from ._options import Options
 
 
 def embed(options: Options) -> bool:
