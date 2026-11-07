@@ -28,7 +28,7 @@ Add the hook to the build requirements and enable it:
 ```toml
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatch-pep770>=1", "hatchling>=1.28"]
+requires = ["hatch-pep770>=0.1", "hatchling>=1.28"]
 
 [tool.hatch.build.hooks.pep770]
 ```
