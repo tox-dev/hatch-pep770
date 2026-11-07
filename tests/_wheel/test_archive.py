@@ -5,6 +5,7 @@ import struct
 import sys
 import tracemalloc
 import zipfile
+import zlib
 from contextlib import ExitStack
 from io import BytesIO
 from pathlib import Path
@@ -281,29 +282,31 @@ def test_embed_ends_an_unterminated_last_row(tmp_path: Path, write_wheel: WriteW
     ]
 
 
-@pytest.mark.parametrize(
-    ("members", "method"),
-    [
-        pytest.param([("a.py", b"x" * 100, zipfile.ZIP_DEFLATED)], zipfile.ZIP_DEFLATED, id="deflated"),
-        pytest.param([("a.py", b"x" * 100, zipfile.ZIP_STORED)], zipfile.ZIP_STORED, id="stored"),
-        # Info-ZIP stores directories and empty files whatever it compresses, so they outvote no one
-        pytest.param(
-            [("d/", b"", zipfile.ZIP_STORED), ("e", b"", zipfile.ZIP_STORED), ("a.py", b"x", zipfile.ZIP_DEFLATED)],
-            zipfile.ZIP_DEFLATED,
-            id="directories-and-empty-files-skipped",
-        ),
-        pytest.param([], zipfile.ZIP_STORED, id="empty-archive"),
-    ],
-)
-def test_append_member_compresses_as_the_files_are(
-    tmp_path: Path, members: list[tuple[str, bytes, int]], method: int
-) -> None:
-    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
-        for name, content, compression in members:
-            handle.writestr(name, content, compression)
-    append_member(archive, "app.pyz.cdx.json", b"{}\n", 1_700_000_000)
+def test_append_member_deflates_at_level_nine(tmp_path: Path) -> None:
+    # the archive stores its members, as virtualenv's zipapp does, yet the SBOM goes in deflated, and the members keep
+    # their bytes
+    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w", zipfile.ZIP_STORED) as handle:
+        handle.writestr("__main__.py", b"import app\n" * 100)
+    before = _stored(archive, "__main__.py")
+    content = b'{"components": []}\n' * 100
+    append_member(archive, "app.pyz.cdx.json", content, 1_700_000_000)
     entry = zipfile.ZipFile(archive).getinfo("app.pyz.cdx.json")
-    assert (entry.compress_type, entry.create_system, entry.date_time) == (method, 3, (2023, 11, 14, 22, 13, 20))
+    compressor = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    assert (
+        entry.compress_type,
+        entry.create_system,
+        entry.date_time,
+        entry.external_attr,
+        _stored(archive, "app.pyz.cdx.json"),
+        _stored(archive, "__main__.py"),
+    ) == (
+        zipfile.ZIP_DEFLATED,
+        3,
+        (2023, 11, 14, 22, 13, 20),
+        (stat.S_IFREG | 0o644) << 16,
+        compressor.compress(content) + compressor.flush(),
+        before,
+    )
 
 
 def test_append_member_refuses_a_second_copy(tmp_path: Path) -> None:

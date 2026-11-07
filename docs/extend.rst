@@ -107,7 +107,7 @@ files:
 The document takes its options, source revision and toolchain the way the wheel's does, so both name the project alike.
 Its build time comes from ``SOURCE_DATE_EPOCH``, or the current time without it; set ``SOURCE_DATE_EPOCH`` for both
 builds to give them one time. ``--embed`` adds the document to the archive's top level, where ``python-sbom validate
-virtualenv.pyz`` finds it. It goes in compressed the way most of the archive's members are: by their compression method
-and, for deflate, at the level their option bits name, which Python's zipfile leaves at zlib's default. The entry
-carries a fixed time and Unix attributes, so adding it to one archive gives the same bytes on every system with the same
-zlib.
+virtualenv.pyz`` finds it. It goes in deflated at level 9 whatever the archive's other members use, since a zipapp may
+store them all and the SBOM, megabytes of JSON, would then add its full size. The entry carries a fixed time and Unix
+attributes and the other members keep their bytes, so adding it to one archive gives the same bytes on every system with
+the same zlib.

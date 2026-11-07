@@ -31,9 +31,6 @@ _METADATA_LIMIT: Final[int] = 16 * 1024 * 1024
 _CHUNK: Final[int] = 1024 * 1024
 # 1980-01-01, the earliest time a zip entry holds
 _ZIP_EPOCH: Final[int] = 315532800
-# the zlib level each setting of the deflate option bits in a member's flags stands for (APPNOTE 4.4.4: normal, maximum,
-# fast, super fast), as Info-ZIP sets them; None is zlib's default
-_DEFLATE_LEVELS: Final[dict[int, int | None]] = {0b000: None, 0b010: 9, 0b100: 2, 0b110: 1}
 
 
 def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
@@ -164,18 +161,9 @@ def append_member(archive: Path, name: str, content: bytes, epoch: int) -> None:
         if name in handle.namelist():
             msg = f"{archive.name} already holds {name}"
             raise SbomError(msg)
-        # compressed by the method most of the archive's files use, at the level their deflate option bits name, since
-        # the zip format records no level itself and Python's zipfile leaves the bits at normal, zlib's default;
-        # directories and empty files count for none, as zip tools store them whatever they compress
-        files: Final[list[zipfile.ZipInfo]] = [
-            info for info in handle.infolist() if info.file_size and not info.is_dir()
-        ]
-        method: Final[int] = next(
-            iter(Counter(info.compress_type for info in files).most_common(1)), (zipfile.ZIP_STORED, 0)
-        )[0]
-        flags: Final[int] = next((info.flag_bits for info in files if info.compress_type == method), 0)
-        level: Final[int | None] = _DEFLATE_LEVELS[flags & 0b110] if method == zipfile.ZIP_DEFLATED else None
-        handle.writestr(_entry(name, epoch), content, compress_type=method, compresslevel=level)
+        # deflated at the highest level whatever the other members use, since a zipapp may store them all and the SBOM
+        # then adds megabytes; a fixed level, time and attributes keep the bytes the same for one input on every system
+        handle.writestr(_entry(name, epoch), content, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
 
 
 __all__ = [
