@@ -182,3 +182,11 @@ def sdist_files(sdist: Path) -> dict[str, bytes]:
 def test_sdist_of_dirty_checkout_records_no_revision(checkout: Path, build_wheel: BuildWheel) -> None:
     (checkout / "LICENSE").write_text("changed\n", encoding="utf-8")
     assert ".python-sbom-revision" not in sdist_files(build_wheel(checkout, target="sdist"))
+
+
+def test_each_build_reads_the_revision(checkout: Path, git: Git, build_wheel: BuildWheel) -> None:
+    build_wheel(checkout, target="sdist")
+    (checkout / "LICENSE").write_text("changed\n", encoding="utf-8")
+    git("commit", "--quiet", "--all", "--message", "second")
+    files = sdist_files(build_wheel(checkout, target="sdist"))
+    assert files.get(".python-sbom-revision") == f"node: {git('rev-parse', 'HEAD')}\n".encode()
