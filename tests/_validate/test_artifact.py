@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._formats._json import dumps
 from python_sbom._validate._artifact import validate
 
@@ -129,7 +129,7 @@ def test_archive_with_duplicate_member(tmp_path: Path) -> None:
         archive.writestr("example.cdx.json", b"{}")
         with pytest.warns(UserWarning, match="Duplicate name"):
             archive.writestr("example.cdx.json", b"{}")
-    with pytest.raises(WheelError, match=r"holds more than one member named example\.cdx\.json"):
+    with pytest.raises(SbomError, match=r"holds more than one member named example\.cdx\.json"):
         validate(wheel, None)
 
 
@@ -139,7 +139,7 @@ def test_corrupt_archive(tmp_path: Path) -> None:
     data = bytearray(wheel.read_bytes())
     data[40:50] = b"\xff" * 10
     wheel.write_bytes(bytes(data))
-    with pytest.raises(WheelError, match=r"example-1\.0-py3-none-any\.whl is not a valid zip archive"):
+    with pytest.raises(SbomError, match=r"example-1\.0-py3-none-any\.whl is not a valid zip archive"):
         validate(wheel, None)
 
 

@@ -7,7 +7,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 
 from python_sbom._collect._archive import member_reader, read_archive
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 
 
 def test_member_reader_reads_a_member(tmp_path: Path) -> None:
@@ -28,7 +28,7 @@ def test_member_reader_checks_the_archive(tmp_path: Path) -> None:
     with zipfile.ZipFile(wheel := tmp_path / "a.whl", "w") as archive:
         archive.writestr("table.py", "")
         archive.writestr("TABLE.py", "")
-    with pytest.raises(WheelError, match=r"holds more than one member named table\.py, ignoring case"):
+    with pytest.raises(SbomError, match=r"holds more than one member named table\.py, ignoring case"):
         member_reader(wheel)(PurePosixPath("table.py"))
 
 

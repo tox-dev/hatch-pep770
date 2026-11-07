@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Final
 
 from installer.records import RecordEntry
 
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import RecordRow
 
 if TYPE_CHECKING:
@@ -41,12 +41,12 @@ def decode_digest(digest: str, where: str) -> tuple[str, str]:
     name, _, encoded = digest.partition("=")
     if (algorithm := _ALGORITHMS.get(name)) is None:
         msg = f"{where}: unknown hash algorithm {name!r}"
-        raise WheelError(msg)
+        raise SbomError(msg)
     try:
         raw = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
     except binascii.Error as error:
         msg = f"{where}: digest {encoded!r} is not urlsafe base64"
-        raise WheelError(msg) from error
+        raise SbomError(msg) from error
     return algorithm, raw.hex()
 
 

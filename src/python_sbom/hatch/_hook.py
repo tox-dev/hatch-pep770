@@ -14,7 +14,7 @@ from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._revision import REVISION_FILE, default_revision
 from python_sbom._collect._settings import settings_from_table
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -139,7 +139,7 @@ class SbomBuildHook(BuildHookInterface):
                 f"the {self.PLUGIN_NAME} hook's table holds {', '.join(unknown)}; move python-sbom's options to"
                 " [tool.python-sbom], where python-sbom embed and python-sbom archive read them too"
             )
-            raise SettingsError(msg)
+            raise SbomError(msg)
         return settings_from_table(self.metadata.config.get("tool", {}).get("python-sbom", {}), "[tool.python-sbom]")
 
 

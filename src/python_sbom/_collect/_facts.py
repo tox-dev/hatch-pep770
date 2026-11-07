@@ -15,7 +15,7 @@ from packaging.direct_url import DirectUrl, DirectUrlValidationError
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.utils import canonicalize_name
 
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, RecordRow
 from python_sbom._model._metadata import parse_metadata
 from python_sbom._wheel._record import record_rows
@@ -38,7 +38,7 @@ def collect_facts(
             epoch = int(raw)
         except ValueError as error:
             msg = f"SOURCE_DATE_EPOCH must be a Unix timestamp, got {raw!r}"
-            raise SettingsError(msg) from error
+            raise SbomError(msg) from error
     else:
         epoch = int(time.time()) if default_epoch is None else default_epoch
     return BuildFacts(

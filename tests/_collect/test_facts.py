@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from python_sbom._collect._facts import collect_facts
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import Interpreter, RecordRow, Revision
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ def test_epoch_without_default_is_now(tmp_path: Path) -> None:
 
 def test_invalid_epoch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "yesterday")
-    with pytest.raises(SettingsError, match="SOURCE_DATE_EPOCH must be a Unix timestamp, got 'yesterday'"):
+    with pytest.raises(SbomError, match="SOURCE_DATE_EPOCH must be a Unix timestamp, got 'yesterday'"):
         collect_facts(tmp_path, no_revision, path=[])
 
 

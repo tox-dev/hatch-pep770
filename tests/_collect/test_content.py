@@ -9,7 +9,7 @@ import pytest
 import python_sbom
 from python_sbom import ContentProvider
 from python_sbom._collect._content import resolve_provider
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 
 if TYPE_CHECKING:
     from python_sbom import Settings
@@ -110,7 +110,7 @@ def test_provider_class_outside_project_is_no_tool(tmp_path: Path, settings: Set
     ],
 )
 def test_load_refuses(tmp_path: Path, module: str, spec: str, message: str, settings: Settings) -> None:
-    with pytest.raises(SettingsError, match=message):
+    with pytest.raises(SbomError, match=message):
         resolve_provider(spec.replace("MODULE", module), settings, tmp_path)
 
 

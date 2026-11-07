@@ -12,7 +12,7 @@ import pytest
 from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
 from python_sbom._collect._facts import collect_facts
 from python_sbom._collect._revision import revision_reader
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._generate._archive import describe_archive
 from python_sbom._model._inputs import Revision
 from python_sbom._validate._artifact import validate
@@ -227,7 +227,7 @@ def test_archive_without_project_distribution(tmp_path: Path) -> None:
         handle.writestr("__main__.py", "")
     (archive := tmp_path / "bare.pyz").write_bytes(buffer.getvalue())
     with pytest.raises(
-        WheelError, match=r"bare\.pyz holds 0 top-level \.dist-info/METADATA, not the one naming the project"
+        SbomError, match=r"bare\.pyz holds 0 top-level \.dist-info/METADATA, not the one naming the project"
     ):
         describe_archive(
             tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)), provider=None, build_scripts=()

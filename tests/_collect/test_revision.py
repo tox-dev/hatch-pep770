@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from python_sbom._collect._revision import REVISION_FILE, default_revision, revision_reader
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import Revision
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ def test_commit_from_environment_must_be_full_hash(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, commit: str
 ) -> None:
     monkeypatch.setenv("PYTHON_SBOM_COMMIT", commit)
-    with pytest.raises(SettingsError, match="PYTHON_SBOM_COMMIT must be a full lowercase hex commit hash"):
+    with pytest.raises(SbomError, match="PYTHON_SBOM_COMMIT must be a full lowercase hex commit hash"):
         default_revision(tmp_path)
 
 
@@ -58,7 +58,7 @@ def test_revision_file(tmp_path: Path) -> None:
 
 def test_invalid_revision_file(tmp_path: Path) -> None:
     (tmp_path / REVISION_FILE).write_text("node: d\n", encoding="utf-8")
-    with pytest.raises(SettingsError, match=r"\.python-sbom-revision must be a full lowercase hex commit hash"):
+    with pytest.raises(SbomError, match=r"\.python-sbom-revision must be a full lowercase hex commit hash"):
         default_revision(tmp_path)
 
 
@@ -189,7 +189,7 @@ def test_given_commit_wins_over_checkout(checkout: Path) -> None:
 
 
 def test_given_commit_must_be_full_hash() -> None:
-    with pytest.raises(SettingsError, match="--commit must be a full lowercase hex commit hash"):
+    with pytest.raises(SbomError, match="--commit must be a full lowercase hex commit hash"):
         revision_reader("c0ffee")
 
 

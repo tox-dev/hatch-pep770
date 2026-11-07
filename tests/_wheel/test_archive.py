@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._wheel._archive import append_member, open_archive, read_member, write_sbom
 
 if TYPE_CHECKING:
@@ -162,7 +162,7 @@ def test_embed_refuses_non_wheel(tmp_path: Path, files: dict[str, bytes], messag
     with zipfile.ZipFile(archive := tmp_path / "native-1.0-py3-none-any.whl", "w") as handle:
         for name, content in files.items():
             handle.writestr(name, content)
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         write_sbom(archive, "native.cdx.json", b"{}\n", 1_700_000_000)
 
 
@@ -181,13 +181,13 @@ def test_embed_refuses_duplicate_member(tmp_path: Path) -> None:
         handle.writestr("native-1.0.dist-info/RECORD", b"")
         with pytest.warns(UserWarning, match="Duplicate name"):
             handle.writestr("native-1.0.dist-info/RECORD", b"")
-    with pytest.raises(WheelError, match=r"holds more than one member named native-1\.0\.dist-info/record"):
+    with pytest.raises(SbomError, match=r"holds more than one member named native-1\.0\.dist-info/record"):
         write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
 
 
 def test_embed_refuses_corrupt_archive(tmp_path: Path) -> None:
     (wheel := tmp_path / "native-1.0-py3-none-any.whl").write_bytes(b"not a zip")
-    with pytest.raises(WheelError, match="is not a valid zip archive: File is not a zip file"):
+    with pytest.raises(SbomError, match="is not a valid zip archive: File is not a zip file"):
         write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
 
 
@@ -200,7 +200,7 @@ def test_embed_refuses_corrupt_archive(tmp_path: Path) -> None:
 )
 def test_open_archive_refuses_names_equal_ignoring_case(names: tuple[str, str]) -> None:
     message = f"w holds more than one member named {names[0].lower()}, ignoring case"
-    with pytest.raises(WheelError, match=message), ExitStack() as stack:
+    with pytest.raises(SbomError, match=message), ExitStack() as stack:
         stack.enter_context(open_archive(zip_of(*((name, b"") for name in names)), "w"))
 
 
@@ -215,7 +215,7 @@ def zip_of(*members: tuple[str, bytes]) -> BytesIO:
 def test_open_archive_refuses_corrupt_member() -> None:
     data = bytearray(zip_of(("a", b"hello" * 1000)).getvalue())
     data[40:50] = b"\xff" * 10
-    with pytest.raises(WheelError, match="w is not a valid zip"), open_archive(BytesIO(bytes(data)), "w") as archive:
+    with pytest.raises(SbomError, match="w is not a valid zip"), open_archive(BytesIO(bytes(data)), "w") as archive:
         archive.read("a")
 
 
@@ -225,12 +225,12 @@ def test_read_member() -> None:
 
 
 def test_read_member_over_limit() -> None:
-    with open_archive(zip_of(("a", b"12345")), "w") as archive, pytest.raises(WheelError, match="w: a is over the 4"):
+    with open_archive(zip_of(("a", b"12345")), "w") as archive, pytest.raises(SbomError, match="w: a is over the 4"):
         read_member(archive, "a", "w", limit=4)
 
 
 def test_read_member_missing() -> None:
-    with open_archive(zip_of(("a", b"")), "w") as archive, pytest.raises(WheelError, match="w has no b"):
+    with open_archive(zip_of(("a", b"")), "w") as archive, pytest.raises(SbomError, match="w has no b"):
         read_member(archive, "b", "w")
 
 
@@ -240,7 +240,7 @@ def test_read_member_refuses_understated_size() -> None:
     data = bytearray(zip_of(("a", b"A" * 32 * 1024 * 1024)).getvalue())
     data[22:26] = data[(central := data.rfind(b"PK\x01\x02")) + 24 : central + 28] = struct.pack("<I", 10)
     tracemalloc.reset_peak()
-    with pytest.raises(WheelError, match="Bad CRC-32 for file 'a'"), open_archive(BytesIO(bytes(data)), "w") as archive:
+    with pytest.raises(SbomError, match="Bad CRC-32 for file 'a'"), open_archive(BytesIO(bytes(data)), "w") as archive:
         read_member(archive, "a", "w")
     assert tracemalloc.get_traced_memory()[1] < 4 * 1024 * 1024
 
@@ -262,7 +262,7 @@ def test_wheel_with_two_dist_info_directories(tmp_path: Path, write_wheel: Write
         record=False,
     )
     message = r"Wheel doesn't contain exactly one \.dist-info directory .*'aaa-0\.dist-info', 'native-1\.0\.dist-info'"
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         write_sbom(wheel, "native.cdx.json", b"{}\n", 0)
 
 
@@ -309,5 +309,5 @@ def test_append_member_compresses_as_the_files_are(
 def test_append_member_refuses_a_second_copy(tmp_path: Path) -> None:
     with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
         handle.writestr("app.pyz.cdx.json", b"{}")
-    with pytest.raises(WheelError, match=r"app\.pyz already holds app\.pyz\.cdx\.json"):
+    with pytest.raises(SbomError, match=r"app\.pyz already holds app\.pyz\.cdx\.json"):
         append_member(archive, "app.pyz.cdx.json", b"{}\n", 1_700_000_000)

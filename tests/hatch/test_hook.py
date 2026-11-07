@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._validate._artifact import validate
 
 if TYPE_CHECKING:
@@ -97,7 +97,7 @@ def test_project_table_options(project: Path, build_wheel: BuildWheel) -> None:
 
 def test_hook_table_refuses_python_sbom_options(project: Path, build_wheel: BuildWheel) -> None:
     configure(project, "default-branch = 'trunk'\n")
-    with pytest.raises(SettingsError, match=r"hook's table holds default-branch; move python-sbom's options"):
+    with pytest.raises(SbomError, match=r"hook's table holds default-branch; move python-sbom's options"):
         build_wheel(project)
 
 

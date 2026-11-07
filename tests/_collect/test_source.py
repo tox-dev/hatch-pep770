@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Final
 import pytest
 
 from python_sbom._collect._source import read_bundled_wheels, read_source_tree, wheel_request
-from python_sbom._errors import SettingsError, WheelError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BuildScript, BundledWheel, RecordRow, SbomRequest
 from python_sbom._model._metadata import parse_metadata
 
@@ -91,7 +91,7 @@ def test_bundled_wheel_pattern_outside_project(
     (project := tmp_path / "project" / "src").mkdir(parents=True)
     pattern = pattern.replace("ROOT", tmp_path.as_posix())
     settings = dataclasses.replace(settings, bundled_wheels=(pattern,))
-    with pytest.raises(SettingsError, match=f"`bundled-wheels` pattern {re.escape(repr(pattern))} must be relative"):
+    with pytest.raises(SbomError, match=f"`bundled-wheels` pattern {re.escape(repr(pattern))} must be relative"):
         read_source_tree(request(project.parent, settings))
 
 
@@ -169,7 +169,7 @@ def test_malformed_bundled_wheel(
     tmp_path: Path, write_wheel: WriteWheel, files: Mapping[str, bytes], message: str
 ) -> None:
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
@@ -186,12 +186,12 @@ def test_bundled_wheel_file_name_names_the_project(
     tmp_path: Path, write_wheel: WriteWheel, name: str, message: str
 ) -> None:
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", _PIP)
-    with pytest.raises(WheelError, match=f"bundled wheel {name} is not a wheel: {message}"):
+    with pytest.raises(SbomError, match=f"bundled wheel {name} is not a wheel: {message}"):
         _bundled(wheel.read_bytes(), name)
 
 
 def test_corrupt_bundled_wheel() -> None:
-    with pytest.raises(WheelError, match=r"bundled wheel pip\.whl is not a valid zip archive"):
+    with pytest.raises(SbomError, match=r"bundled wheel pip\.whl is not a valid zip archive"):
         _bundled(b"not a zip", "pip.whl")
 
 
@@ -203,7 +203,7 @@ def test_bundled_wheel_with_duplicate_member(tmp_path: Path) -> None:
             archive.writestr(_INIT, b"")
         archive.writestr(_METADATA, _PIP[_METADATA])
         archive.writestr("pip-1.0.dist-info/RECORD", f"{row(_INIT, b'')}{_METADATA_ROW}")
-    with pytest.raises(WheelError, match=f"holds more than one member named {_INIT}, ignoring case"):
+    with pytest.raises(SbomError, match=f"holds more than one member named {_INIT}, ignoring case"):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
@@ -288,7 +288,7 @@ def test_bundled_wheel_record_algorithm(tmp_path: Path, write_wheel: WriteWheel,
 def test_record_disagrees_with_wheel(tmp_path: Path, write_wheel: WriteWheel, record: str, message: str) -> None:
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode()}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
@@ -311,14 +311,14 @@ def test_signature_away_from_record_needs_a_row(tmp_path: Path, write_wheel: Wri
     record = "".join(starmap(row, _PIP.items())) + _RECORD_ROW
     files = {**_PIP, "pip-1.0.dist-info/RECORD": record.encode(), signature: b"import os\n"}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files, record=False)
-    with pytest.raises(WheelError, match=f"RECORD lacks a digest for {re.escape(signature)}"):
+    with pytest.raises(SbomError, match=f"RECORD lacks a digest for {re.escape(signature)}"):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
 def test_vendored_metadata_needs_name_and_version(tmp_path: Path, write_wheel: WriteWheel) -> None:
     files = {**_PIP, "pip/_vendor/rich-13.0.dist-info/METADATA": b"Metadata-Version: 2.1\n"}
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", files)
-    with pytest.raises(WheelError, match=r"pip/_vendor/rich-13\.0\.dist-info/METADATA lacks Name or Version"):
+    with pytest.raises(SbomError, match=r"pip/_vendor/rich-13\.0\.dist-info/METADATA lacks Name or Version"):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
@@ -335,7 +335,7 @@ def test_vendor_manifest_needs_exact_pins(
     tmp_path: Path, write_wheel: WriteWheel, manifest: bytes, message: str
 ) -> None:
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", {**_PIP, "pip/_vendor/vendor.txt": manifest})
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
 
 
@@ -366,7 +366,7 @@ def test_wheel_request_needs_a_wheel(
     tmp_path: Path, settings: Settings, write_wheel: WriteWheel, name: str, message: str
 ) -> None:
     archive = write_wheel(tmp_path / name, {"native/__init__.py": b""}, record=False)
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         wheel_request(archive, Path(), settings, ())
 
 
@@ -383,5 +383,5 @@ def test_bundled_wheels_come_in_the_order_given(tmp_path: Path, write_wheel: Wri
         paths[0],
         paths[0],
     ]
-    with pytest.raises(WheelError, match=r"^bundled wheel b\.whl is not a valid zip archive"):
+    with pytest.raises(SbomError, match=r"^bundled wheel b\.whl is not a valid zip archive"):
         read_bundled_wheels(paths, lambda name: BytesIO(wheels[name]))

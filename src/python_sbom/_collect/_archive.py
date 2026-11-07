@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import ArchiveTree, RecordRow
 from python_sbom._model._metadata import parse_metadata
 from python_sbom._wheel._archive import member_digest, open_archive, read_member
@@ -35,7 +35,7 @@ def read_archive(archive: Path) -> ArchiveTree:
         }
         if (top := sum(name.count("/") == 1 and name.endswith(".dist-info/METADATA") for name in members)) != 1:
             msg = f"{where} holds {top} top-level .dist-info/METADATA, not the one naming the project"
-            raise WheelError(msg)
+            raise SbomError(msg)
         files: Final[dict[str, RecordRow]] = {
             name: RecordRow(
                 path=name,

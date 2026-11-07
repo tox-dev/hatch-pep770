@@ -7,7 +7,7 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import] # runs git to re
 import warnings
 from typing import TYPE_CHECKING, Final, Protocol
 
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import Revision
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ def _commit_revision(commit: str, origin: str) -> Revision:
     # the commit lands in the source link, so anything but a full hash could point the link elsewhere
     if not _COMMIT.fullmatch(commit):
         msg = f"{origin} must be a full lowercase hex commit hash of 40 or 64 characters, got {commit!r}"
-        raise SettingsError(msg)
+        raise SbomError(msg)
     return Revision(commit=commit, dirty=False)
 
 

@@ -10,7 +10,7 @@ from installer.records import InvalidRecordEntry, parse_record_file
 from installer.sources import WheelFile
 from packaging.requirements import InvalidRequirement, Requirement
 
-from python_sbom._errors import SettingsError, WheelError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BuildScript, BundledWheel, RecordRow, SbomRequest, SourceTree
 from python_sbom._model._metadata import CoreMetadata, parse_metadata
 from python_sbom._wheel._archive import open_archive, read_member, read_wheel_metadata
@@ -37,7 +37,7 @@ def read_source_tree(request: SbomRequest) -> SourceTree:
         # a wheel outside the project is none the project ships, and pathlib refuses an absolute pattern outright
         if (path := PurePath(pattern)).anchor or ".." in path.parts:
             msg = f"`bundled-wheels` pattern {pattern!r} must be relative to the project, without `..`"
-            raise SettingsError(msg)
+            raise SbomError(msg)
         wheels.update(wheel.relative_to(root).as_posix() for wheel in root.glob(pattern))
     return SourceTree(
         copyright=copyright_notice(root, request.metadata.values("license_files")),
@@ -106,7 +106,7 @@ def _read_bundled_wheel(stream: IO[bytes], path: str) -> BundledWheel:
 def _check_named(metadata: CoreMetadata, where: str, name: str) -> None:
     if not (metadata.name and metadata.version):
         msg = f"{where}: {name} lacks Name or Version"
-        raise WheelError(msg)
+        raise SbomError(msg)
 
 
 def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> list[RecordRow]:
@@ -121,12 +121,12 @@ def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> 
         found: Final[list[RecordRow]] = record_rows(rows, where)
     except InvalidRecordEntry as error:
         msg = f"{where}: RECORD does not parse: {error}"
-        raise WheelError(msg) from error
+        raise SbomError(msg) from error
     # installer checks the last row of a path only, skips rows naming no member, and lets a RECORD.jws or RECORD.p7s
     # anywhere under the .dist-info, "../" included, go unlisted, so each of these checks is ours
     if repeated := sorted(path for path, count in Counter(path for path, _, _ in rows).items() if count > 1):
         msg = f"{where}: RECORD lists {', '.join(repeated)} more than once"
-        raise WheelError(msg)
+        raise SbomError(msg)
     members: Final[set[str]] = {info.filename for info in archive.infolist() if not info.is_dir()}
     recorded: Final[set[str]] = {path for path, _, _ in rows}
     # installer checks the row of RECORD itself, the one row without a digest
@@ -134,10 +134,10 @@ def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> 
         members - recorded - {f"{dist_info}/{name}" for name in ("RECORD", "RECORD.jws", "RECORD.p7s")}
     ):
         msg = f"{where}: RECORD lacks a digest for {', '.join(missing)}"
-        raise WheelError(msg)
+        raise SbomError(msg)
     if extra := sorted(recorded - members):
         msg = f"{where}: RECORD lists {', '.join(extra)}, which the wheel does not hold"
-        raise WheelError(msg)
+        raise SbomError(msg)
     try:
         wheel.validate_record()
     except WheelFile.validation_error as error:
@@ -145,7 +145,7 @@ def _verified_record(archive: zipfile.ZipFile, wheel: WheelFile, where: str) -> 
         issues: Final[list[str]] = getattr(error, "issues", [str(error)])
         prefix: Final[str] = f"In {archive.filename}, "
         msg = f"{where}: RECORD disagrees with the wheel: {'; '.join(issue.removeprefix(prefix) for issue in issues)}"
-        raise WheelError(msg) from error
+        raise SbomError(msg) from error
     return found
 
 
@@ -160,10 +160,10 @@ def _vendor_manifest(archive: zipfile.ZipFile, where: str, members: list[str]) -
                 pins = list((requirement := Requirement(text)).specifier)
             except InvalidRequirement as error:
                 msg = f"{where}: vendored requirement in {name} does not parse: {text}"
-                raise WheelError(msg) from error
+                raise SbomError(msg) from error
             if len(pins) != 1 or pins[0].operator != "==" or "*" in pins[0].version:
                 msg = f"{where}: vendored requirement in {name} pins no one exact version: {text}"
-                raise WheelError(msg)
+                raise SbomError(msg)
             found.append((name, CoreMetadata(raw={"name": requirement.name, "version": pins[0].version}, unparsed={})))
     return found
 

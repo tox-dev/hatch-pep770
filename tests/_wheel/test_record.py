@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._wheel._record import decode_digest
 
 
@@ -33,5 +33,5 @@ def test_decode_digest(digest: str, expected: tuple[str, str]) -> None:
     ],
 )
 def test_decode_digest_rejects(digest: str, message: str) -> None:
-    with pytest.raises(WheelError, match=message):
+    with pytest.raises(SbomError, match=message):
         decode_digest(digest, "w")

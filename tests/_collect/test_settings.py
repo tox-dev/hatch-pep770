@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from python_sbom._collect._settings import settings_from_pyproject, settings_from_table
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._model._inputs import Settings
 
 if TYPE_CHECKING:
@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 
 
 def test_missing_pyproject(tmp_path: Path) -> None:
-    with pytest.raises(SettingsError, match=r"has no pyproject\.toml to read"):
+    with pytest.raises(SbomError, match=r"has no pyproject\.toml to read"):
         settings_from_pyproject(tmp_path)
 
 
 def test_invalid_pyproject(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[tool\n", encoding="utf-8")
-    with pytest.raises(SettingsError, match=r"pyproject\.toml is not valid TOML"):
+    with pytest.raises(SbomError, match=r"pyproject\.toml is not valid TOML"):
         settings_from_pyproject(tmp_path)
 
 
@@ -50,7 +50,7 @@ def test_table(tmp_path: Path) -> None:
 
 
 def test_unknown_option() -> None:
-    with pytest.raises(SettingsError, match=r"here has unknown option\(s\) bundled, suplier; known: bundled-wheels"):
+    with pytest.raises(SbomError, match=r"here has unknown option\(s\) bundled, suplier; known: bundled-wheels"):
         settings_from_table({"suplier": {}, "bundled": []}, "here")
 
 
@@ -71,7 +71,7 @@ def test_unknown_option() -> None:
     ],
 )
 def test_wrong_type(table: dict[str, Toml], message: str) -> None:
-    with pytest.raises(SettingsError, match=message):
+    with pytest.raises(SbomError, match=message):
         settings_from_table(table, "here")
 
 

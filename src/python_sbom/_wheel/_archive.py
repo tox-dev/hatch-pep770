@@ -20,7 +20,7 @@ from installer.records import Hash, RecordEntry
 from installer.sources import WheelFile
 from installer.utils import copyfileobj_with_hashing
 
-from python_sbom._errors import WheelError
+from python_sbom._errors import SbomError
 from python_sbom._model._metadata import CoreMetadata, parse_metadata
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
         record: Final[str] = f"{dist_info}/RECORD"
         if missing := sorted({f"{dist_info}/METADATA", record} - set(archive.namelist())):
             msg = f"{wheel} has no {', '.join(missing)}"
-            raise WheelError(msg)
+            raise SbomError(msg)
         record_info: Final[zipfile.ZipInfo] = archive.getinfo(record)
         record_data: Final[bytes] = archive.read(record_info)
     sbom: Final[str] = f"{dist_info}/sboms/{name}"
@@ -82,12 +82,12 @@ def open_archive(file: Path | IO[bytes], where: str) -> Generator[zipfile.ZipFil
                 name for name, count in Counter(name.casefold() for name in archive.namelist()).items() if count > 1
             ):
                 msg = f"{where} holds more than one member named {', '.join(clashes)}, ignoring case"
-                raise WheelError(msg)
+                raise SbomError(msg)
             yield archive
     # zipfile raises these as late as a member's last read, inside installer's checks too, which let them through
     except (zipfile.BadZipFile, zlib.error) as error:
         msg = f"{where} is not a valid zip archive: {error}"
-        raise WheelError(msg) from error
+        raise SbomError(msg) from error
 
 
 def _wheel_source(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, str]:
@@ -98,7 +98,7 @@ def _wheel_source(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, str]
         dist_info = wheel.dist_info_dir
     except ValueError as error:
         msg = f"{where} is not a wheel: {error}"
-        raise WheelError(msg) from error
+        raise SbomError(msg) from error
     return wheel, dist_info
 
 
@@ -139,7 +139,7 @@ def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _M
         info = archive.getinfo(name)
     except KeyError as error:
         msg = f"{where} has no {name}"
-        raise WheelError(msg) from error
+        raise SbomError(msg) from error
     # counted as it decompresses, since the size the archive states may lie and one read decompresses it all at once
     content: Final[bytearray] = bytearray()
     with archive.open(info) as member:
@@ -147,7 +147,7 @@ def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _M
             content.extend(chunk)
             if len(content) > limit:
                 msg = f"{where}: {name} is over the {limit} byte limit"
-                raise WheelError(msg)
+                raise SbomError(msg)
     return bytes(content)
 
 
@@ -163,7 +163,7 @@ def append_member(archive: Path, name: str, content: bytes, epoch: int) -> None:
     with zipfile.ZipFile(archive, "a") as handle:
         if name in handle.namelist():
             msg = f"{archive.name} already holds {name}"
-            raise WheelError(msg)
+            raise SbomError(msg)
         # compressed by the method most of the archive's files use, at the level their deflate option bits name, since
         # the zip format records no level itself and Python's zipfile leaves the bits at normal, zlib's default;
         # directories and empty files count for none, as zip tools store them whatever they compress

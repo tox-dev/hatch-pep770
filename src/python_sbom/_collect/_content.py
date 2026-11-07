@@ -6,7 +6,7 @@ import sys
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._errors import SettingsError
+from python_sbom._errors import SbomError
 from python_sbom._model._content import ContentProvider
 
 if TYPE_CHECKING:
@@ -32,21 +32,21 @@ def _load(spec: str, root: Path) -> ContentProvider:
     module_name, _, attribute = spec.partition(":")
     if not (module_name and attribute):
         msg = f"content provider {spec!r} must be `module:attribute`"
-        raise SettingsError(msg)
+        raise SbomError(msg)
     sys.path.insert(0, str(root))
     try:
         provider = pkgutil.resolve_name(spec)
     # ValueError: a name resolve_name cannot parse, such as a second colon
     except (ImportError, AttributeError, ValueError) as error:
         msg = f"content provider {spec!r} does not load from {root}: {error}"
-        raise SettingsError(msg) from error
+        raise SbomError(msg) from error
     finally:
         sys.path.remove(str(root))
     if isinstance(provider, type) and issubclass(provider, ContentProvider):
         provider = provider()
     if not isinstance(provider, ContentProvider):
         msg = f"content provider {spec!r} is not a ContentProvider subclass or instance"
-        raise SettingsError(msg)
+        raise SbomError(msg)
     return provider
 
 
