@@ -113,18 +113,23 @@ def test_serial_follows_content(describe: Describe) -> None:
 @pytest.mark.parametrize(
     ("dirty", "trail"),
     [
-        pytest.param(False, ("exact source revision", []), id="clean"),
+        pytest.param(False, ("c0ffee", "exact source revision", []), id="clean"),
         pytest.param(
             True,
-            ("source revision, with uncommitted changes", [{"name": "example:vcs-dirty", "value": "true"}]),
+            ("main", "source revision, with uncommitted changes", [{"name": "example:vcs-dirty", "value": "true"}]),
             id="dirty",
         ),
     ],
 )
 def test_root_component(
-    describe: Describe, settings: Settings, facts: BuildFacts, dirty: bool, trail: tuple[str, list[dict[str, str]]]
+    describe: Describe,
+    settings: Settings,
+    facts: BuildFacts,
+    dirty: bool,
+    trail: tuple[str, str, list[dict[str, str]]],
 ) -> None:
-    comment, dirty_properties = trail
+    # a dirty checkout's files may differ from its commit's, so its links fall back to the default branch
+    tree, comment, dirty_properties = trail
     supplier: OrganizationalEntity = {"name": "Example Org", "url": ["https://example.org"]}
     document = describe(
         "License-File: LICENSE\nProject-URL: Source, https://github.com/example/example/\n",
@@ -150,7 +155,7 @@ def test_root_component(
             },
             {"type": "security-contact", "url": f"{repository}/security/policy"},
             {"type": "advisories", "url": f"{repository}/security/advisories"},
-            {"type": "license", "url": f"{repository}/blob/main/LICENSE"},
+            {"type": "license", "url": f"{repository}/blob/{tree}/LICENSE"},
             {"type": "vcs", "url": f"{repository}/tree/c0ffee", "comment": comment},
         ],
         "properties": [{"name": "example:vcs-commit", "value": "c0ffee"}, *dirty_properties],
@@ -269,14 +274,26 @@ def test_bundled_wheel_and_its_vendored_packages(describe: Describe) -> None:
     ]
 
 
-def test_build_script_is_a_linked_tool(describe: Describe, settings: Settings) -> None:
+@pytest.mark.parametrize(
+    ("revision", "tree"),
+    [
+        pytest.param(None, "main", id="unknown"),
+        pytest.param(Revision(commit="c0ffee", dirty=False), "c0ffee", id="clean"),
+        pytest.param(Revision(commit="c0ffee", dirty=True), "main", id="dirty"),
+    ],
+)
+def test_build_script_is_a_linked_tool(
+    describe: Describe, settings: Settings, facts: BuildFacts, revision: Revision | None, tree: str
+) -> None:
     source = SourceTree(
         copyright=None,
         bundled=[],
         build_scripts=[BuildScript(path=PurePosixPath("hatch_build.py"), sha256="ef" * 32)],
     )
     document = describe(
-        settings=dataclasses.replace(settings, repository="https://github.com/example/example"), source=source
+        settings=dataclasses.replace(settings, repository="https://github.com/example/example"),
+        facts=dataclasses.replace(facts, revision=revision),
+        source=source,
     )
     assert document["metadata"]["tools"]["components"][0] == {
         "type": "application",
@@ -284,7 +301,9 @@ def test_build_script_is_a_linked_tool(describe: Describe, settings: Settings) -
         "name": "hatch_build.py",
         "version": "1.0",
         "hashes": [{"alg": "SHA-256", "content": "ef" * 32}],
-        "externalReferences": [{"type": "vcs", "url": "https://github.com/example/example/blob/main/hatch_build.py"}],
+        "externalReferences": [
+            {"type": "vcs", "url": f"https://github.com/example/example/blob/{tree}/hatch_build.py"}
+        ],
     }
 
 

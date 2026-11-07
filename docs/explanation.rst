@@ -65,7 +65,8 @@ What the SBOM records
 The document's root component is the project, described from the wheel's ``METADATA``: name, version, summary, license
 expression, maintainers, project URLs, classifiers and keywords. Links to the PyPI release, the wheel's attestation and,
 with a repository, the license file follow. A build from a git checkout adds the commit and a link to that exact
-revision.
+revision. Links to the license file and build scripts point at that commit when the checkout is clean, and at the
+default branch otherwise.
 
 The components below the root are the wheels the project bundles and the runtime dependencies it declares. A bundled
 wheel carries its SHA-256, its license, a component per file from its ``RECORD``, and the packages it vendors. A

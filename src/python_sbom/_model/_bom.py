@@ -109,7 +109,7 @@ def assemble(
     environment, tool_dependencies = tool_components(facts)
     tools: Final[list[Component]] = [
         *(
-            script_tool(script.path, script.sha256, artifact.version, _file_link(project, settings, script.path))
+            script_tool(script.path, script.sha256, artifact.version, _file_link(project, settings, facts, script.path))
             for script in artifact.build_scripts
         ),
         *environment,
@@ -149,7 +149,7 @@ def _provenance(
             {"type": "advisories", "url": f"{project.repository}/security/advisories"},
         ])
     if artifact.license_file is not None and (
-        link := _file_link(project, settings, PurePosixPath(artifact.license_file))
+        link := _file_link(project, settings, facts, PurePosixPath(artifact.license_file))
     ):
         references.append({"type": "license", "url": link})
     properties: Final[list[Property]] = [
@@ -172,8 +172,14 @@ def _provenance(
     return root
 
 
-def _file_link(project: ProjectIdentity, settings: Settings, path: PurePosixPath) -> str | None:
-    return None if project.repository is None else f"{project.repository}/blob/{settings.default_branch}/{path}"
+def _file_link(project: ProjectIdentity, settings: Settings, facts: BuildFacts, path: PurePosixPath) -> str | None:
+    if project.repository is None:
+        return None
+    # the commit of a clean checkout holds the file as it was built; with no commit, or uncommitted changes, the default
+    # branch is where the file most likely still lives
+    revision = facts.revision
+    tree = settings.default_branch if revision is None or revision.dirty else revision.commit
+    return f"{project.repository}/blob/{tree}/{path}"
 
 
 def _metadata(

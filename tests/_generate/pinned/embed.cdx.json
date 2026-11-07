@@ -2,7 +2,7 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.6",
-  "serialNumber": "urn:uuid:d3cce085-f38d-5e88-a7b1-b1b95274c6f3",
+  "serialNumber": "urn:uuid:0c382715-4ac3-55f8-b2e5-bb3920847bd3",
   "version": 1,
   "metadata": {
     "timestamp": "2023-11-14T22:13:20+00:00",
@@ -170,7 +170,7 @@
         },
         {
           "type": "license",
-          "url": "https://github.com/example/pkg/blob/main/LICENSE"
+          "url": "https://github.com/example/pkg/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/LICENSE"
         },
         {
           "type": "vcs",

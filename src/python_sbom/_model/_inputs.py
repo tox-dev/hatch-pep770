@@ -56,7 +56,8 @@ class Settings:
     :param supplier: the organization that supplies the project, or ``None`` to name none
     :param repository: the repository URL, or ``None`` to take the first ``Source``, ``Repository`` or ``GitHub``
         project URL
-    :param default_branch: the branch in links to files in the repository
+    :param default_branch: the branch in links to files in the repository when the build's commit is unknown or has
+        uncommitted changes
     :param bundled_wheels: glob patterns, relative to the project directory, of wheels the project ships as data files
     :param content_provider: ``module:attribute`` of the content provider, or ``None``
 

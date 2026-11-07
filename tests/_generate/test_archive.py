@@ -178,7 +178,7 @@ def test_archive_tools_and_metadata(document: Document) -> None:
     script = metadata["tools"]["components"][0]
     assert (script["name"], script.get("externalReferences"), metadata.get("properties"), metadata.get("supplier")) == (
         "build_app.py",
-        [{"type": "vcs", "url": "https://github.com/example/app/blob/main/build_app.py"}],
+        [{"type": "vcs", "url": f"https://github.com/example/app/blob/{_COMMIT}/build_app.py"}],
         [
             {
                 "name": "app:sbom:scope",
