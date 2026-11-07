@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from enum import Enum
 from typing import TYPE_CHECKING, Final, TypeAlias
 
@@ -10,6 +11,7 @@ try:  # ruff: ignore[too-many-statements-in-try-clause] # one guard names the ex
     from cyclonedx.validation.json import JsonStrictValidator
     from jsonschema.exceptions import ValidationError
     from jsonschema.validators import Draft7Validator, extend
+    from rfc3986_validator import validate_rfc3986
     from spdx_tools.spdx.parser.error import SPDXParsingError
     from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
     from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
@@ -20,6 +22,7 @@ except ImportError as error:
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
+    from jsonschema import FormatChecker
     from jsonschema.protocols import Validator
 
     from python_sbom._formats._spdx import Spdx
@@ -90,15 +93,33 @@ def _freeze(value: _Json) -> _Frozen:
     return value
 
 
+def _iri_reference(instance: object) -> bool:  # simplint: ignore[SMP602] # a format check takes any value
+    # rfc3987-syntax runs an Earley parser on every URL, most of the schema check's time; every RFC 3986 URI reference
+    # is an RFC 3987 IRI reference, so rfc3986-validator's regular expression accepts nearly all of them first. That
+    # expression lets a trailing newline through and accepts IPv6 literals rfc3987-syntax rejects, so those, and
+    # whatever it rejects, get the original check
+    if (
+        isinstance(instance, str)
+        and "[" not in instance
+        and not instance.endswith("\n")
+        and validate_rfc3986(instance, rule="URI_reference")
+    ):
+        return True
+    original: Final = Draft7Validator.FORMAT_CHECKER.checkers["iri-reference"][0]
+    return original(instance)
+
+
 # loading the schema takes about a second, so the validator is built once: the Draft 7 validator and format checks
-# cyclonedx uses over its bundled schema and registry, with the uniqueItems check above swapped in; validating the
-# parsed document skips the second parse validate_str does
+# cyclonedx uses over its bundled schema and registry, with the two checks above swapped in; validating the parsed
+# document skips the second parse validate_str does
 _BASE: Final[Validator] = JsonStrictValidator(SchemaVersion.V1_6)._validator  # ruff: ignore[private-member-access] # no public accessor
 _UNIQUE_ITEMS: Final[_Keyword] = Draft7Validator.VALIDATORS["uniqueItems"]
+_CHECKER: Final[FormatChecker] = copy.deepcopy(Draft7Validator.FORMAT_CHECKER)
+_CHECKER.checks("iri-reference", raises=_CHECKER.checkers["iri-reference"][1])(_iri_reference)
 _VALIDATOR: Final[Validator] = extend(Draft7Validator, {"uniqueItems": _unique_items})(
     _BASE.schema,
     registry=_BASE._registry,  # ruff: ignore[private-member-access] # ty: ignore[unresolved-attribute] # see above
-    format_checker=Draft7Validator.FORMAT_CHECKER,
+    format_checker=_CHECKER,
 )
 
 

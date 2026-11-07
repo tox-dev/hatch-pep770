@@ -33,6 +33,29 @@ def test_schema_error_clips_the_offending_value() -> None:
 
 
 @pytest.mark.parametrize(
+    "url",
+    [
+        pytest.param("https://example.org/a?b=c#d", id="url"),
+        pytest.param("git+https://github.com/a/b.git@v1#egg=b", id="vcs-url"),
+        pytest.param("https://exämple.org/ü", id="non-ascii"),
+        pytest.param("http://[::1]/", id="ipv6-literal"),
+        pytest.param("http://[v1.x]/", id="ipvfuture-literal"),
+        pytest.param("https://example.org/\n", id="trailing-newline"),
+        pytest.param("https://exa mple.org", id="space"),
+        pytest.param("https://example.org/%zz", id="bad-percent-escape"),
+        pytest.param("", id="empty"),
+    ],
+)
+def test_iri_reference_matches_jsonschema(url: str) -> None:
+    document: _Json = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "externalReferences": [{"type": "website", "url": url}],
+    }
+    assert (schema_error(document) is None) is Draft7Validator.FORMAT_CHECKER.conforms(url, "iri-reference")
+
+
+@pytest.mark.parametrize(
     "items",
     [
         pytest.param([1, 1.0], id="int-equals-float"),
