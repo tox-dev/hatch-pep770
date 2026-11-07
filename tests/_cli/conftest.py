@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
@@ -23,3 +24,11 @@ def wheel(tmp_path: Path, write_wheel: WriteWheel) -> Path:
         tmp_path / "dist" / "native-1.0-py3-none-any.whl",
         {"native/__init__.py": b"", "native-1.0.dist-info/METADATA": b"Name: native\nVersion: 1.0\n"},
     )
+
+
+@pytest.fixture
+def temp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    (directory := tmp_path / "temp").mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(directory))
+    monkeypatch.setenv("TMPDIR", str(directory))
+    return directory

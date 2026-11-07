@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import gc
 import json
 import shutil
 import tarfile
+import tempfile
 import time
 import zipfile
 from typing import TYPE_CHECKING, Final
@@ -30,6 +32,15 @@ class Retag(BuildHookInterface):
     def initialize(self, version, build_data):
         build_data["dependencies"].append("late-dependency>=1")
         build_data["tag"] = "py3-none-manylinux_2_17_x86_64"
+"""
+# a hook after the SBOM hook that fails the build, before hatchling writes anything
+_BREAK: Final[str] = """\
+from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+
+
+class Break(BuildHookInterface):
+    def initialize(self, version, build_data):
+        raise RuntimeError("broken")
 """
 
 
@@ -190,3 +201,33 @@ def test_each_build_reads_the_revision(checkout: Path, git: Git, build_wheel: Bu
     git("commit", "--quiet", "--all", "--message", "second")
     files = sdist_files(build_wheel(checkout, target="sdist"))
     assert files.get(".python-sbom-revision") == f"node: {git('rev-parse', 'HEAD')}\n".encode()
+
+
+@pytest.fixture
+def temp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    (directory := tmp_path / "temp").mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(directory))
+    monkeypatch.setenv("TMPDIR", str(directory))
+    return directory
+
+
+@pytest.mark.parametrize("target", [pytest.param("sdist", id="sdist"), pytest.param("wheel", id="wheel")])
+def test_build_leaves_no_temporary_files(checkout: Path, temp_dir: Path, build_wheel: BuildWheel, target: str) -> None:
+    build_wheel(checkout, target=target)
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_failed_build_leaves_no_temporary_files(
+    checkout: Path, temp_dir: Path, git: Git, build_wheel: BuildWheel
+) -> None:
+    (checkout / "hatch_build.py").write_text(_BREAK, encoding="utf-8")
+    # hatchling compiles the hook script, which must not make the checkout dirty, so the sdist records the revision
+    (checkout / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
+    configure(checkout, "[tool.hatch.build.hooks.custom]\n")
+    git("add", ".")
+    git("commit", "--quiet", "--message", "break the build")
+    with pytest.raises(RuntimeError, match="broken"):
+        build_wheel(checkout, target="sdist")
+    # the failed build's frames hold the hook in a reference cycle
+    gc.collect()
+    assert list(temp_dir.iterdir()) == []

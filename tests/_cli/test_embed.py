@@ -75,3 +75,9 @@ class Native(ContentProvider):
     document = embedded(wheel)
     assert {"name": "extra:by", "value": "cli"} in document["metadata"]["component"]["properties"]
     assert document["metadata"]["tools"]["components"][0]["name"] == f"{tmp_path.name}.py"
+
+
+def test_embed_leaves_no_temporary_files(project: Path, wheel: Path, temp_dir: Path) -> None:
+    main(["embed", str(wheel), "--root", str(project), "--build-env", str(project)])
+    # the rewritten wheel is staged next to the original
+    assert (list(temp_dir.iterdir()), list(wheel.parent.iterdir())) == ([], [wheel])

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import shutil
 import tempfile
+import weakref
 from functools import cached_property
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Final
@@ -14,6 +16,8 @@ from python_sbom._collect._settings import settings_from_table
 from python_sbom._errors import SettingsError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from python_sbom._model._content import ContentProvider
     from python_sbom._model._inputs import Settings
 
@@ -41,6 +45,7 @@ class SbomBuildHook(BuildHookInterface):
     """
 
     PLUGIN_NAME = "python-sbom"
+    _remove_revision_file: Callable[[], None] | None = None
 
     def initialize(
         self,
@@ -62,10 +67,13 @@ class SbomBuildHook(BuildHookInterface):
         # a dirty checkout has no commit that reproduces the sdist, so a wheel built from it names none
         if self.target_name != "sdist" or revision is None or revision.dirty:
             return
-        # outside the project, so the build leaves nothing behind in it; bytes, so the sdist holds the same LF line on
-        # every OS
-        written = Path(tempfile.mkdtemp()) / REVISION_FILE
-        written.write_bytes(f"node: {revision.commit}\n".encode())
+        # outside the project, so the build leaves nothing behind in it
+        directory = tempfile.mkdtemp()
+        # hatchling reads the file only while it writes the sdist, and skips finalize when the build fails, so the
+        # directory then goes with the hook, at the latest when the interpreter exits
+        self._remove_revision_file = weakref.finalize(self, shutil.rmtree, directory)
+        # bytes, so the sdist holds the same LF line on every OS
+        (written := Path(directory) / REVISION_FILE).write_bytes(f"node: {revision.commit}\n".encode())
         build_data["force_include"][str(written)] = REVISION_FILE
 
     def finalize(
@@ -75,13 +83,15 @@ class SbomBuildHook(BuildHookInterface):
         artifact_path: str,
     ) -> None:
         """
-        Write the SBOM into the wheel hatchling built.
+        Write the SBOM into the wheel hatchling built, and remove the revision file an sdist build wrote.
 
         :param version: hatchling's build variant; an editable wheel gets no SBOM, since it carries no code
         :param build_data: hatchling's build data
         :param artifact_path: the built wheel
 
         """
+        if self._remove_revision_file is not None:
+            self._remove_revision_file()
         if self.target_name != "wheel" or version == "editable":
             return
         # what a wheel needs loads only when one is built, so an sdist build stays light

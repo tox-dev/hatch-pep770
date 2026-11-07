@@ -95,3 +95,12 @@ def test_archive_refuses_second_embed(project: Path, zipapp: Path, capsys: pytes
     with pytest.raises(SystemExit):
         main(arguments)
     assert capsys.readouterr().err == "python-sbom: app.pyz already holds app.pyz.cdx.json\n"
+
+
+def test_archive_embed_leaves_no_temporary_files(project: Path, zipapp: Path, temp_dir: Path) -> None:
+    main(["archive", str(zipapp), "--root", str(project), "--build-env", str(project), "--embed"])
+    # the rewritten archive is staged next to the original
+    assert (list(temp_dir.iterdir()), sorted(path.name for path in zipapp.parent.iterdir())) == (
+        [],
+        ["app.pyz", "app.pyz.cdx.json", "project", "temp"],
+    )
