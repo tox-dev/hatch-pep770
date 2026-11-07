@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from python_sbom._collect._revision import REVISION_FILE, default_revision, git_revision
+from python_sbom._collect._revision import REVISION_FILE, default_revision, revision_reader
 from python_sbom._errors import SettingsError
 from python_sbom._model._inputs import Revision
 
@@ -68,20 +68,20 @@ def test_git_revision(checkout: Path, git: Git) -> None:
 
 def test_git_revision_dirty(checkout: Path, git: Git) -> None:
     (checkout / "pyproject.toml").write_text("[project]\nname = 'changed'\n", encoding="utf-8")
-    assert git_revision(checkout) == Revision(commit=git("rev-parse", "HEAD"), dirty=True)
+    assert default_revision(checkout) == Revision(commit=git("rev-parse", "HEAD"), dirty=True)
 
 
 def test_untracked_file_marks_revision_dirty(checkout: Path) -> None:
     # the build packages it, so the commit alone no longer describes the source
     (checkout / "backdoor.py").write_text("import os\n", encoding="utf-8")
-    assert (revision := git_revision(checkout)) is not None
+    assert (revision := default_revision(checkout)) is not None
     assert revision.dirty
 
 
 def test_ignored_file_leaves_revision_clean(checkout: Path) -> None:
     (checkout / "build").mkdir()
     (checkout / "build" / "output.txt").write_text("new\n", encoding="utf-8")
-    assert (revision := git_revision(checkout)) is not None
+    assert (revision := default_revision(checkout)) is not None
     assert not revision.dirty
 
 
@@ -96,13 +96,13 @@ def monorepo(tmp_path: Path, git: Git) -> Path:
 
 
 def test_git_revision_of_project_in_subdirectory(monorepo: Path, git: Git) -> None:
-    assert git_revision(monorepo / "one") == Revision(commit=git("rev-parse", "HEAD"), dirty=False)
+    assert default_revision(monorepo / "one") == Revision(commit=git("rev-parse", "HEAD"), dirty=False)
 
 
 def test_sibling_changes_leave_revision_clean(monorepo: Path) -> None:
     (monorepo / "two" / "pyproject.toml").write_text("[project]\nname = 'changed'\n", encoding="utf-8")
     (monorepo / "two" / "new.py").write_text("", encoding="utf-8")
-    assert (revision := git_revision(monorepo / "one")) is not None
+    assert (revision := default_revision(monorepo / "one")) is not None
     assert not revision.dirty
 
 
@@ -122,23 +122,23 @@ def test_git_runs_no_fsmonitor_command(tmp_path: Path, checkout: Path, git: Git,
     git("config", "core.fsmonitor", f"touch {(marker := tmp_path / 'ran').as_posix()}; false")
     (root := checkout / project).mkdir(parents=True, exist_ok=True)
     (root / "pyproject.toml").touch()
-    git_revision(root)
+    default_revision(root)
     assert not marker.exists()
 
 
 def test_git_revision_before_first_commit(tmp_path: Path, git: Git) -> None:
     (tmp_path / "checkout" / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     git("add", "pyproject.toml")
-    assert git_revision(tmp_path / "checkout") is None
+    assert default_revision(tmp_path / "checkout") is None
 
 
 def test_git_revision_outside_checkout(tmp_path: Path) -> None:
-    assert git_revision(tmp_path) is None
+    assert default_revision(tmp_path) is None
 
 
 def test_git_revision_without_git(checkout: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PATH", "")
-    assert git_revision(checkout) is None
+    assert default_revision(checkout) is None
 
 
 @pytest.mark.parametrize(
@@ -164,7 +164,7 @@ def test_git_status_failure_leaves_revision_unknown(checkout: Path, git: Git) ->
     (stored := checkout / ".git" / "objects" / tree[:2] / tree[2:]).chmod(0o644)
     stored.unlink()
     with pytest.warns(UserWarning, match="git cannot read the source revision in .*: error: bad tree object HEAD"):
-        assert git_revision(checkout) is None
+        assert default_revision(checkout) is None
 
 
 @pytest.mark.parametrize(
@@ -182,3 +182,16 @@ def test_git_archival(tmp_path: Path, archival: str, expected: Revision | None) 
 
 def test_no_revision_source(tmp_path: Path) -> None:
     assert default_revision(tmp_path) is None
+
+
+def test_given_commit_wins_over_checkout(checkout: Path) -> None:
+    assert revision_reader("a" * 40)(checkout) == Revision(commit="a" * 40, dirty=False)
+
+
+def test_given_commit_must_be_full_hash() -> None:
+    with pytest.raises(SettingsError, match="--commit must be a full lowercase hex commit hash"):
+        revision_reader("c0ffee")
+
+
+def test_no_given_commit_reads_checkout(checkout: Path, git: Git) -> None:
+    assert revision_reader(None)(checkout) == Revision(commit=git("rev-parse", "HEAD"), dirty=False)

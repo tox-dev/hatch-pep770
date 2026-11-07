@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from python_sbom._collect._archive import member_reader
 from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._facts import collect_facts
-from python_sbom._collect._revision import commit_revision, default_revision
+from python_sbom._collect._revision import revision_reader
 from python_sbom._collect._settings import settings_from_pyproject
 from python_sbom._collect._source import read_source_tree, wheel_request
 from python_sbom._model._content import ProviderContext
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
-    from python_sbom._collect._revision import RevisionReader
     from python_sbom._model._content import ContentProvider
     from python_sbom._model._inputs import BuildFacts, SbomRequest
 
@@ -60,15 +59,7 @@ def embed_into(wheel: Path, request: SbomRequest, content: ContentProvider, fact
     return write_sbom(wheel, sbom.file_name, sbom.content, facts.epoch)
 
 
-def revision_reader(commit: str | None) -> RevisionReader:
-    if commit is None:
-        return default_revision
-    revision = commit_revision(commit, "--commit")
-    return lambda _root: revision
-
-
 __all__ = [
     "embed_into",
     "embed_sbom",
-    "revision_reader",
 ]

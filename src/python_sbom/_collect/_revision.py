@@ -22,15 +22,23 @@ class RevisionReader(Protocol):
     def __call__(self, root: Path, /) -> Revision | None: ...
 
 
+def revision_reader(commit: str | None) -> RevisionReader:
+    # a commit given on the command line stands for the checkout, so git and the files go unread
+    if commit is None:
+        return default_revision
+    revision = _commit_revision(commit, "--commit")
+    return lambda _root: revision
+
+
 def default_revision(root: Path, /) -> Revision | None:
     # the variable exists for builds from an sdist, so it wins over whatever checkout the sdist was unpacked into
     if commit := os.environ.get("PYTHON_SBOM_COMMIT"):
-        return commit_revision(commit, "PYTHON_SBOM_COMMIT")
-    if (found := git_revision(root)) is not None:
+        return _commit_revision(commit, "PYTHON_SBOM_COMMIT")
+    if (found := _git_revision(root)) is not None:
         return found
     # the sdist build wrote it from the revision it resolved, so it is at least as exact as an archival file
     if (recorded := root / REVISION_FILE).is_file():
-        return commit_revision(recorded.read_text(encoding="utf-8").strip().removeprefix("node: "), REVISION_FILE)
+        return _commit_revision(recorded.read_text(encoding="utf-8").strip().removeprefix("node: "), REVISION_FILE)
     archival = root / ".git_archival.txt"
     if archival.is_file() and (
         match := re.search(rf"^node: ({_COMMIT.pattern})$", archival.read_text(encoding="utf-8"), re.MULTILINE)
@@ -39,15 +47,7 @@ def default_revision(root: Path, /) -> Revision | None:
     return None
 
 
-def commit_revision(commit: str, origin: str) -> Revision:
-    # the commit lands in the source link, so anything but a full hash could point the link elsewhere
-    if not _COMMIT.fullmatch(commit):
-        msg = f"{origin} must be a full lowercase hex commit hash of 40 or 64 characters, got {commit!r}"
-        raise SettingsError(msg)
-    return Revision(commit=commit, dirty=False)
-
-
-def git_revision(root: Path, /) -> Revision | None:
+def _git_revision(root: Path, /) -> Revision | None:
     resolved = root.resolve()
     if (git := shutil.which("git")) is None or not any(
         (directory / ".git").exists() for directory in (resolved, *resolved.parents)
@@ -77,10 +77,17 @@ def _git(git: str, root: Path, *arguments: str) -> str:
     ).stdout.strip()
 
 
+def _commit_revision(commit: str, origin: str) -> Revision:
+    # the commit lands in the source link, so anything but a full hash could point the link elsewhere
+    if not _COMMIT.fullmatch(commit):
+        msg = f"{origin} must be a full lowercase hex commit hash of 40 or 64 characters, got {commit!r}"
+        raise SettingsError(msg)
+    return Revision(commit=commit, dirty=False)
+
+
 __all__ = [
     "REVISION_FILE",
     "RevisionReader",
-    "commit_revision",
     "default_revision",
-    "git_revision",
+    "revision_reader",
 ]
