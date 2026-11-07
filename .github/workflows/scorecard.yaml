@@ -1,0 +1,26 @@
+name: 🛡️ scorecard
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "43 8 * * 2"
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions: {}
+jobs:
+  analysis:
+    name: 🛡️ Scorecard analysis
+    if: github.repository == 'tox-dev/hatch-pep770'
+    permissions:
+      actions: read # read workflow runs for the Packaging check
+      checks: read # read check runs for the CI-Tests and SAST checks
+      contents: read # check out and scan the repository
+      id-token: write # authenticate the results published to the scorecard API
+      issues: read # read issue activity for the Maintained check
+      pull-requests: read # read reviews for the Code-Review check
+      security-events: write # upload the SARIF results to code scanning
+      statuses: read # read commit statuses for the CI-Tests check
+    uses: tox-dev/github-workflows/.github/workflows/scorecard.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1

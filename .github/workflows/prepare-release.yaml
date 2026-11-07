@@ -1,0 +1,33 @@
+name: 🏷️ Prepare release
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump strategy
+        required: true
+        type: choice
+        options:
+          - auto
+          - major
+          - minor
+          - patch
+        default: auto
+  workflow_call:
+    inputs:
+      dry-run:
+        description: Assemble the release without pushing, for the pull request gate
+        type: boolean
+        required: true
+permissions: {}
+jobs:
+  prepare:
+    name: 🏷️ Prepare Towncrier release
+    uses: tox-dev/github-workflows/.github/workflows/prepare-towncrier-release.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+    with:
+      bump: ${{ inputs.bump || 'auto' }}
+      dry-run: ${{ inputs.dry-run == true }}

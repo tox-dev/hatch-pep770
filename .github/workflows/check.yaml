@@ -1,0 +1,63 @@
+name: 🧪 check
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    tags-ignore: ["**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: "27 8 * * *"
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
+jobs:
+  test:
+    name: 🧪 Test
+    uses: tox-dev/github-workflows/.github/workflows/check.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+    permissions:
+      contents: read
+    with:
+      include: |
+        [
+          {"env": "3.15"},
+          {"env": "3.15t", "python": "3.15t"},
+          {"env": "3.14", "python": "3.14"},
+          {"env": "3.13", "python": "3.13"},
+          {"env": "3.12", "python": "3.12"},
+          {"env": "3.11", "python": "3.11"},
+          {"env": "3.10", "python": "3.10"},
+          {"env": "3.9", "python": "3.9"},
+          {"env": "type"},
+          {"env": "dev"},
+          {"env": "pkg_meta"},
+          {"env": "3.15", "os": "windows-2025-vs2026"},
+          {"env": "3.14", "python": "3.14", "os": "windows-2025-vs2026"},
+          {"env": "3.9", "python": "3.9", "os": "windows-2025-vs2026"},
+          {"env": "3.15", "os": "macos-26"}
+        ]
+  release:
+    name: 🏷️ Release dry run
+    uses: ./.github/workflows/prepare-release.yaml # zizmor: ignore[self-repository] actionlint rejects the $/ form
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      dry-run: true
+  hooks:
+    name: 🧹 Hooks under the cooldown
+    uses: tox-dev/github-workflows/.github/workflows/cooled-hooks.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+    permissions:
+      contents: read
+  gate:
+    name: 🚦 ${{ github.event_name == 'pull_request' && 'Required checks pass' || 'Non-PR checks pass' }}
+    if: ${{ !cancelled() }} # codespell:ignore cancelled
+    needs: [test, release, hooks]
+    runs-on: ubuntu-26.04
+    steps:
+      - name: 🚦 Require all needed jobs to pass
+        uses: tox-dev/github-workflows/required-checks@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+        with:
+          needs: ${{ toJSON(needs) }}

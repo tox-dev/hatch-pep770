@@ -1,0 +1,22 @@
+name: 🛡️ CodeQL
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+  pull_request:
+  schedule:
+    - cron: "35 8 * * 2"
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+permissions: {}
+jobs:
+  analyze:
+    name: 🛡️ Analyze
+    uses: tox-dev/github-workflows/.github/workflows/codeql.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      languages: '["actions","python"]'
+      paths-ignore: '["tests"]'
