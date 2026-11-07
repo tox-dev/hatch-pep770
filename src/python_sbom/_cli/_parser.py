@@ -4,7 +4,8 @@ from argparse import ArgumentParser, ArgumentTypeError, _SubParsersAction
 from pathlib import Path
 from typing import Protocol
 
-from python_sbom._validate._document import MAX_COMPONENTS
+# the limits module imports nothing, so --help and --version load none of validation
+from python_sbom._validate._limits import MAX_COMPONENTS
 from python_sbom.version import __version__
 
 

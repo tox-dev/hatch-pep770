@@ -7,7 +7,7 @@ import pytest
 
 from python_sbom._cli._main import main
 from python_sbom._formats._json import dumps
-from python_sbom._validate._document import MAX_COMPONENTS, byte_limit
+from python_sbom._validate._limits import MAX_COMPONENTS, byte_limit
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -12,6 +12,8 @@ from python_sbom._formats._spdx import render_spdx
 from python_sbom._model._document import walk_components
 from python_sbom._model._names import SBOM_FILE
 
+from ._limits import MAX_COMPONENTS, byte_limit
+
 if TYPE_CHECKING:
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
@@ -29,9 +31,6 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("dependencies",),
 )
 _SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-# every check takes time in proportion to the count, so the cap bounds the work an untrusted document can ask for, far
-# above the few thousand components a wheel with its build tools' files lists
-MAX_COMPONENTS: Final[int] = 100_000
 # the modules of the validate extra
 _EXTRA: Final[tuple[str, ...]] = ("jsonschema_rs", "license_expression", "spdx_tools")
 # an exception's message, or a schema error's, can quote the hostile value that caused it, which runs to megabytes
@@ -39,13 +38,6 @@ MAX_TEXT: Final[int] = 200
 # the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread
 # stack; the SBOMs python-sbom and other tools write nest about a dozen levels deep
 _MAX_DEPTH: Final[int] = 128
-
-
-def byte_limit(max_components: int) -> int:
-    # python-sbom writes about 540 bytes per component, since every file of the wheel and of its build tools is one; a
-    # KiB each leaves room for documents with fuller components, plus a MiB for the metadata, dependencies and
-    # formulation beside them, while tying what the JSON parser may be asked to hold to the component cap
-    return 1024 * 1024 + max_components * 1024
 
 
 def validate_document(
@@ -191,10 +183,8 @@ def _reference_problems(document: Document) -> list[str]:
 
 
 __all__ = [
-    "MAX_COMPONENTS",
     "MAX_TEXT",
     "Json",
-    "byte_limit",
     "is_document",
     "validate_document",
 ]

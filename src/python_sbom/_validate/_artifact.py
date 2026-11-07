@@ -5,7 +5,8 @@ from typing import IO, TYPE_CHECKING, Final
 
 from python_sbom._wheel._archive import open_archive
 
-from ._document import MAX_COMPONENTS, byte_limit, validate_document
+from ._document import validate_document
+from ._limits import MAX_COMPONENTS, byte_limit
 
 if TYPE_CHECKING:
     from pathlib import Path
