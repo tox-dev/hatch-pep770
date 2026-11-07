@@ -5,10 +5,10 @@ Architecture
 ------------
 
 Each concern has its own subpackage, and only the adapters know a build system or the command line. The hatchling hook
-and the ``embed`` and ``archive`` commands gather what the edge knows: the request (core metadata, file name, options,
-build scripts), the source tree or the archive's members, and the build facts (time, revision, toolchain). They hand
-those, with a :class:`~python_sbom.ContentProvider` and its :class:`~python_sbom.ProviderContext`, to the pipeline for
-their artifact. Each pipeline maps what it read to components, and one function of the model adds what every artifact
+and the ``embed`` and ``archive`` commands gather the options, the build scripts and the build facts (time, revision,
+toolchain), and hand them, with a :class:`~python_sbom.ContentProvider`, to the pipeline for their artifact. Each
+pipeline opens its artifact once, reads it, gives the provider a :class:`~python_sbom.ProviderContext` that reads from
+the same open artifact, and maps what it read to components; one function of the model then adds what every artifact
 of the project shares: supplier, source links, revision, tools, dependencies and formulation.
 
 The diagram follows the imports between the subpackages: a solid arrow points at what a package imports when it loads, a
@@ -25,11 +25,11 @@ that command runs.
         end
         api[python_sbom<br/>provider API, __main__]
         generate[_generate<br/>wheel and archive pipelines]
-        collect[_collect<br/>settings, facts, revision, source tree, archives, providers]
+        collect[_collect<br/>settings, facts, revision, project tree, wheels, archives, providers]
         validate[_validate<br/>limits, schema, references, licenses]
         formats[_formats<br/>CycloneDX JSON, SPDX 2.3]
-        wheel[_wheel<br/>RECORD rows, member reads, bundled wheel checks, rewrite]
-        model[_model<br/>inputs, types, identity, document building]
+        wheel[_wheel<br/>artifact reader, zip reads and writes, RECORD, bundled wheel checks]
+        model[_model<br/>inputs, types, identity, graph rules, document building]
         errors[_errors<br/>SbomError]
         version[version]
         hook --> collect
@@ -38,6 +38,7 @@ that command runs.
         cli --> generate
         cli --> validate
         cli --> formats
+        cli --> version
         cli -. types .-> model
         api --> cli
         api --> model

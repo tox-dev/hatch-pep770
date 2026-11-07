@@ -15,7 +15,7 @@ permissions:
 jobs:
   test:
     name: 🧪 test
-    if: github.event_name != 'schedule' || github.repository_owner == 'gaborbernat'
+    if: github.event_name != 'schedule' || github.repository == 'tox-dev/python-sbom'
     uses: tox-dev/github-workflows/.github/workflows/check.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
     permissions:
       contents: read

@@ -6,11 +6,9 @@ import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
-from python_sbom._model._document import walk_components
+from python_sbom._model._graph import walk_components
 from python_sbom._model._names import SBOM_FILE, SBOM_REPOSITORY, property_prefix, sbom_property
 from python_sbom.version import __version__
-
-from ._json import dumps
 
 if TYPE_CHECKING:
     from python_sbom._model._types import (
@@ -107,21 +105,17 @@ class Spdx(TypedDict):
     hasExtractedLicensingInfos: NotRequired[list[_ExtractedLicense]]
 
 
-def to_spdx(document: Document) -> str:
-    return dumps(render_spdx(document)).decode()
-
-
-def render_spdx(bom: Document) -> Spdx:
-    metadata: Final[Metadata] = bom["metadata"]
+def render_spdx(document: Document) -> Spdx:
+    metadata: Final[Metadata] = document["metadata"]
     root: Final[Component] = metadata["component"]
     project: Final[str] = property_prefix(root["name"])
     recorded: Final[dict[str, str]] = {prop["name"]: prop.get("value", "") for prop in metadata.get("properties", [])}
     name: Final[str] = f"{root['name']}-{root['version']}" if "version" in root else root["name"]
     # without a serial number the content names the document, so rendering it twice gives the same namespace
     source: Final[str] = (
-        bom["serialNumber"]
-        if "serialNumber" in bom
-        else f"sha256:{hashlib.sha256(json.dumps(bom, sort_keys=True).encode()).hexdigest()}"
+        document["serialNumber"]
+        if "serialNumber" in document
+        else f"sha256:{hashlib.sha256(json.dumps(document, sort_keys=True).encode()).hexdigest()}"
     )
     repository: Final[str] = recorded.get(sbom_property(project, SBOM_REPOSITORY), "https://spdx.org/spdxdocs")
     sbom_file: Final[str] = recorded.get(sbom_property(project, SBOM_FILE), "CycloneDX JSON")
@@ -129,10 +123,10 @@ def render_spdx(bom: Document) -> Spdx:
     # file components mirror wheel RECORD entries, which carry no SHA-1 and so cannot become SPDX files
     components: Final[list[Component]] = [
         component
-        for component in walk_components([root, *bom.get("components", []), *tools])
+        for component in walk_components([root, *document.get("components", []), *tools])
         if component["type"] != "file"
     ]
-    packages: Final[list[_Package]] = [_package(component, f"{project}:") for component in components]
+    packages: Final[list[_Package]] = [_package(component, project) for component in components]
     spdx: Final[Spdx] = {
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",
@@ -143,7 +137,7 @@ def render_spdx(bom: Document) -> Spdx:
         " the build formulation.",
         "creationInfo": _creation_info(metadata, tool_creators),
         "packages": packages,
-        "relationships": _relationships(bom, components, tools),
+        "relationships": _relationships(document, components, tools),
     }
     # SPDX requires the text of every LicenseRef a package declares; the metadata names them, it holds no text
     references: Final[set[str]] = set()
@@ -173,7 +167,7 @@ def _creator(name: str, version: str | None) -> str:
     return f"Tool: {name}" if version is None else f"Tool: {name}-{version}"
 
 
-def _package(component: Component, property_prefix: str) -> _Package:
+def _package(component: Component, project: str) -> _Package:
     # a component carries either one SPDX expression, or the free-form names from License/classifier metadata plus the
     # SPDX ids concluded from them
     licenses: Final[list[License]] = component.get("licenses", [])
@@ -210,7 +204,7 @@ def _package(component: Component, property_prefix: str) -> _Package:
     if comment := "\n".join(
         f"{prop['name']}: {prop.get('value', '')}"
         for prop in component.get("properties", [])
-        if prop["name"].startswith(property_prefix)
+        if prop["name"].startswith(f"{project}:")
     ):
         package["comment"] = comment
     if purl := component.get("purl"):
@@ -225,10 +219,10 @@ def _package(component: Component, property_prefix: str) -> _Package:
 
 
 def _spdx_id(bom_ref: str) -> str:
-    # SPDX ids allow letters, digits, "." and "-"; the digest keeps two refs that differ only in other characters,
-    # such as the markers of two conditional requirements, apart
+    # the readable part drops every other character, so refs that differ only in those share it; only the full digest,
+    # not a prefix of it, keeps their ids apart
     readable: Final[str] = re.sub(r"[^A-Za-z0-9.]+", "-", bom_ref).strip("-")
-    return f"SPDXRef-{readable}-{hashlib.sha256(bom_ref.encode()).hexdigest()[:8]}"
+    return f"SPDXRef-{readable}-{hashlib.sha256(bom_ref.encode()).hexdigest()}"
 
 
 def _creation_info(metadata: Metadata, tool_creators: list[str]) -> _CreationInfo:
@@ -243,14 +237,14 @@ def _creation_info(metadata: Metadata, tool_creators: list[str]) -> _CreationInf
     return {"created": created.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"), "creators": creators}
 
 
-def _relationships(bom: Document, components: list[Component], tools: list[Component]) -> list[_Relationship]:
-    root_id: Final[str] = _spdx_id(bom["metadata"]["component"]["bom-ref"])
+def _relationships(document: Document, components: list[Component], tools: list[Component]) -> list[_Relationship]:
+    root_id: Final[str] = _spdx_id(document["metadata"]["component"]["bom-ref"])
     relationships: Final[list[_Relationship]] = [_relationship("SPDXRef-DOCUMENT", "DESCRIBES", root_id)]
     for parent in components:
         parent_id = _spdx_id(parent["bom-ref"])
         children = (child for child in parent.get("components", []) if child["type"] != "file")
         relationships.extend(_relationship(parent_id, "CONTAINS", _spdx_id(child["bom-ref"])) for child in children)
-    for entry in bom.get("dependencies", []):
+    for entry in document.get("dependencies", []):
         dependent_id = _spdx_id(entry["ref"])
         relationships.extend(
             _relationship(dependent_id, "DEPENDS_ON", _spdx_id(dependency)) for dependency in entry.get("dependsOn", [])
@@ -266,5 +260,4 @@ def _relationship(element: str, kind: str, related: str) -> _Relationship:
 __all__ = [
     "Spdx",
     "render_spdx",
-    "to_spdx",
 ]

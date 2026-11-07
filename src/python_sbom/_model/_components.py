@@ -7,37 +7,28 @@ from typing import TYPE_CHECKING, Final
 
 from packaging.utils import canonicalize_name
 
-from ._document import walk_components
+from ._graph import walk_components
 from ._iri import iri_reference
 from ._licenses import licenses
-from ._names import purl, pypi_url, reference_type, tool_ref
+from ._names import purl, pypi_url, reference_type, sbom_property, tool_ref
 from ._types import Dependency
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
+    from ._content import BundledWheelInfo
     from ._inputs import BundledWheel, RecordRow
     from ._metadata import CoreMetadata
-    from ._types import Component, Contact, ExternalReference, Identity, OrganizationalEntity, Property
+    from ._types import Component, Contact, ExternalReference, Identity, Property
 
 
-def bundled_wheel_component(
-    wheel: BundledWheel, property_prefix: str, properties: list[Property], supplier: OrganizationalEntity | None
-) -> Component:
+def bundled_wheel_component(wheel: BundledWheel, property_prefix: str, info: BundledWheelInfo) -> Component:
     component = component_from_metadata(wheel.metadata)
-    # the purl names the package; the path tells apart copies of one release bundled in two places
-    component["bom-ref"] = f"bundled:{wheel.path}"
-    if supplier is not None:
-        component["supplier"] = supplier
+    mark_bundled(component, wheel.path, property_prefix, info)
     component["hashes"] = [{"alg": "SHA-256", "content": wheel.sha256}]
     component["externalReferences"] = [
         *component["externalReferences"],
         {"type": "distribution", "url": pypi_url(wheel.metadata.name, wheel.metadata.version)},
-    ]
-    component["properties"] = [
-        {"name": f"{property_prefix}:bundled-wheel", "value": wheel.path},
-        *properties,
-        *component["properties"],
     ]
     component["evidence"] = {
         "identity": [
@@ -49,7 +40,10 @@ def bundled_wheel_component(
     for source, metadata in wheel.vendored:
         child = component_from_metadata(metadata)
         child["bom-ref"] = f"{component['bom-ref']}#vendored/{child['bom-ref']}"
-        child["properties"] = [*child["properties"], {"name": f"{property_prefix}:vendored-manifest", "value": source}]
+        child["properties"] = [
+            *child["properties"],
+            {"name": sbom_property(property_prefix, "vendored-manifest"), "value": source},
+        ]
         child["evidence"] = {"identity": [_evidence("purl", "manifest-analysis", source)]}
         # a vendored .dist-info comes after pip's manifest line naming the same package, so its metadata wins; keyed on
         # the PEP 503 name, since the manifest and the .dist-info may spell it differently
@@ -125,6 +119,19 @@ def _project_references(metadata: CoreMetadata) -> tuple[list[ExternalReference]
     return references, unlinked
 
 
+def mark_bundled(component: Component, path: str, property_prefix: str, info: BundledWheelInfo) -> None:
+    # the purl names the package; the path, of a .whl or of the directory a wheel is unpacked into, tells apart copies
+    # of one release bundled in two places
+    component["bom-ref"] = f"bundled:{path}"
+    if info.supplier is not None:
+        component["supplier"] = info.supplier
+    component["properties"] = [
+        {"name": sbom_property(property_prefix, "bundled-wheel"), "value": path},
+        *info.properties,
+        *component["properties"],
+    ]
+
+
 def _evidence(field: str, technique: str, value: str) -> Identity:
     return {"field": field, "confidence": 1, "methods": [{"technique": technique, "confidence": 1, "value": value}]}
 
@@ -169,6 +176,7 @@ __all__ = [
     "bundled_wheel_component",
     "component_from_metadata",
     "file_component",
+    "mark_bundled",
     "script_tool",
     "vendored_dependencies",
 ]

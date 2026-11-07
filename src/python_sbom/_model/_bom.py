@@ -4,100 +4,16 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 from urllib.parse import urlsplit
 
-from packaging.requirements import Requirement
-
-from ._components import bundled_wheel_component, component_from_metadata, script_tool, vendored_dependencies
+from ._components import script_tool
 from ._document import check_refs, contributed_properties, formulation, timestamp, with_header
-from ._identity import project_identity
-from ._inputs import Artifact
-from ._markers import applies_without_extras
-from ._names import SBOM_FILE, SBOM_REPOSITORY, purl, pypi_url, sbom_file_name, sbom_property
+from ._names import SBOM_FILE, SBOM_REPOSITORY, sbom_property
 from ._tools import tool_components
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
-    from ._content import BundledWheelInfo, Contributions
+    from ._content import Contributions
     from ._identity import ProjectIdentity
-    from ._inputs import BuildFacts, SbomRequest, Settings, SourceTree
+    from ._inputs import Artifact, BuildFacts, Settings
     from ._types import Body, Component, Document, ExternalReference, Metadata, Property
-
-
-def describe(
-    request: SbomRequest,
-    source: SourceTree,
-    facts: BuildFacts,
-    bundled_info: Mapping[str, BundledWheelInfo],
-    contributions: Contributions,
-) -> Document:
-    metadata, settings = request.metadata, request.settings
-    project = project_identity(metadata, settings)
-    bundled = [
-        bundled_wheel_component(
-            wheel,
-            project.property_prefix,
-            bundled_info[wheel.path].properties,
-            bundled_info[wheel.path].supplier,
-        )
-        for wheel in source.bundled
-    ]
-    root = component_from_metadata(metadata)
-    root["type"] = "application"
-    name, version = metadata.name, metadata.version
-    root["externalReferences"] = [
-        *root["externalReferences"],
-        {"type": "distribution", "url": pypi_url(name, version)},
-        {"type": "attestation", "url": f"https://pypi.org/integrity/{name}/{version}/{request.wheel_name}/provenance"},
-    ]
-    artifact = Artifact(
-        root=root,
-        components=[
-            *bundled,
-            # hatchling repeats a Requires-Dist when a hook re-adds a dependency, and each bom-ref must be unique
-            *(
-                _declared_dependency(text, requirement, project.property_prefix)
-                for text in dict.fromkeys(metadata.values("requires_dist"))
-                if applies_without_extras(requirement := Requirement(text))
-            ),
-        ],
-        dependencies=vendored_dependencies(bundled),
-        build_scripts=source.build_scripts,
-        version=version,
-        sbom_file=sbom_file_name(name),
-        scope=_scope(settings),
-        workflow=("wheel-build", "build the wheel and this SBOM"),
-        license_file=next(iter(metadata.values("license_files")), None),
-        copyright=source.copyright,
-    )
-    return assemble(artifact, project, settings, facts, contributions)
-
-
-def _declared_dependency(text: str, requirement: Requirement, property_prefix: str) -> Component:
-    component: Final[Component] = {
-        "type": "library",
-        # the same distribution can be declared more than once with different markers, so the purl is not unique
-        "bom-ref": f"requires-dist:{text}",
-        "name": requirement.name,
-        "purl": purl(requirement.name),
-        "externalReferences": [{"type": "distribution", "url": pypi_url(requirement.name)}],
-        "properties": [{"name": f"{property_prefix}:requires-dist", "value": text}],
-    }
-    if requirement.marker is not None:
-        component["properties"].append({
-            "name": f"{property_prefix}:environment-marker",
-            "value": str(requirement.marker),
-        })
-    return component
-
-
-def _scope(settings: Settings) -> str:
-    declared = (
-        "the direct runtime dependencies declared in the wheel's core metadata, which carry no version because the"
-        " installer resolves them"
-    )
-    if directories := " and ".join(sorted({str(PurePosixPath(pattern).parent) for pattern in settings.bundled_wheels})):
-        return f"Components are the wheels bundled as data files under {directories} and {declared}."
-    return f"Components are {declared}."
 
 
 def assemble(
@@ -165,9 +81,9 @@ def _provenance(
                 "url": f"{project.repository}/tree/{revision.commit}",
                 "comment": comment,
             })
-        properties.append({"name": f"{project.property_prefix}:vcs-commit", "value": revision.commit})
+        properties.append({"name": sbom_property(project.property_prefix, "vcs-commit"), "value": revision.commit})
         if revision.dirty:
-            properties.append({"name": f"{project.property_prefix}:vcs-dirty", "value": "true"})
+            properties.append({"name": sbom_property(project.property_prefix, "vcs-dirty"), "value": "true"})
     root["externalReferences"] = references
     root["properties"] = properties
     return root
@@ -218,5 +134,4 @@ def _metadata(
 
 __all__ = [
     "assemble",
-    "describe",
 ]

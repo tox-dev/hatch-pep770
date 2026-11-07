@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, Protocol
 
 from python_sbom._errors import SbomError
-from python_sbom._formats._spdx import to_spdx
-from python_sbom._validate._document import is_document
+from python_sbom._formats._json import dumps
+from python_sbom._formats._spdx import render_spdx
+from python_sbom._validate._document import is_document, load_json
 from python_sbom._validate._limits import MAX_COMPONENTS, byte_limit
 
 if TYPE_CHECKING:
@@ -22,15 +22,15 @@ class _Options(Protocol):
 def run(options: _Options) -> bool:
     document = _read(options.source)
     try:
-        rendered = to_spdx(document)
-    # ValueError: a timestamp fromisoformat rejects; RecursionError: nesting json.dumps, a few frames deeper than
-    # json.loads, gives up on
-    except (KeyError, TypeError, ValueError, RecursionError) as error:
+        rendered = dumps(render_spdx(document))
+    # ValueError: a timestamp fromisoformat rejects; AttributeError: a tools value that is neither an array nor an
+    # object; RecursionError: nesting json.dumps, a few frames deeper than json.loads, gives up on
+    except (AttributeError, KeyError, TypeError, ValueError, RecursionError) as error:
         # the CLI renders without the schema check, which needs the validate extra
         msg = f"{options.source} is not a CycloneDX document python-sbom can render: {error!r}"
         raise SbomError(msg) from error
     # bytes, so the line endings are the same on every operating system
-    options.target.write_bytes(rendered.encode())
+    options.target.write_bytes(rendered)
     return True
 
 
@@ -46,15 +46,9 @@ def _read(source: Path) -> Document:
         msg = f"{source} is over {limit} bytes, the size limit of an SBOM python-sbom reads"
         raise SbomError(msg)
     try:
-        loaded = json.loads(raw.decode("utf-8"))
-    except UnicodeDecodeError as error:
-        msg = f"{source} is not UTF-8: {error.reason} at byte {error.start}"
-        raise SbomError(msg) from error
-    except json.JSONDecodeError as error:
-        msg = f"{source} is not JSON: {error}"
-        raise SbomError(msg) from error
-    except RecursionError as error:
-        msg = f"{source} nests too deep for the JSON parser to read"
+        loaded = load_json(raw)
+    except SbomError as error:
+        msg = f"{source} {error}"
         raise SbomError(msg) from error
     if not is_document(loaded):
         msg = f"{source} is not a CycloneDX document python-sbom can render"

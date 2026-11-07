@@ -1,1 +1,1 @@
-"""Facts gathered at the edge: settings, the build environment, the source revision and the project tree."""
+"""What the edge reads: settings, build facts, the source revision, the project tree, the artifact and the provider."""

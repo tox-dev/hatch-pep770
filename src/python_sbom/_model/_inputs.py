@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pathlib import Path, PurePosixPath
+    from pathlib import PurePosixPath
 
     from ._metadata import CoreMetadata
     from ._types import Component, Dependency, OrganizationalEntity
@@ -71,15 +71,6 @@ class Settings:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class SbomRequest:
-    root: Path
-    metadata: CoreMetadata
-    wheel_name: str
-    settings: Settings
-    build_scripts: tuple[PurePosixPath, ...]
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
 class BundledWheel:
     path: str
     sha256: str
@@ -124,7 +115,12 @@ class Artifact:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class SourceTree:
+class WheelTree:
+    # what a built wheel holds, read from the wheel without unpacking it: its file name, its core metadata and the
+    # wheels it bundles; and what the project adds: the copyright line of its license files and the scripts that built
+    # it
+    name: str
+    metadata: CoreMetadata
     copyright: str | None
     bundled: list[BundledWheel]
     build_scripts: list[BuildScript]
@@ -140,7 +136,6 @@ __all__ = [
     "Interpreter",
     "RecordRow",
     "Revision",
-    "SbomRequest",
     "Settings",
-    "SourceTree",
+    "WheelTree",
 ]

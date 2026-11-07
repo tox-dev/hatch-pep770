@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Final
@@ -13,8 +12,8 @@ from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BundledWheel, RecordRow
 from python_sbom._model._metadata import CoreMetadata, parse_metadata
 
-from ._archive import open_archive, read_member, read_wheel_metadata
 from ._record import record_rows
+from ._zip import open_archive, read_member, read_wheel_metadata, sha256_hex
 
 if TYPE_CHECKING:
     import zipfile
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
     from typing import IO
 
 
-# a bundled wheel is hashed in chunks of this size
-_CHUNK: Final[int] = 1024 * 1024
 # wheels verified at once, each perhaps in memory whole
 _WORKERS: Final[int] = 4
 
@@ -41,14 +38,12 @@ def read_bundled_wheels(paths: list[str], open_wheel: Callable[[str], IO[bytes]]
 
 def _read_bundled_wheel(stream: IO[bytes], path: str) -> BundledWheel:
     where: Final[str] = f"bundled wheel {path}"
-    digest: Final = hashlib.sha256()
-    while chunk := stream.read(_CHUNK):
-        digest.update(chunk)
+    sha256: Final[str] = sha256_hex(stream)
     stream.seek(0)
     with open_archive(stream, where) as archive:
         # installer takes the project name from the archive's file name, which an archive read from memory lacks
         archive.filename = path
-        members: Final[list[str]] = sorted(name for name in archive.namelist() if not name.endswith("/"))
+        members: Final[list[str]] = sorted(info.filename for info in archive.infolist() if not info.is_dir())
         wheel, metadata = read_wheel_metadata(archive, where)
         dist_info: Final[str] = wheel.dist_info_dir
         _check_named(metadata, where, f"{dist_info}/METADATA")
@@ -63,7 +58,7 @@ def _read_bundled_wheel(stream: IO[bytes], path: str) -> BundledWheel:
         ]
     return BundledWheel(
         path=path,
-        sha256=digest.hexdigest(),
+        sha256=sha256,
         metadata_name=f"{dist_info}/METADATA",
         metadata=metadata,
         files=files,

@@ -30,12 +30,12 @@ def record_rows(rows: Iterable[tuple[str, str, str]], where: str) -> list[Record
     for entry in starmap(RecordEntry.from_elements, rows):
         if entry.hash_ is None:
             continue
-        algorithm, digest = decode_digest(str(entry.hash_), f"{where}: RECORD row for {entry.path}")
+        algorithm, digest = _decode_digest(str(entry.hash_), f"{where}: RECORD row for {entry.path}")
         found.append(RecordRow(path=entry.path, algorithm=algorithm, digest=digest, size=str(entry.size)))
     return found
 
 
-def decode_digest(digest: str, where: str) -> tuple[str, str]:
+def _decode_digest(digest: str, where: str) -> tuple[str, str]:
     # installer checks RECORD digests as urlsafe base64 under any hashlib name, while CycloneDX takes hex under its own
     # names for a few algorithms
     name, _, encoded = digest.partition("=")
@@ -51,6 +51,5 @@ def decode_digest(digest: str, where: str) -> tuple[str, str]:
 
 
 __all__ = [
-    "decode_digest",
     "record_rows",
 ]

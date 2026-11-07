@@ -3,16 +3,13 @@ from __future__ import annotations
 import zipfile
 from typing import IO, TYPE_CHECKING, Final
 
-from python_sbom._wheel._archive import open_archive
+from python_sbom._wheel._zip import CHUNK, open_archive
 
 from ._document import validate_document
 from ._limits import MAX_COMPONENTS, byte_limit
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-# what one read may decompress, so a compressed member cannot run far past the limit before the reader notices
-_CHUNK: Final[int] = 1024 * 1024
 
 
 def validate(path: Path, allowed_licenses: frozenset[str] | None, max_components: int = MAX_COMPONENTS) -> list[str]:
@@ -37,7 +34,7 @@ def validate(path: Path, allowed_licenses: frozenset[str] | None, max_components
 def _read(source: IO[bytes], limit: int) -> bytes:
     # stops within a chunk past the limit: enough for validate_document to refuse the SBOM without reading all of it
     content: Final[bytearray] = bytearray()
-    while len(content) <= limit and (chunk := source.read(_CHUNK)):
+    while len(content) <= limit and (chunk := source.read(CHUNK)):
         content.extend(chunk)
     return bytes(content)
 

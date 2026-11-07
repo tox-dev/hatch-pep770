@@ -3,16 +3,15 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections import Counter
 from importlib.util import find_spec
-from typing import TYPE_CHECKING, Final, TypeAlias
+from typing import TYPE_CHECKING, Any, Final
 
-from python_sbom._errors import MissingExtraError
+from python_sbom._errors import MissingExtraError, SbomError
 from python_sbom._formats._spdx import render_spdx
-from python_sbom._model._document import walk_components
+from python_sbom._model._graph import artifact_contents, reference_problems, repeated, walk_components
 from python_sbom._model._names import SBOM_FILE
 
-from ._limits import MAX_COMPONENTS, byte_limit
+from ._limits import MAX_COMPONENTS, MAX_TEXT, Json, byte_limit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -20,8 +19,6 @@ if TYPE_CHECKING:
 
     from python_sbom._model._types import Component, Document
 
-# a JSON value, as json.loads hands it over
-Json: TypeAlias = "str | int | float | bool | list[Json] | dict[str, Json] | None"
 # the schema leaves these optional, yet every document python-sbom writes carries them and the checks below read them
 _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("metadata", "timestamp"),
@@ -34,8 +31,6 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
 _SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 # the modules of the validate extra
 _EXTRA: Final[tuple[str, ...]] = ("jsonschema_rs", "license_expression", "spdx_tools")
-# an exception's message, or a schema error's, can quote the hostile value that caused it, which runs to megabytes
-MAX_TEXT: Final[int] = 200
 # the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread
 # stack; the SBOMs python-sbom and other tools write nest about a dozen levels deep
 _MAX_DEPTH: Final[int] = 128
@@ -55,14 +50,8 @@ def validate_document(
         return _problems(raw, allowed_licenses, max_components)
     except MissingExtraError:
         raise
-    except UnicodeDecodeError as error:
-        return [f"is not UTF-8: {error.reason} at byte {error.start}"]
-    except json.JSONDecodeError as error:
-        return [f"is not JSON: {error}"]
-    except RecursionError:
-        # the JSON parser recurses once per level and gives up near the recursion limit, long before the depth check
-        # below sees the document
-        return ["nests too deep for the JSON parser to read"]
+    except SbomError as error:
+        return [str(error)]
     except Exception as error:  # ruff: ignore[blind-except] # a hostile document may trip any check, see above
         return [f"could not be checked, {type(error).__name__}: {str(error)[:MAX_TEXT]}"]
 
@@ -74,7 +63,7 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
     missing_extra: Final[str] = "validation needs the validate extra: pip install 'python-sbom[validate]'"
     if any(find_spec(name) is None for name in _EXTRA):
         raise MissingExtraError(missing_extra)
-    loaded: Final = json.loads(raw.decode("utf-8"))
+    loaded: Final = load_json(raw)
     if census := _census_problems(loaded, max_components):
         return census
     # find_spec sees only the top-level modules, not a dependency of theirs that is missing or broken
@@ -107,8 +96,27 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
             from ._licenses import license_problems  # ruff: ignore[import-outside-top-level] # see above
         except ImportError as error:
             raise MissingExtraError(missing_extra) from error
-        problems.extend(license_problems(loaded["components"], allowed_licenses))
+        problems.extend(
+            license_problems(artifact_contents(loaded["metadata"]["component"], loaded["components"]), allowed_licenses)
+        )
     return problems
+
+
+def load_json(raw: bytes) -> Any:  # ruff: ignore[any-type] # json.loads' own type: any shape until checked
+    # why bytes are no JSON value, worded once for validate and for spdx, which renders a document without validating it
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except UnicodeDecodeError as error:
+        msg = f"is not UTF-8: {error.reason} at byte {error.start}"
+        raise SbomError(msg) from error
+    except json.JSONDecodeError as error:
+        msg = f"is not JSON: {error}"
+        raise SbomError(msg) from error
+    except RecursionError as error:
+        # the JSON parser recurses once per level and gives up near the recursion limit, long before the depth check
+        # sees the document
+        msg = "nests too deep for the JSON parser to read"
+        raise SbomError(msg) from error
 
 
 def _census_problems(document: Json, max_components: int) -> list[str]:
@@ -116,7 +124,7 @@ def _census_problems(document: Json, max_components: int) -> list[str]:
     # shape; iterative, so deep nesting cannot exhaust the stack. Nested components count too: the schema checks every
     # components array, and one array may hold them all, so only the total bounds its work
     components = 0
-    refs: Final[Counter[str]] = Counter()
+    refs: Final[list[str]] = []
     # only lists and objects go on the stack, every other value is judged where its container is read, so a scalar
     # nests too deep when its container already sits at the limit; the document starts out as the one item of a list
     pending: Final[list[tuple[list[Json] | dict[str, Json], int]]] = [([document], 0)]
@@ -124,7 +132,7 @@ def _census_problems(document: Json, max_components: int) -> list[str]:
         node, depth = pending.pop()
         if isinstance(node, dict):
             if isinstance(ref := node.get("bom-ref"), str):
-                refs[ref] += 1
+                refs.append(ref)
             components += len(listed) if isinstance(listed := node.get("components"), list) else 0
         if components > max_components:
             return [
@@ -138,8 +146,10 @@ def _census_problems(document: Json, max_components: int) -> list[str]:
             return [f"nests more than {_MAX_DEPTH} levels deep, too deep to check"]
         if problem := _push_containers(children, depth + 1, pending):
             return problem
-    if duplicates := sorted(ref for ref, count in refs.items() if count > 1):
-        return [f"bom-ref values are not unique: {duplicates}"]
+    # every bom-ref in the document, wherever it sits, as CycloneDX requires them unique and documents other tools wrote
+    # get no reference check beyond this
+    if twice := repeated(refs):
+        return [f"bom-ref values repeat: {', '.join(twice)}"]
     return []
 
 
@@ -174,13 +184,19 @@ def _reference_problems(document: Document) -> list[str]:
     components: Final[list[Component]] = list(walk_components([root, *document["components"], *tools]))
     if nameless := sorted(component["name"] for component in components if "bom-ref" not in component):
         return [f"components lack a bom-ref: {nameless}"]
+    formulas: Final[list[str]] = [
+        ref
+        for formula in document.get("formulation", [])
+        for ref in (formula["bom-ref"], *(workflow["bom-ref"] for workflow in formula.get("workflows", [])))
+    ]
+    if problems := reference_problems(
+        [*(component["bom-ref"] for component in components), *formulas], document["dependencies"]
+    ):
+        return problems
     problems: Final[list[str]] = []
     dependencies: Final[dict[str, set[str]]] = {
         entry["ref"]: set(entry.get("dependsOn", [])) for entry in document["dependencies"]
     }
-    refs: Final[set[str]] = {component["bom-ref"] for component in components}
-    if unknown := (set(dependencies) | set().union(*dependencies.values())) - refs:
-        problems.append(f"dependencies reference bom-refs that do not exist: {sorted(unknown)}")
     direct: Final[set[str]] = {component["bom-ref"] for component in document["components"]}
     if dependencies.get(root["bom-ref"]) != direct:
         problems.append(
@@ -199,8 +215,7 @@ def _reference_problems(document: Document) -> list[str]:
 
 
 __all__ = [
-    "MAX_TEXT",
-    "Json",
     "is_document",
+    "load_json",
     "validate_document",
 ]

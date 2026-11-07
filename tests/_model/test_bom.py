@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Final
 import pytest
 
 from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
-from python_sbom._model._inputs import BuildScript, BundledWheel, Revision, SourceTree
+from python_sbom._model._inputs import BuildScript, BundledWheel, Revision
 from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
@@ -135,7 +135,7 @@ def test_root_component(
         "License-File: LICENSE\nProject-URL: Source, https://github.com/example/example/\n",
         settings=dataclasses.replace(settings, supplier=supplier),
         facts=dataclasses.replace(facts, revision=Revision(commit="c0ffee", dirty=dirty)),
-        source=SourceTree(copyright="Copyright (c) 2026 Example", bundled=[], build_scripts=[]),
+        copyright_line="Copyright (c) 2026 Example",
     )
     repository = "https://github.com/example/example"
     assert document["metadata"]["component"] == {
@@ -262,7 +262,7 @@ def test_bundled_wheel_and_its_vendored_packages(describe: Describe) -> None:
                 properties=[{"name": f"{context.identity.property_prefix}:{self._name}", "value": str(wheel)}]
             )
 
-    document = describe(source=SourceTree(copyright=None, bundled=[wheel], build_scripts=[]), content=Seeded("seeded"))
+    document = describe(bundled=[wheel], content=Seeded("seeded"))
     assert document["components"][0]["properties"][1] == {
         "name": "example:seeded",
         "value": "src/pip-1.0-py3-none-any.whl",
@@ -285,15 +285,10 @@ def test_bundled_wheel_and_its_vendored_packages(describe: Describe) -> None:
 def test_build_script_is_a_linked_tool(
     describe: Describe, settings: Settings, facts: BuildFacts, revision: Revision | None, tree: str
 ) -> None:
-    source = SourceTree(
-        copyright=None,
-        bundled=[],
-        build_scripts=[BuildScript(path=PurePosixPath("hatch_build.py"), sha256="ef" * 32)],
-    )
     document = describe(
         settings=dataclasses.replace(settings, repository="https://github.com/example/example"),
         facts=dataclasses.replace(facts, revision=revision),
-        source=source,
+        build_scripts=[BuildScript(path=PurePosixPath("hatch_build.py"), sha256="ef" * 32)],
     )
     assert document["metadata"]["tools"]["components"][0] == {
         "type": "application",
@@ -394,7 +389,7 @@ def test_bundled_wheel_supplier_is_the_projects_choice(
     )
     document = describe(
         settings=dataclasses.replace(settings, supplier=_ORG),
-        source=SourceTree(copyright=None, bundled=[wheel], build_scripts=[]),
+        bundled=[wheel],
         content=content,
     )
     assert document["components"][0].get("supplier") == expected

@@ -15,7 +15,7 @@ from spdx_tools.spdx.validation.extracted_licensing_info_validator import valida
 from spdx_tools.spdx.validation.package_validator import validate_package
 from spdx_tools.spdx.validation.spdx_id_validators import validate_spdx_id
 
-from ._document import MAX_TEXT
+from ._limits import MAX_TEXT
 
 if TYPE_CHECKING:
     from importlib.resources.abc import Traversable
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
     from python_sbom._formats._spdx import Spdx
 
-    from ._document import Json
+    from ._limits import Json
 
 
 def schema_error(document: Json) -> str | None:

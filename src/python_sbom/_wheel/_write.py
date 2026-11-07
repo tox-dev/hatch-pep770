@@ -1,41 +1,31 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import os
 import shutil
 import stat
 import tempfile
 import time
 import zipfile
-import zlib
-from collections import Counter
-from contextlib import contextmanager
 from io import BytesIO, StringIO
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Final
+from typing import Final
 
 import zipremove
 from installer.records import Hash, RecordEntry
-from installer.sources import WheelFile
 from installer.utils import copyfileobj_with_hashing
 
 from python_sbom._errors import SbomError
-from python_sbom._model._metadata import CoreMetadata, parse_metadata
 
-if TYPE_CHECKING:
-    from collections.abc import Generator
+from ._zip import open_archive, wheel_source
 
-# metadata files beyond this size are refused, so a hostile wheel cannot exhaust memory
-_METADATA_LIMIT: Final[int] = 16 * 1024 * 1024
-_CHUNK: Final[int] = 1024 * 1024
 # 1980-01-01, the earliest time a zip entry holds
 _ZIP_EPOCH: Final[int] = 315532800
 
 
 def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
     with open_archive(wheel, str(wheel)) as archive:
-        _, dist_info = _wheel_source(archive, str(wheel))
+        _, dist_info = wheel_source(archive, str(wheel))
         record: Final[str] = f"{dist_info}/RECORD"
         if missing := sorted({f"{dist_info}/METADATA", record} - set(archive.namelist())):
             msg = f"{wheel} has no {', '.join(missing)}"
@@ -68,37 +58,6 @@ def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
     return sbom
 
 
-@contextmanager
-def open_archive(file: Path | IO[bytes], where: str) -> Generator[zipfile.ZipFile, None, None]:
-    try:
-        with zipfile.ZipFile(file) as archive:
-            # installers extract the first of two same-named members and zipfile reads the last, and a file system that
-            # ignores case merges names that differ only by case, so such names would hide what gets installed;
-            # installer's WheelFile accepts names that differ only by case
-            if clashes := sorted(
-                name for name, count in Counter(name.casefold() for name in archive.namelist()).items() if count > 1
-            ):
-                msg = f"{where} holds more than one member named {', '.join(clashes)}, ignoring case"
-                raise SbomError(msg)
-            yield archive
-    # zipfile raises these as late as a member's last read, inside installer's checks too, which let them through
-    except (zipfile.BadZipFile, zlib.error) as error:
-        msg = f"{where} is not a valid zip archive: {error}"
-        raise SbomError(msg) from error
-
-
-def _wheel_source(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, str]:
-    # installer refuses a wheel whose file name does not parse, or that holds other than one top-level .dist-info, since
-    # a second one is a decoy that could decide whose metadata counts
-    try:
-        wheel = WheelFile(archive)
-        dist_info = wheel.dist_info_dir
-    except ValueError as error:
-        msg = f"{where} is not a wheel: {error}"
-        raise SbomError(msg) from error
-    return wheel, dist_info
-
-
 def _entry(name: str, epoch: int) -> zipfile.ZipInfo:
     # zip times start at 1980; Unix attributes whichever system writes the entry, so the bytes match across systems
     entry: Final[zipfile.ZipInfo] = zipfile.ZipInfo(name, time.gmtime(max(epoch, _ZIP_EPOCH))[:6])
@@ -108,15 +67,13 @@ def _entry(name: str, epoch: int) -> zipfile.ZipInfo:
 
 
 def _rewritten_record(record: bytes, name: str, sbom: str, content: bytes) -> bytes:
-    lines: Final[list[str]] = [
-        line for line in record.decode("utf-8").splitlines(keepends=True) if not line.startswith(f"{sbom},")
-    ]
+    lines: Final[list[str]] = [line for line in record.decode("utf-8").splitlines(keepends=True) if _path(line) != sbom]
     newline: Final[str] = "\r\n" if lines and lines[0].endswith("\r\n") else "\n"
     # a last row without its line end would take the SBOM's row onto its own line
     if lines and not lines[-1].endswith(("\n", "\r")):
         lines[-1] += newline
     # the row of RECORD itself stays last
-    at: Final[int] = next((index for index, line in enumerate(lines) if line.startswith(f"{name},")), len(lines))
+    at: Final[int] = next((index for index, line in enumerate(lines) if _path(line) == name), len(lines))
     # installer's helper hashes as it copies; the copy is thrown away
     digest, size = copyfileobj_with_hashing(BytesIO(content), BytesIO(), "sha256")
     row: Final[StringIO] = StringIO()
@@ -125,44 +82,9 @@ def _rewritten_record(record: bytes, name: str, sbom: str, content: bytes) -> by
     return "".join(lines).encode()
 
 
-def read_wheel_metadata(archive: zipfile.ZipFile, where: str) -> tuple[WheelFile, CoreMetadata]:
-    wheel, dist_info = _wheel_source(archive, where)
-    # read capped, as installer's read_dist_info decompresses the member whole
-    return wheel, parse_metadata(read_member(archive, f"{dist_info}/METADATA", where).decode("utf-8"))
-
-
-def read_member(archive: zipfile.ZipFile, name: str, where: str, limit: int = _METADATA_LIMIT) -> bytes:
-    try:
-        info = archive.getinfo(name)
-    except KeyError as error:
-        msg = f"{where} has no {name}"
-        raise SbomError(msg) from error
-    # counted as it decompresses, since the size the archive states may lie and one read decompresses it all at once
-    content: Final[bytearray] = bytearray()
-    with archive.open(info) as member:
-        while chunk := member.read(_CHUNK):
-            content.extend(chunk)
-            if len(content) > limit:
-                msg = f"{where}: {name} is over the {limit} byte limit"
-                raise SbomError(msg)
-    return bytes(content)
-
-
-def bundled_wheels_by_digest(wheel: Path) -> dict[str, list[str]]:
-    found: Final[dict[str, list[str]]] = {}
-    with open_archive(wheel, str(wheel)) as archive:
-        for name in sorted(archive.namelist()):
-            if name.endswith(".whl"):
-                found.setdefault(member_digest(archive, name, "sha256"), []).append(name)
-    return found
-
-
-def member_digest(archive: zipfile.ZipFile, name: str | zipfile.ZipInfo, algorithm: str) -> str:
-    digest: Final = hashlib.new(algorithm)
-    with archive.open(name) as member:
-        while chunk := member.read(_CHUNK):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _path(line: str) -> str:
+    # RECORD quotes a path that holds a comma, a quote or a line end, so the raw start of a line misses its row
+    return next(csv.reader([line]), [""])[0]
 
 
 def append_member(archive: Path, name: str, content: bytes, epoch: int) -> None:
@@ -177,10 +99,5 @@ def append_member(archive: Path, name: str, content: bytes, epoch: int) -> None:
 
 __all__ = [
     "append_member",
-    "bundled_wheels_by_digest",
-    "member_digest",
-    "open_archive",
-    "read_member",
-    "read_wheel_metadata",
     "write_sbom",
 ]

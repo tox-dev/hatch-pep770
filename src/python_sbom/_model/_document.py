@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections import Counter
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final
 
 from python_sbom._errors import SbomError
 
-if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+from ._graph import reference_problems, walk_components
 
+if TYPE_CHECKING:
     from ._content import ContentProvider, Contributions
     from ._inputs import BuildFacts
     from ._types import Body, Component, Document, Formula, Property
@@ -25,35 +24,16 @@ def check_refs(body: Body) -> None:
             *body["metadata"]["tools"]["components"],
         ])
     ]
-    refs: Final[Counter[str]] = Counter(component["bom-ref"] for component in components)
     # formulas and workflows share the bom-ref namespace, so a component cannot take theirs
-    for formula in body.get("formulation", []):
-        refs.update([formula["bom-ref"], *(workflow["bom-ref"] for workflow in formula["workflows"])])
-    if repeated := sorted(ref for ref, count in refs.items() if count > 1):
-        msg = f"bom-ref values repeat: {', '.join(repeated)}"
-        raise SbomError(msg)
-    # one entry per component, as validation requires, so a provider adds to a component's dependencies, not a second
-    # entry for it
-    entries: Final[Counter[str]] = Counter(entry["ref"] for entry in body["dependencies"])
-    if repeated := sorted(ref for ref, count in entries.items() if count > 1):
-        msg = f"dependencies list more than one entry for: {', '.join(repeated)}"
-        raise SbomError(msg)
-    named: Final[set[str]] = set(entries)
-    for entry in body["dependencies"]:
-        named.update(entry.get("dependsOn", []))
-    if unknown := sorted(named - {component["bom-ref"] for component in components}):
-        msg = f"dependencies name bom-refs no component has: {', '.join(unknown)}"
-        raise SbomError(msg)
-
-
-def walk_components(components: Iterable[Component]) -> Iterator[Component]:
-    # depth first, each component before the ones it nests, in document order; iterative, so a deeply nested document
-    # cannot exhaust the stack
-    pending: Final[list[Component]] = list(reversed(list(components)))
-    while pending:
-        component = pending.pop()
-        yield component
-        pending.extend(reversed(component.get("components", [])))
+    formulas: Final[list[str]] = [
+        ref
+        for formula in body.get("formulation", [])
+        for ref in (formula["bom-ref"], *(workflow["bom-ref"] for workflow in formula["workflows"]))
+    ]
+    if problems := reference_problems(
+        [*(component["bom-ref"] for component in components), *formulas], body["dependencies"]
+    ):
+        raise SbomError(problems[0])
 
 
 def with_header(body: Body, serial_namespace: uuid.UUID) -> Document:
@@ -116,6 +96,5 @@ __all__ = [
     "contributed_properties",
     "formulation",
     "timestamp",
-    "walk_components",
     "with_header",
 ]

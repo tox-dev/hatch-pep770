@@ -5,20 +5,22 @@ import hashlib
 import shutil
 import subprocess
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Protocol
 
 import pytest
 
 from python_sbom import ContentProvider, ProviderContext
-from python_sbom._collect._archive import member_reader
-from python_sbom._generate._embed import build_sbom
+from python_sbom._model._bom import assemble
+from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
-from python_sbom._model._inputs import BuildFacts, Interpreter, SbomRequest, Settings, SourceTree
+from python_sbom._model._inputs import BuildFacts, BuildScript, BundledWheel, Interpreter, Settings, WheelTree
 from python_sbom._model._metadata import parse_metadata
+from python_sbom._model._wheel import wheel_artifact
+from python_sbom._wheel._reader import open_artifact
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
     from python_sbom._model._types import Document
 
@@ -44,13 +46,15 @@ class ContextFor(Protocol):
 
 
 class Describe(Protocol):
-    def __call__(
+    def __call__(  # ruff: ignore[too-many-arguments] # each a part of the wheel a test varies
         self,
         metadata: str = "",
         *,
         settings: Settings = ...,
         facts: BuildFacts = ...,
-        source: SourceTree | None = None,
+        copyright_line: str | None = None,
+        bundled: list[BundledWheel] | None = None,
+        build_scripts: list[BuildScript] | None = None,
         content: ContentProvider | None = None,
     ) -> Document: ...
 
@@ -140,34 +144,36 @@ def settings() -> Settings:
 
 @pytest.fixture
 def describe(settings: Settings, facts: BuildFacts) -> Describe:
-    def describe(
+    # the wheel pipeline from the read wheel on, as embed_into runs it, without a wheel on disk
+    def describe(  # ruff: ignore[too-many-arguments] # each a part of the wheel a test varies
         metadata: str = "",
         *,
         settings: Settings = settings,
         facts: BuildFacts = facts,
-        source: SourceTree | None = None,
+        copyright_line: str | None = None,
+        bundled: list[BundledWheel] | None = None,
+        build_scripts: list[BuildScript] | None = None,
         content: ContentProvider | None = None,
     ) -> Document:
-        request = SbomRequest(
-            root=Path(),
+        tree = WheelTree(
+            name="example-1.0-py3-none-any.whl",
             metadata=parse_metadata(f"Name: Example\nVersion: 1.0\n{metadata}"),
-            wheel_name="example-1.0-py3-none-any.whl",
-            settings=settings,
-            build_scripts=(),
+            copyright=copyright_line,
+            bundled=bundled or [],
+            build_scripts=build_scripts or [],
         )
-        context = ProviderContext(
-            root=Path(),
+        project = project_identity(tree.metadata, settings)
+        content = content or ContentProvider()
+        context = ProviderContext(root=Path(), settings=settings, identity=project, read=artifact_read(Path(tree.name)))
+        built = wheel_artifact(
+            tree,
+            project=project,
             settings=settings,
-            identity=project_identity(request.metadata, settings),
-            read=member_reader(Path("example-1.0-py3-none-any.whl")),
+            bundled_info={
+                wheel.path: content.bundled_wheel(context, PurePosixPath(wheel.path)) for wheel in tree.bundled
+            },
         )
-        return build_sbom(
-            request,
-            source or SourceTree(copyright=None, bundled=[], build_scripts=[]),
-            facts,
-            content or ContentProvider(),
-            context,
-        ).document
+        return assemble(built, project, settings, facts, checked_contributions(content.contributions(context), content))
 
     return describe
 
@@ -176,6 +182,15 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
 def context_for(settings: Settings) -> ContextFor:
     def context(root: Path, artifact: Path) -> ProviderContext:
         identity = project_identity(parse_metadata("Name: Example\nVersion: 1.0\n"), settings)
-        return ProviderContext(root=root, settings=settings, identity=identity, read=member_reader(artifact))
+        return ProviderContext(root=root, settings=settings, identity=identity, read=artifact_read(artifact))
 
     return context
+
+
+def artifact_read(artifact: Path) -> Callable[[PurePosixPath], bytes]:
+    # opens the artifact for each read, as a test context outlives no build that would hold it open
+    def read(path: PurePosixPath) -> bytes:
+        with open_artifact(artifact) as opened:
+            return opened.provider_read(path)
+
+    return read

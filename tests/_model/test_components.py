@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
+from python_sbom import BundledWheelInfo
 from python_sbom._model._components import (
     bundled_wheel_component,
     component_from_metadata,
@@ -201,7 +202,7 @@ def test_bundled_wheel_component() -> None:
     )
     supplier: OrganizationalEntity = {"name": "PyPA", "url": ["https://www.pypa.io"]}
     properties: list[Property] = [{"name": "example:seeded-for-python", "value": "3.15"}]
-    assert bundled_wheel_component(wheel, "example", properties, supplier) == {
+    assert bundled_wheel_component(wheel, "example", BundledWheelInfo(properties=properties, supplier=supplier)) == {
         "type": "library",
         "bom-ref": f"bundled:{_WHEEL}",
         "name": "pip",
@@ -256,7 +257,7 @@ def test_bundled_wheel_vendored_metadata_wins_over_manifest() -> None:
             (dist_info, parse_metadata("Name: urllib3\nVersion: 1.26.4\nLicense-Expression: MIT\n")),
         ],
     )
-    component = bundled_wheel_component(wheel, "example", [], None)
+    component = bundled_wheel_component(wheel, "example", BundledWheelInfo())
     assert component["components"] == [
         {
             "type": "library",
@@ -290,7 +291,7 @@ def test_bundled_wheel_component_ref_tells_copies_apart() -> None:
             files=[],
             vendored=[],
         )
-        return bundled_wheel_component(wheel, "example", [], None)
+        return bundled_wheel_component(wheel, "example", BundledWheelInfo())
 
     refs = {component(f"src/{directory}/pip-1.0-py3-none-any.whl")["bom-ref"] for directory in ("a", "b")}
     assert refs == {"bundled:src/a/pip-1.0-py3-none-any.whl", "bundled:src/b/pip-1.0-py3-none-any.whl"}
@@ -305,7 +306,7 @@ def test_bundled_wheel_supplier_never_comes_from_the_wheel() -> None:
         files=[],
         vendored=[],
     )
-    component = bundled_wheel_component(wheel, "example", [], None)
+    component = bundled_wheel_component(wheel, "example", BundledWheelInfo())
     assert "supplier" not in component
 
 
@@ -340,7 +341,7 @@ def test_vendored_spellings_of_one_package_merge() -> None:
             ),
         ],
     )
-    component = bundled_wheel_component(wheel, "example", [], None)
+    component = bundled_wheel_component(wheel, "example", BundledWheelInfo())
     assert [child["name"] for child in component.get("components", [])] == ["jaraco_text"]
 
 

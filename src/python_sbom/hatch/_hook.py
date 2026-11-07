@@ -99,10 +99,11 @@ class SbomBuildHook(BuildHookInterface):
             return
         # what a wheel needs loads only when one is built, so an sdist build stays light
         from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # see above
-        from python_sbom._collect._source import wheel_request  # ruff: ignore[import-outside-top-level] # see above
         from python_sbom._generate._embed import embed_into  # ruff: ignore[import-outside-top-level] # see above
 
         root = Path(self.root)
+        # content_provider() may be a subclass's override, so its result goes through resolve_provider again, which
+        # returns a given instance as is, for the provider's source files to be listed among the build tools
         content, provider_scripts = resolve_provider(self.content_provider(), self._settings, root)
         # a custom hook script shapes the document, as a provider defined in the project does, so the SBOM lists both
         # among the build tools
@@ -115,8 +116,9 @@ class SbomBuildHook(BuildHookInterface):
             lambda _root: self._revision,
             default_epoch=get_reproducible_timestamp() if self.build_config.reproducible else None,
         )
-        wheel = Path(artifact_path)
-        embed_into(wheel, wheel_request(wheel, root, self._settings, scripts), content, facts)
+        embed_into(
+            Path(artifact_path), root, settings=self._settings, content=content, build_scripts=scripts, facts=facts
+        )
 
     def content_provider(self) -> ContentProvider:
         """

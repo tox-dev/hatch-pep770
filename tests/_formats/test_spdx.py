@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Final, TypeAlias
 import pytest
 
 from python_sbom._formats._json import dumps
-from python_sbom._formats._spdx import render_spdx, to_spdx
+from python_sbom._formats._spdx import render_spdx
 from python_sbom._validate._schemas import spdx_problems
 from python_sbom.version import __version__
 
@@ -107,6 +107,19 @@ def test_spdx_ids_are_valid_and_tell_similar_refs_apart(describe: Describe) -> N
     ids = [package["SPDXID"] for package in render_spdx(document)["packages"]]
     assert all(re.fullmatch(r"SPDXRef-[A-Za-z0-9.-]+", spdx_id) for spdx_id in ids)
     assert len(set(ids)) == len(ids)
+
+
+def test_spdx_ids_of_refs_differing_in_dropped_characters_stay_distinct(describe: Describe) -> None:
+    document = describe()
+    document["components"] = [
+        {"type": "library", "bom-ref": ref, "name": "pip", "version": "1.0"}
+        for ref in [
+            "bundled:foo---__-__-__---____--/pip-1.0-py3-none-any.whl",
+            "bundled:foo---___-_-_--___---_-/pip-1.0-py3-none-any.whl",
+        ]
+    ]
+    ids = [package["SPDXID"] for package in render_spdx(document)["packages"] if package["name"] == "pip"]
+    assert len(set(ids)) == 2
 
 
 def test_repository_names_the_namespace(describe: Describe, settings: Settings) -> None:
@@ -213,11 +226,6 @@ def test_package_purpose(describe: Describe, kind: str, purpose: str) -> None:
     document["components"].append({"type": kind, "bom-ref": "extra", "name": "extra"})
     (package,) = (package for package in render_spdx(document)["packages"] if package["name"] == "extra")
     assert package["primaryPackagePurpose"] == purpose
-
-
-def test_to_spdx_text(describe: Describe) -> None:
-    text = to_spdx(describe())
-    assert (text.endswith("}\n"), json.loads(text)["spdxVersion"]) == (True, "SPDX-2.3")
 
 
 def test_other_tools_document_renders_valid_spdx() -> None:

@@ -1,30 +1,28 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
-from python_sbom._collect._archive import member_reader
 from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._facts import collect_facts
 from python_sbom._collect._revision import revision_reader
 from python_sbom._collect._settings import settings_from_pyproject
-from python_sbom._collect._source import read_source_tree, wheel_request
+from python_sbom._collect._wheel import read_wheel
 from python_sbom._formats._json import dumps
-from python_sbom._model._bom import describe
+from python_sbom._model._bom import assemble
 from python_sbom._model._content import ProviderContext
 from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
-from python_sbom._model._names import sbom_file_name
-from python_sbom._wheel._archive import bundled_wheels_by_digest, write_sbom
+from python_sbom._model._wheel import wheel_artifact
+from python_sbom._wheel._reader import open_artifact
+from python_sbom._wheel._write import write_sbom
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
     from python_sbom._model._content import ContentProvider
-    from python_sbom._model._inputs import BuildFacts, SbomRequest, SourceTree
-    from python_sbom._model._types import Document
+    from python_sbom._model._inputs import BuildFacts, Settings
 
 
 def embed_sbom(
@@ -37,50 +35,40 @@ def embed_sbom(
 ) -> str:
     settings = settings_from_pyproject(root)
     content, scripts = resolve_provider(provider, settings, root)
-    return embed_into(
-        wheel,
-        wheel_request(wheel, root, settings, scripts),
-        content,
-        collect_facts(root, revision_reader(commit), path=build_env),
+    facts = collect_facts(root, revision_reader(commit), path=build_env)
+    return embed_into(wheel, root, settings=settings, content=content, build_scripts=scripts, facts=facts)
+
+
+def embed_into(  # ruff: ignore[too-many-arguments] # what the hook and the command line each gather their own way
+    wheel: Path,
+    root: Path,
+    *,
+    settings: Settings,
+    content: ContentProvider,
+    build_scripts: Sequence[PurePosixPath],
+    facts: BuildFacts,
+) -> str:
+    # the wheel stays open while its document is built, for its metadata, its bundled wheels and the provider to read,
+    # and is closed before it is rewritten
+    with open_artifact(wheel) as artifact:
+        tree = read_wheel(artifact, root, settings, build_scripts)
+        project = project_identity(tree.metadata, settings)
+        context = ProviderContext(root=root, settings=settings, identity=project, read=artifact.provider_read)
+        built = wheel_artifact(
+            tree,
+            project=project,
+            settings=settings,
+            bundled_info={
+                bundled.path: content.bundled_wheel(context, PurePosixPath(bundled.path)) for bundled in tree.bundled
+            },
+        )
+        contributions = checked_contributions(content.contributions(context), content)
+    return write_sbom(
+        wheel, built.sbom_file, dumps(assemble(built, project, settings, facts, contributions)), facts.epoch
     )
-
-
-def embed_into(wheel: Path, request: SbomRequest, content: ContentProvider, facts: BuildFacts) -> str:
-    source = read_source_tree(request, inside=bundled_wheels_by_digest(wheel))
-    project = project_identity(request.metadata, request.settings)
-    context = ProviderContext(root=request.root, settings=request.settings, identity=project, read=member_reader(wheel))
-    sbom = build_sbom(request, source, facts, content, context)
-    return write_sbom(wheel, sbom.file_name, sbom.content, facts.epoch)
-
-
-def build_sbom(
-    request: SbomRequest, source: SourceTree, facts: BuildFacts, content: ContentProvider, context: ProviderContext
-) -> Sbom:
-    return Sbom(
-        file_name=sbom_file_name(request.metadata.name),
-        document=describe(
-            request,
-            source,
-            facts,
-            {wheel.path: content.bundled_wheel(context, PurePosixPath(wheel.path)) for wheel in source.bundled},
-            checked_contributions(content.contributions(context), content),
-        ),
-    )
-
-
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Sbom:
-    file_name: str
-    document: Document
-
-    @property
-    def content(self) -> bytes:
-        return dumps(self.document)
 
 
 __all__ = [
-    "Sbom",
-    "build_sbom",
     "embed_into",
     "embed_sbom",
 ]

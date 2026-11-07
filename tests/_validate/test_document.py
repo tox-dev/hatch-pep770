@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from python_sbom import Component, License
     from python_sbom._model._inputs import BuildFacts
     from python_sbom._model._types import Document
-    from python_sbom._validate._document import Json
+    from python_sbom._validate._limits import Json
 
 # what auditwheel writes: CycloneDX 1.4 conventions, a legacy tools array, no timestamp
 _FOREIGN: Final[bytes] = json.dumps({
@@ -155,7 +155,7 @@ def test_serial_is_required(describe: Describe) -> None:
 def test_duplicate_refs(describe: Describe) -> None:
     library: Component = {"type": "library", "bom-ref": "pkg:pypi/example@1.0", "name": "copy"}
     assert validate_document(with_components(describe(), library), None) == [
-        "bom-ref values are not unique: ['pkg:pypi/example@1.0']"
+        "bom-ref values repeat: pkg:pypi/example@1.0"
     ]
 
 
@@ -168,9 +168,7 @@ def with_components(document: Document, *components: Component) -> bytes:
 def test_duplicate_refs_in_other_tools_documents() -> None:
     foreign = json.loads(_FOREIGN)
     foreign["components"].append({"type": "library", "bom-ref": "pkg:pypi/plain@1.0", "name": "copy"})
-    assert validate_document(json.dumps(foreign).encode(), None) == [
-        "bom-ref values are not unique: ['pkg:pypi/plain@1.0']"
-    ]
+    assert validate_document(json.dumps(foreign).encode(), None) == ["bom-ref values repeat: pkg:pypi/plain@1.0"]
 
 
 def test_component_without_bom_ref(describe: Describe) -> None:
@@ -216,9 +214,7 @@ def test_schema_valid_variations_pass(describe: Describe, mutate: Callable[[dict
 def test_unknown_dependency_refs(describe: Describe) -> None:
     document = describe()
     document["dependencies"].append({"ref": "ghost", "dependsOn": ["phantom"]})
-    assert validate_document(dumps(document), None) == [
-        "dependencies reference bom-refs that do not exist: ['ghost', 'phantom']"
-    ]
+    assert validate_document(dumps(document), None) == ["dependencies name bom-refs no component has: ghost, phantom"]
 
 
 def test_root_must_depend_on_components(describe: Describe) -> None:
@@ -317,3 +313,13 @@ def test_unexpected_error_is_reported(describe: Describe, mocker: MockerFixture)
 )
 def test_is_document(value: Json, expected: bool) -> None:
     assert is_document(value) is expected
+
+
+def test_repeated_dependency_entry_cannot_hide_an_invalid_one(describe: Describe) -> None:
+    # read as a mapping, the valid second entry for the root would replace the invalid first one, which the SPDX
+    # rendering still turns into an edge
+    document = describe("Requires-Dist: click\n")
+    document["dependencies"].insert(0, {"ref": document["metadata"]["component"]["bom-ref"], "dependsOn": []})
+    assert validate_document(dumps(document), None) == [
+        f"dependencies list more than one entry for: {document['metadata']['component']['bom-ref']}"
+    ]

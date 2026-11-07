@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import sys
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -117,3 +118,28 @@ def test_load_refuses(tmp_path: Path, module: str, spec: str, message: str, sett
 def test_provider_without_source_is_no_tool(tmp_path: Path, settings: Settings) -> None:
     provider = type("Generated", (ContentProvider,), {"__module__": "not_a_loaded_module"})()
     assert resolve_provider(provider, settings, tmp_path)[1] == ()
+
+
+def test_provider_of_another_project_is_not_reused(tmp_path: Path, settings: Settings) -> None:
+    # two projects whose providers share a module name, built in one process as hatch builds them
+    name = f"provider_{tmp_path.name}"
+    for project, value in (("first", "1"), ("second", "2")):
+        (tmp_path / project).mkdir()
+        (tmp_path / project / f"{name}.py").write_text(
+            f"from python_sbom import ContentProvider\n\n\nclass Content(ContentProvider):\n    value = {value}\n",
+            encoding="utf-8",
+        )
+    try:
+        resolve_provider(f"{name}:Content", settings, tmp_path / "first")
+        with pytest.raises(
+            SbomError, match=rf"this process already imported .*first.*{name}\.py, a module of the same"
+        ):
+            resolve_provider(f"{name}:Content", settings, tmp_path / "second")
+    finally:
+        sys.modules.pop(name, None)
+
+
+def test_provider_of_the_same_project_loads_again(tmp_path: Path, module: str, settings: Settings) -> None:
+    first, _ = resolve_provider(f"{module}:Content", settings, tmp_path)
+    second, _ = resolve_provider(f"{module}:Content", settings, tmp_path)
+    assert type(first) is type(second)

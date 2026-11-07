@@ -6,8 +6,16 @@ from typing import TYPE_CHECKING, Final
 
 from packageurl import PackageURL
 
-from ._components import bundled_wheel_component, component_from_metadata, file_component, vendored_dependencies
+from ._components import (
+    bundled_wheel_component,
+    component_from_metadata,
+    file_component,
+    mark_bundled,
+    vendored_dependencies,
+)
+from ._graph import artifact_contents
 from ._inputs import Artifact
+from ._names import archive_sbom_file_name
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -33,24 +41,25 @@ def archive_artifact(  # ruff: ignore[too-many-arguments] # keyword-only, each a
     version: Final[str] = tree.metadata[""].version
     ref: Final[str] = PackageURL(type="generic", name=name, version=version).to_string()
     distributions = _Distributions(tree=tree, project=project, bundled_info=bundled_info)
+    root: Final[Component] = {
+        "type": "application",
+        "bom-ref": ref,
+        "name": name,
+        "version": version,
+        "purl": ref,
+        "components": [
+            distributions.wheel(member) if member.endswith(".whl") else file_component(ref, tree.files[member])
+            for member in tree.loose
+        ],
+    }
     components: Final[list[Component]] = [distributions.component(prefix) for prefix in sorted(tree.metadata)]
     return Artifact(
-        root={
-            "type": "application",
-            "bom-ref": ref,
-            "name": name,
-            "version": version,
-            "purl": ref,
-            "components": [
-                distributions.wheel(member) if member.endswith(".whl") else file_component(ref, tree.files[member])
-                for member in tree.loose
-            ],
-        },
+        root=root,
         components=components,
-        dependencies=vendored_dependencies(components),
+        dependencies=vendored_dependencies(artifact_contents(root, components)),
         build_scripts=build_scripts,
         version=version,
-        sbom_file=f"{name}.cdx.json",
+        sbom_file=archive_sbom_file_name(name),
         scope=(
             "Components are the distributions the archive holds, as wheels or unpacked, each with its files; the"
             " archive's own top-level files sit under the root component."
@@ -70,17 +79,9 @@ class _Distributions:
     def component(self, prefix: str) -> Component:
         component = component_from_metadata(self.tree.metadata[prefix])
         if prefix:
-            # a wheel bundled unpacked: the directory tells copies of one release apart, as the path does for a .whl
-            directory = _directory(prefix)
-            info = self.bundled_info[str(directory)]
-            component["bom-ref"] = f"bundled:{directory}"
-            if info.supplier is not None:
-                component["supplier"] = info.supplier
-            component["properties"] = [
-                {"name": f"{self.project.property_prefix}:bundled-wheel", "value": str(directory)},
-                *info.properties,
-                *component["properties"],
-            ]
+            # a wheel bundled unpacked, named by its directory as a .whl is by its path
+            directory = prefix.removesuffix("/")
+            mark_bundled(component, directory, self.project.property_prefix, self.bundled_info[directory])
         component["components"] = [
             self.wheel(name) if name.endswith(".whl") else file_component(component["bom-ref"], self.tree.files[name])
             for name in self.tree.owned[prefix]
@@ -88,33 +89,29 @@ class _Distributions:
         return component
 
     def wheel(self, name: str) -> Component:
-        info = self.bundled_info[name]
-        return bundled_wheel_component(
-            self.tree.bundled[name], self.project.property_prefix, info.properties, info.supplier
-        )
-
-
-def _directory(prefix: str) -> PurePosixPath:
-    return PurePosixPath(prefix.rstrip("/"))
+        return bundled_wheel_component(self.tree.bundled[name], self.project.property_prefix, self.bundled_info[name])
 
 
 def bundled_paths(tree: ArchiveTree) -> list[PurePosixPath]:
-    # what a content provider is asked about, in the order the components list them: the archive's own top-level .whl
-    # members, then each wheel bundled unpacked, by its directory, followed by the .whl members it holds
+    return [PurePosixPath(member.removesuffix("/")) for member in bundled_members(tree.loose, tree.owned)]
+
+
+def bundled_members(loose: list[str], owned: Mapping[str, list[str]]) -> list[str]:
+    # the bundled wheels in the order the components list them, which is the order they are read and a provider is asked
+    # about them: the archive's own top-level .whl members, then each wheel bundled unpacked, by its directory ending in
+    # "/", followed by the .whl members it holds
     return [
-        *(PurePosixPath(name) for name in tree.loose if name.endswith(".whl")),
+        *(name for name in loose if name.endswith(".whl")),
         *(
-            path
-            for prefix in sorted(tree.metadata)
-            for path in (
-                *([_directory(prefix)] if prefix else []),
-                *(PurePosixPath(name) for name in tree.owned[prefix] if name.endswith(".whl")),
-            )
+            member
+            for prefix in sorted(owned)
+            for member in ([prefix] if prefix else []) + [name for name in owned[prefix] if name.endswith(".whl")]
         ),
     ]
 
 
 __all__ = [
     "archive_artifact",
+    "bundled_members",
     "bundled_paths",
 ]

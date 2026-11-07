@@ -52,6 +52,11 @@ def property_prefix(name: str) -> str:
     return canonicalize_name(name)
 
 
+def archive_sbom_file_name(archive: str) -> str:
+    # next to the archive, and inside it when embedded, where reading the archive again must skip it
+    return f"{archive}.cdx.json"
+
+
 def purl(name: str, version: str | None = None) -> str:
     # normalized as PEP 503 does, so every spelling of a project, jaraco.context or jaraco_context, gets one purl and a
     # component's bom-ref agrees with its purl; packageurl only lowercases and turns underscores into dashes
@@ -74,6 +79,7 @@ def reference_type(label: str) -> str:
 __all__ = [
     "SBOM_FILE",
     "SBOM_REPOSITORY",
+    "archive_sbom_file_name",
     "property_prefix",
     "purl",
     "pypi_url",

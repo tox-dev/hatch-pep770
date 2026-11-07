@@ -3,22 +3,17 @@ from __future__ import annotations
 import stat
 import struct
 import sys
-import tracemalloc
 import zipfile
 import zlib
-from contextlib import ExitStack
-from io import BytesIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 import pytest
 
 from python_sbom._errors import SbomError
-from python_sbom._wheel._archive import append_member, open_archive, read_member, write_sbom
+from python_sbom._wheel._write import append_member, write_sbom
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
-
     from conftest import WriteWheel
     from pytest_mock import MockerFixture
 
@@ -192,67 +187,6 @@ def test_embed_refuses_corrupt_archive(tmp_path: Path) -> None:
         write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
 
 
-@pytest.mark.parametrize(
-    "names",
-    [
-        pytest.param(("a.py", "A.py"), id="case"),
-        pytest.param(("pkg/a.py", "PKG/a.py"), id="directory-case"),
-    ],
-)
-def test_open_archive_refuses_names_equal_ignoring_case(names: tuple[str, str]) -> None:
-    message = f"w holds more than one member named {names[0].lower()}, ignoring case"
-    with pytest.raises(SbomError, match=message), ExitStack() as stack:
-        stack.enter_context(open_archive(zip_of(*((name, b"") for name in names)), "w"))
-
-
-def zip_of(*members: tuple[str, bytes]) -> BytesIO:
-    buffer = BytesIO()
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for name, content in members:
-            archive.writestr(name, content)
-    return buffer
-
-
-def test_open_archive_refuses_corrupt_member() -> None:
-    data = bytearray(zip_of(("a", b"hello" * 1000)).getvalue())
-    data[40:50] = b"\xff" * 10
-    with pytest.raises(SbomError, match="w is not a valid zip"), open_archive(BytesIO(bytes(data)), "w") as archive:
-        archive.read("a")
-
-
-def test_read_member() -> None:
-    with open_archive(zip_of(("a", b"12345")), "w") as archive:
-        assert read_member(archive, "a", "w", limit=5) == b"12345"
-
-
-def test_read_member_over_limit() -> None:
-    with open_archive(zip_of(("a", b"12345")), "w") as archive, pytest.raises(SbomError, match="w: a is over the 4"):
-        read_member(archive, "a", "w", limit=4)
-
-
-def test_read_member_missing() -> None:
-    with open_archive(zip_of(("a", b"")), "w") as archive, pytest.raises(SbomError, match="w has no b"):
-        read_member(archive, "b", "w")
-
-
-@pytest.mark.usefixtures("traced")
-def test_read_member_refuses_understated_size() -> None:
-    # the archive claims 10 bytes for 32 MiB; reading the member whole would decompress all of it before the CRC check
-    data = bytearray(zip_of(("a", b"A" * 32 * 1024 * 1024)).getvalue())
-    data[22:26] = data[(central := data.rfind(b"PK\x01\x02")) + 24 : central + 28] = struct.pack("<I", 10)
-    tracemalloc.reset_peak()
-    with pytest.raises(SbomError, match="Bad CRC-32 for file 'a'"), open_archive(BytesIO(bytes(data)), "w") as archive:
-        read_member(archive, "a", "w")
-    assert tracemalloc.get_traced_memory()[1] < 4 * 1024 * 1024
-
-
-@pytest.fixture
-def traced() -> Iterator[None]:
-    tracemalloc.start()
-    yield
-    tracemalloc.stop()
-
-
 def test_wheel_with_two_dist_info_directories(tmp_path: Path, write_wheel: WriteWheel) -> None:
     wheel = write_wheel(
         tmp_path / "native-1.0-py3-none-any.whl",
@@ -280,6 +214,46 @@ def test_embed_ends_an_unterminated_last_row(tmp_path: Path, write_wheel: WriteW
         "native-1.0.dist-info/METADATA,,",
         _SBOM_ROW,
     ]
+
+
+@pytest.mark.parametrize(
+    ("record", "expected"),
+    [
+        pytest.param(
+            b'native-1.0.dist-info/METADATA,,\n"native-1.0.dist-info/sboms/native.cdx.json",sha256=stale,1\n'
+            b"native-1.0.dist-info/RECORD,,\n",
+            f"native-1.0.dist-info/METADATA,,\n{_SBOM_ROW}\nnative-1.0.dist-info/RECORD,,\n".encode(),
+            id="quoted-sbom-row",
+        ),
+        pytest.param(
+            b'native-1.0.dist-info/METADATA,,\n"native-1.0.dist-info/RECORD",,\n',
+            f'native-1.0.dist-info/METADATA,,\n{_SBOM_ROW}\n"native-1.0.dist-info/RECORD",,\n'.encode(),
+            id="quoted-record-row",
+        ),
+        pytest.param(
+            b"native-1.0.dist-info/METADATA,,\r\n"
+            b'"native-1.0.dist-info/sboms/native.cdx.json",sha256=stale,1\r\n'
+            b"native-1.0.dist-info/RECORD,,\r\n",
+            f"native-1.0.dist-info/METADATA,,\r\n{_SBOM_ROW}\r\nnative-1.0.dist-info/RECORD,,\r\n".encode(),
+            id="crlf",
+        ),
+        pytest.param(
+            b"native-1.0.dist-info/METADATA,,\nnative-1.0.dist-info/RECORD,,",
+            f"native-1.0.dist-info/METADATA,,\n{_SBOM_ROW}\nnative-1.0.dist-info/RECORD,,\n".encode(),
+            id="no-final-newline",
+        ),
+    ],
+)
+def test_embed_rewrites_record_by_parsed_path(
+    tmp_path: Path, write_wheel: WriteWheel, record: bytes, expected: bytes
+) -> None:
+    wheel = write_wheel(
+        tmp_path / "native-1.0-py3-none-any.whl",
+        {"native-1.0.dist-info/METADATA": b"Name: native\n", "native-1.0.dist-info/RECORD": record},
+        record=False,
+    )
+    write_sbom(wheel, "native.cdx.json", b"{}\n", 1_700_000_000)
+    assert zipfile.ZipFile(wheel).read("native-1.0.dist-info/RECORD") == expected
 
 
 def test_append_member_deflates_at_level_nine(tmp_path: Path) -> None:

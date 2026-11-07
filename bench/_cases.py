@@ -9,6 +9,8 @@ time the step in a warm process, as a build backend or a long-lived tool sees it
 from __future__ import annotations
 
 import contextlib
+import importlib
+import importlib.util
 import inspect
 import io
 import os
@@ -143,25 +145,16 @@ def _collect_facts(fixtures: dict[str, str], scratch: Path) -> Step:  # ruff: ig
 
 def _bundled(key: str) -> Callable[[dict[str, str], Path], Step]:
     def make(fixtures: dict[str, str], scratch: Path) -> Step:  # ruff: ignore[unused-function-argument] # one signature
-        from python_sbom._collect import _source  # ruff: ignore[import-outside-top-level] # see _validate
-
-        try:
-            from python_sbom._wheel import _bundled as bundled  # ruff: ignore[import-outside-top-level] # see _validate
-        except ImportError:  # revisions before the move keep the reader in _collect._source
-            bundled = _source
-
+        # revisions before the move keep the reader in _collect._source, and those before the batch reader take one
+        # wheel's bytes rather than a list and a way to open each
+        moved = importlib.util.find_spec("python_sbom._wheel._bundled") is not None
+        module = importlib.import_module("python_sbom._wheel._bundled" if moved else "python_sbom._collect._source")
         wheel = Path(fixtures[key])
         data = wheel.read_bytes()
-        # revisions before the batch reader take one wheel's bytes; later ones a list and a way to open each
-        single = getattr(_source, "read_bundled_wheel", None)
-
-        def run() -> None:
-            if single is not None:
-                single(data, wheel.name)
-            else:
-                bundled.read_bundled_wheels([wheel.name], lambda _name: io.BytesIO(data))
-
-        return Step(run=run)
+        if (single := getattr(module, "read_bundled_wheel", None)) is not None:
+            return Step(run=lambda: single(data, wheel.name))
+        batch = module.read_bundled_wheels
+        return Step(run=lambda: batch([wheel.name], lambda _name: io.BytesIO(data)))
 
     return make
 

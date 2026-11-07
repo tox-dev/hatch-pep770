@@ -1,1 +1,1 @@
-"""Wheel archives: their RECORD, their metadata files, and writing an SBOM into a built one."""
+"""Zip artifacts: one checked handle per build, verifying the wheels they bundle, and writing an SBOM in."""

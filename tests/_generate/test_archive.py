@@ -226,9 +226,7 @@ def test_archive_without_project_distribution(tmp_path: Path) -> None:
     with zipfile.ZipFile(buffer, "w") as handle:
         handle.writestr("__main__.py", "")
     (archive := tmp_path / "bare.pyz").write_bytes(buffer.getvalue())
-    with pytest.raises(
-        SbomError, match=r"bare\.pyz holds 0 top-level \.dist-info/METADATA, not the one naming the project"
-    ):
+    with pytest.raises(SbomError, match=r"bare\.pyz holds no top-level \.dist-info/METADATA naming the project"):
         describe_archive(
             tmp_path, archive, facts=collect_facts(tmp_path, revision_reader(None)), provider=None, build_scripts=()
         )
@@ -272,3 +270,30 @@ def test_archive_refuses_distributions_sharing_a_directory(project: Path, tmp_pa
         describe_archive(
             project, archive, facts=collect_facts(project, revision_reader(None)), provider=None, build_scripts=()
         )
+
+
+@pytest.mark.parametrize("placement", [pytest.param("", id="top-level"), pytest.param("app/", id="nested")])
+def test_archive_bundled_wheel_judged_wherever_it_sits(
+    project: Path, tmp_path: Path, write_wheel: WriteWheel, placement: str
+) -> None:
+    # the license policy and the vendored edges cover a wheel at the archive's top level as they do one nested deeper
+    wheel = write_wheel(
+        tmp_path / "pip-1.0-py3-none-any.whl",
+        {
+            "pip-1.0.dist-info/METADATA": b"Name: pip\nVersion: 1.0\nLicense-Expression: GPL-3.0-only\n",
+            "pip/_vendor/vendor.txt": b"urllib3==1.26.4\n",
+        },
+    )
+    with zipfile.ZipFile(archive := tmp_path / "app.pyz", "w") as handle:
+        handle.writestr("app-1.0.dist-info/METADATA", "Name: app\nVersion: 1.0\nLicense-Expression: MIT\n")
+        handle.writestr(f"{placement}{wheel.name}", wheel.read_bytes())
+    document = describe_archive(
+        project, archive, facts=collect_facts(project, revision_reader(None)), provider=None, build_scripts=()
+    )
+    (sbom := tmp_path / "app.pyz.cdx.json").write_text(json.dumps(document), encoding="utf-8")
+    ref = f"bundled:{placement}{wheel.name}"
+    vendoring = [entry["ref"] for entry in document["dependencies"] if entry["ref"].startswith("bundled:")]
+    assert (validate(sbom, frozenset({"MIT"})), vendoring) == (
+        [f"{ref}: license GPL-3.0-only is outside the allowed licenses ['MIT']"],
+        [ref],
+    )

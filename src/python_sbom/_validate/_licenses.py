@@ -11,7 +11,7 @@ from license_expression import (
     get_license_index,
 )
 
-from python_sbom._model._document import walk_components
+from python_sbom._model._graph import shipped_libraries
 
 if TYPE_CHECKING:
     from license_expression import LicenseExpression
@@ -28,24 +28,13 @@ _LICENSING: Final[Licensing] = Licensing(
 )
 
 
-def license_problems(components: list[Component], allowed: frozenset[str]) -> list[str]:
+def license_problems(contents: list[Component], allowed: frozenset[str]) -> list[str]:
     # SPDX matches license ids without regard to case
     folded: Final[frozenset[str]] = frozenset(identifier.casefold() for identifier in allowed)
     return [
         f"{component.get('bom-ref', component['name'])}: {problem}"
-        for component in _shipped(components)
+        for component in shipped_libraries(contents)
         if (problem := _judge(component, allowed, folded))
-    ]
-
-
-def _shipped(components: list[Component]) -> list[Component]:
-    # only what the artifact carries bytes for is judged: a declared requirement resolves at install time, and a library
-    # a bundled wheel vendors ships under that wheel's terms
-    return [
-        component
-        for component in walk_components(components)
-        if component["type"] == "library"
-        and ("hashes" in component or any(child["type"] == "file" for child in component.get("components", [])))
     ]
 
 
