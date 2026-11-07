@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from packaging._parser import Op, Value, Variable  # ruff: ignore[import-private-name] # packaging exposes the parsed marker tree only privately
 from packaging.markers import Marker, UndefinedComparison
 
 if TYPE_CHECKING:
-    from packaging._parser import MarkerAtom, MarkerList  # see above
+    from packaging._parser import MarkerAtom, MarkerList  # see _extra_verdict
     from packaging.requirements import Requirement
 
 
@@ -17,10 +16,18 @@ def applies_without_extras(requirement: Requirement) -> bool:
     # packaging's marker grammar for the whole build process
     if requirement.marker is None:
         return True
-    return _extra_verdict(requirement.marker._markers) is not False  # ruff: ignore[private-member-access] # the tree, see the import above
+    try:
+        verdict = _extra_verdict(requirement.marker._markers)  # ruff: ignore[private-member-access] # see _extra_verdict
+    # packaging keeps the parsed tree private, so a release that moves or renames it leaves the requirement listed
+    # rather than dropping one that applies
+    except (AttributeError, ImportError):
+        return True
+    return verdict is not False
 
 
 def _extra_verdict(markers: MarkerList | MarkerAtom) -> bool | None:
+    from packaging._parser import Op, Value, Variable  # ruff: ignore[import-private-name, import-outside-top-level] # packaging keeps the marker tree private, the caller handles its absence
+
     # three-valued, with "and" binding tighter than "or", as packaging's own evaluation groups them
     groups: list[list[bool | None]] = [[]]
     for item in markers:

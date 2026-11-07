@@ -57,3 +57,16 @@ def test_verdicts_hold_under_python_optimize() -> None:
     )
     result = subprocess.run([sys.executable, "-O", "-c", script, *markers], capture_output=True, text=True, check=True)
     assert result.stdout.split() == [str(verdict) for verdict in markers.values()]
+
+
+def test_requirement_kept_without_packaging_parser(monkeypatch: pytest.MonkeyPatch) -> None:
+    # None in sys.modules makes the import fail, as when a packaging release moves its private marker tree
+    monkeypatch.setitem(sys.modules, "packaging._parser", None)
+    assert applies_without_extras(Requirement('click; extra == "cli"')) is True
+
+
+def test_requirement_kept_without_marker_tree(monkeypatch: pytest.MonkeyPatch) -> None:
+    # a packaging release that renames the private attribute holding the parsed tree
+    requirement = Requirement('click; extra == "cli"')
+    monkeypatch.delattr(requirement.marker, "_markers")
+    assert applies_without_extras(requirement) is True
