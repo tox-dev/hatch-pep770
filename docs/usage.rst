@@ -160,10 +160,11 @@ Each ``--allow-license`` adds an SPDX id that bundled wheels may use. With any g
 ids do not allow fails the check, and so does one that declares a license only by name.
 
 Before anything else, ``validate`` counts the components an SBOM lists, nested ones included, and fails an SBOM that
-lists more than 100,000 without checking it further. Every check takes time in proportion to the count, about a tenth of
-a second for 100,000 components, so the cap bounds what an untrusted SBOM can ask of a CI job while staying far above
-real SBOMs: every file of the wheel, of each bundled wheel and of each build tool counts, and virtualenv's wheel lists
-about 5,200. Raise the cap for an SBOM you expect to be larger, or lower it to refuse more:
+lists more than 100,000 without checking it further. Every check takes time in proportion to the count: 100,000 files
+take about a second, and 100,000 packages, each also checked in the SPDX rendering, about six. The cap thus bounds what
+an untrusted SBOM can ask of a CI job while staying far above real SBOMs: every file of the wheel, of each bundled wheel
+and of each build tool counts, and virtualenv's wheel lists about 5,200. Raise the cap for an SBOM you expect to be
+larger, or lower it to refuse more:
 
 .. code-block:: console
 

@@ -6,12 +6,21 @@ from importlib.resources import files
 from typing import TYPE_CHECKING
 
 import pytest
+from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
+from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 
 from python_sbom._errors import MissingExtraError
+from python_sbom._formats._spdx import render_spdx
 from python_sbom._validate._document import validate_document
-from python_sbom._validate._schemas import schema_error
+from python_sbom._validate._schemas import schema_error, spdx_problems
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from conftest import Describe
+
+    from python_sbom import Component
+    from python_sbom._formats._spdx import Spdx
     from python_sbom._validate._document import Json
 
 
@@ -143,3 +152,59 @@ def test_many_unique_components_pass() -> None:
         {"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(20_000)
     ]
     assert schema_error({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": components}) is None
+
+
+def _declare(spdx: Spdx, expression: str, text: str | None = None) -> None:
+    spdx["packages"][0]["licenseDeclared"] = expression
+    if text is not None:
+        spdx["hasExtractedLicensingInfos"] = [
+            {"licenseId": "LicenseRef-Custom", "extractedText": text, "name": "custom"}
+        ]
+
+
+@pytest.mark.parametrize(
+    ("mutate", "valid"),
+    [
+        pytest.param(lambda _: None, True, id="as-rendered"),
+        pytest.param(
+            lambda spdx: spdx.update(documentNamespace="https://example.org/a#fragment"), False, id="namespace"
+        ),
+        pytest.param(
+            lambda spdx: spdx["relationships"].append({
+                "spdxElementId": "SPDXRef-DOCUMENT",
+                "relationshipType": "DESCRIBES",
+                "relatedSpdxElement": "SPDXRef-ghost",
+            }),
+            False,
+            id="unknown-relationship-end",
+        ),
+        pytest.param(lambda spdx: spdx["packages"].append(spdx["packages"][0]), False, id="duplicate-id"),
+        pytest.param(
+            lambda spdx: spdx["packages"][0].update(checksums=[{"algorithm": "SHA256", "checksumValue": "ab"}]),
+            False,
+            id="short-checksum",
+        ),
+        pytest.param(lambda spdx: _declare(spdx, "MIT AND Foo-Bar"), False, id="unknown-license"),
+        pytest.param(lambda spdx: _declare(spdx, "GPL-2.0-only WITH MIT"), False, id="license-as-exception"),
+        pytest.param(lambda spdx: _declare(spdx, "MIT OR LicenseRef-Custom", "custom"), True, id="license-ref"),
+        pytest.param(lambda spdx: _declare(spdx, "MIT OR LicenseRef-Custom", ""), False, id="license-ref-without-text"),
+    ],
+)
+def test_spdx_problems_match_spdx_tools(describe: Describe, mutate: Callable[[Spdx], None], valid: bool) -> None:
+    # the full validation of spdx-tools, whose time grows with the square of the elements, is the reference
+    spdx = render_spdx(describe("Requires-Dist: click\n"), "1")
+    mutate(spdx)
+    reference = validate_full_spdx_document(JsonLikeDictParser().parse(dict(spdx)))
+    assert spdx_problems(spdx) == [f"SPDX rendering invalid: {message.validation_message}" for message in reference]
+    assert (not reference) is valid
+
+
+def test_many_packages_pass(describe: Describe) -> None:
+    # spdx-tools' full validation took a minute and a half for 16,000 packages, so this guards the linear checks
+    document = describe()
+    libraries: list[Component] = [
+        {"type": "library", "bom-ref": f"r{index}", "name": f"n{index}"} for index in range(20_000)
+    ]
+    document["components"].extend(libraries)
+    document["dependencies"][0].setdefault("dependsOn", []).extend(f"r{index}" for index in range(20_000))
+    assert spdx_problems(render_spdx(document, "1")) == []
