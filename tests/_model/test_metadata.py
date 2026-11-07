@@ -28,8 +28,8 @@ def test_without_name_and_version() -> None:
     [
         pytest.param("Keywords: a,b\n", ["a,b"], id="comma-separated"),
         pytest.param("Keywords: a b\n", ["a b"], id="space-separated"),
-        # packaging splits at commas and strips each keyword, so the spacing around them is not kept
-        pytest.param("Keywords: a, b\n", ["a,b"], id="comma-and-space"),
+        pytest.param("Keywords: a, b\n", ["a, b"], id="comma-and-space"),
+        pytest.param("Keywords: a , b,c\n", ["a , b,c"], id="mixed-spacing"),
         pytest.param("Keywords: a\nKeywords: b\n", ["a", "b"], id="repeated"),
         pytest.param("", [], id="absent"),
     ],

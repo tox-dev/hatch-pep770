@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from email.parser import HeaderParser
+from email.policy import compat32
 from typing import TYPE_CHECKING, Final, Literal, TypeAlias
 
 from packaging.metadata import parse_email
@@ -37,14 +39,17 @@ _HEADERS: Final[dict[str, str]] = {"classifiers": "classifier", "license_files":
 def parse_metadata(text: str) -> CoreMetadata:
     # not validated: the SBOM describes a distribution whose metadata breaks the specification as well, as written; the
     # body holds the long description, which nothing reads, and parsing it took most of the time
-    raw, unparsed = parse_email(text[: match.start()] if (match := _BODY.search(text)) else text)
-    return CoreMetadata(raw=raw, unparsed=unparsed)
+    headers: Final = text[: match.start()] if (match := _BODY.search(text)) else text
+    raw, unparsed = parse_email(headers)
+    return CoreMetadata(raw=raw, unparsed=unparsed, headers=headers)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CoreMetadata:
     raw: RawMetadata
     unparsed: dict[str, list[str]]
+    # the header block as written, for the values packaging reshapes
+    headers: str = ""
 
     @property
     def name(self) -> str:
@@ -68,9 +73,10 @@ class CoreMetadata:
         return self.first("version") or ""
 
     def keywords(self) -> list[str]:
-        # packaging splits Keywords at commas, so they are joined back into the one value the distribution declared
+        # packaging splits Keywords at commas and strips each keyword, so the header is read again, as the distribution
+        # wrote it, only when one is there; packaging parses the block with the same policy
         if "keywords" in self.raw:
-            return [",".join(self.raw["keywords"])]
+            return HeaderParser(policy=compat32).parsestr(self.headers).get_all("keywords", [])
         return self.unparsed.get("keywords", [])
 
     def project_urls(self) -> list[tuple[str, str]]:
