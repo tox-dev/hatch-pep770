@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from itertools import starmap
 from pathlib import PurePath
@@ -42,20 +43,27 @@ def read_source_tree(request: SbomRequest) -> SourceTree:
             ),
             None,
         ),
-        bundled=[
-            read_bundled_wheel((root / relative).read_bytes(), relative)
-            for relative in sorted({
+        bundled=read_bundled_wheels(
+            root,
+            sorted({
                 wheel.relative_to(root).as_posix()
                 for pattern in request.settings.bundled_wheels
                 for wheel in root.glob(pattern)
-            })
-        ],
+            }),
+        ),
         # str, so a Windows drive in an absolute path survives the join with the native root
         build_scripts=[
             BuildScript(path=script, sha256=hashlib.sha256((root / str(script)).read_bytes()).hexdigest())
             for script in request.build_scripts
         ],
     )
+
+
+def read_bundled_wheels(root: Path, paths: list[str]) -> list[BundledWheel]:
+    # inflating and hashing release the GIL, so the wheels verify side by side; results and the first error come in the
+    # order given
+    with ThreadPoolExecutor() as pool:
+        return list(pool.map(lambda path: read_bundled_wheel((root / path).read_bytes(), path), paths))
 
 
 def read_bundled_wheel(data: bytes, path: str) -> BundledWheel:
@@ -171,6 +179,7 @@ def wheel_request(wheel: Path, root: Path, settings: Settings, build_scripts: tu
 
 __all__ = [
     "read_bundled_wheel",
+    "read_bundled_wheels",
     "read_source_tree",
     "wheel_request",
 ]

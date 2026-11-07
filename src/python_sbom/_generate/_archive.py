@@ -10,7 +10,7 @@ from packageurl import PackageURL
 
 from python_sbom._collect._content import load_content_provider, provider_script
 from python_sbom._collect._settings import settings_from_pyproject
-from python_sbom._collect._source import read_bundled_wheel
+from python_sbom._collect._source import read_bundled_wheels
 from python_sbom._errors import WheelError
 from python_sbom._model._components import (
     bundled_wheel_component,
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
     from python_sbom._model._content import ContentProvider
     from python_sbom._model._identity import ProjectIdentity
-    from python_sbom._model._inputs import BuildFacts, Settings
+    from python_sbom._model._inputs import BuildFacts, BundledWheel, Settings
     from python_sbom._model._metadata import CoreMetadata
     from python_sbom._model._types import Component, Document, Metadata
 
@@ -135,8 +135,10 @@ def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings,
         else:
             loose.append(name)
     project = project_identity(metadata[""], settings)
+    wheels: Final[list[str]] = [name for prefix in sorted(metadata) for name in owned[prefix] if name.endswith(".whl")]
     reader = _Reader(
         unpacked=unpacked,
+        bundled=dict(zip(wheels, read_bundled_wheels(unpacked, wheels), strict=True)),
         project=project,
         settings=settings,
         content=content,
@@ -163,6 +165,8 @@ def _read_archive(root: Path, archive: Path, unpacked: Path, settings: Settings,
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _Reader:
     unpacked: Path
+    # read ahead, in the order the components list them
+    bundled: dict[str, BundledWheel]
     project: ProjectIdentity
     settings: Settings
     content: ContentProvider
@@ -190,7 +194,7 @@ class _Reader:
     def wheel(self, name: str) -> Component:
         info = self.content.bundled_wheel(self.context, PurePosixPath(name))
         return bundled_wheel_component(
-            read_bundled_wheel((self.unpacked / name).read_bytes(), name),
+            self.bundled[name],
             self.project.property_prefix,
             info.properties,
             info.supplier,
