@@ -34,12 +34,13 @@ def _load(spec: str, root: Path) -> ContentProvider:
     if not (module_name and attribute):
         msg = f"content provider {spec!r} must be `module:attribute`"
         raise SbomError(msg)
-    if (imported := _imported_elsewhere(module_name, root)) is not None:
-        msg = (
-            f"content provider {spec!r} cannot load from {root}: this process already imported {imported}, a module of"
-            " the same name, and would run that instead; build each such project in a process of its own"
-        )
-        raise SbomError(msg)
+    # the import cache is per process, so a hatch build of a second project, or a test suite building copies of one,
+    # would get the provider module the first project imported; the outermost module the project provides that the
+    # cache holds from elsewhere is dropped with its submodules, so the project's own copy loads, while a provider built
+    # earlier keeps the module objects it already references
+    if (other := _imported_elsewhere(module_name, root)) is not None:
+        for cached in [name for name in sys.modules if name == other or name.startswith(f"{other}.")]:
+            del sys.modules[cached]
     sys.path.insert(0, str(root))
     try:
         provider = pkgutil.resolve_name(spec)
@@ -58,10 +59,8 @@ def _load(spec: str, root: Path) -> ContentProvider:
 
 
 def _imported_elsewhere(module_name: str, root: Path) -> str | None:
-    # the import cache is per process, so a hatch build of a second project with a provider module of the same name
-    # would run the first project's; each package on the way down to the module, and the module itself, that the project
-    # provides is compared with what is already imported under its name; namespace packages merge, so only modules and
-    # regular packages can clash
+    # each package on the way down to the module, and the module itself, that the project provides is compared with what
+    # is already imported under its name; namespace packages merge, so only modules and regular packages can clash
     search: list[str] | None = [str(root)]
     parts: Final[list[str]] = module_name.split(".")
     for depth in range(1, len(parts) + 1):
@@ -73,7 +72,7 @@ def _imported_elsewhere(module_name: str, root: Path) -> str | None:
             and imported is not None
             and Path(imported).resolve() != Path(found.origin).resolve()
         ):
-            return imported
+            return found.name
         search = None if found.submodule_search_locations is None else list(found.submodule_search_locations)
     return None
 

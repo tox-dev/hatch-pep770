@@ -73,7 +73,7 @@ def _git(git: str, root: Path, *arguments: str) -> str:
         [git, "-c", "core.fsmonitor=false", "--no-optional-locks", "-C", str(root), *arguments],
         check=True,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     ).stdout.strip()
 
 
