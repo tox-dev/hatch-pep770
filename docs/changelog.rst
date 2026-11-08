@@ -3,6 +3,20 @@ Changelog
 
 .. towncrier release notes start
 
+.. _release-0-1-2:
+
+0.1.2 (2026-11-08)
+------------------
+
+.. _release-0-1-2-fixed:
+
+Fixed
+~~~~~
+
+- Load a project's own content provider when the process already imported a module of the same name from another
+  project, as a test suite building copies of one project does, instead of refusing it. The module cached from elsewhere
+  is dropped with its submodules, and a provider loaded earlier keeps working (:pr:`5`) by :user:`gaborbernat`.
+
 .. _release-0-1-1:
 
 0.1.1 (2026-11-08)
