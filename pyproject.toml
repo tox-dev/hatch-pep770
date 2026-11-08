@@ -106,10 +106,15 @@ bench = [
   { include-group = "build" },
   { include-group = "test" },
 ]
+# the release build installs [build-system] requires with the hashes this group locks, so it lists all of them,
+# including what python-sbom's own hook needs to describe its wheel
 build = [
   "hatch-fancy-pypi-readme>=25.1",
   "hatch-vcs>=0.5",
   "hatchling>=1.32.4",
+  "installer>=1.1",
+  "packageurl-python>=0.11.1",
+  "zipremove>=0.10",
 ]
 lint = [ "pre-commit-uv>=4.3" ]
 pkg-meta = [ "check-wheel-contents>=0.6.3", "twine>=7", "uv>=0.12.22" ]
