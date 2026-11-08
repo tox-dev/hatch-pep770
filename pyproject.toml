@@ -1,0 +1,272 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatch-fancy-pypi-readme>=25.1",
+  "hatch-vcs>=0.5",
+  "hatchling>=1.32.4",
+  "installer>=1.1",
+  "packageurl-python>=0.11.1",
+  "zipremove>=0.10",
+]
+
+[project]
+name = "python-sbom"
+import-names = [ "python_sbom" ]
+description = "SBOMs for Python distributions: write PEP 770 CycloneDX SBOMs into wheels."
+keywords = [
+  "cyclonedx",
+  "hatch",
+  "pep770",
+  "sbom",
+  "spdx",
+]
+license = "MIT AND Apache-2.0"
+license-files = [ "LICENSE", "src/python_sbom/_validate/schemas/LICENSE" ]
+maintainers = [
+  { name = "Bernát Gábor", email = "gaborjbernat@gmail.com" },
+]
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: Hatch",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Security",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dynamic = [
+  "readme",
+  "version",
+]
+dependencies = [
+  "installer>=1.1",
+  "packageurl-python>=0.11.1",
+  "packaging>=26.3",
+  "zipremove>=0.10",
+]
+optional-dependencies.hatch = [
+  "hatchling>=1.28",
+]
+optional-dependencies.validate = [
+  "jsonschema-rs>=0.60.3",
+  "license-expression>=30",
+  "spdx-tools>=0.8.5",
+]
+urls.Changelog = "https://python-sbom.readthedocs.io/en/latest/changelog.html"
+urls.Documentation = "https://python-sbom.readthedocs.io"
+urls.Homepage = "https://github.com/tox-dev/python-sbom"
+urls.Source = "https://github.com/tox-dev/python-sbom"
+urls.Tracker = "https://github.com/tox-dev/python-sbom/issues"
+scripts.python-sbom = "python_sbom._cli._main:main"
+entry-points.hatch.python-sbom = "python_sbom.hatch.hooks"
+
+[dependency-groups]
+dev = [
+  { include-group = "lint" },
+  { include-group = "pkg-meta" },
+  { include-group = "test" },
+  { include-group = "type" },
+]
+test = [
+  "covdefaults>=2.3",
+  "hatchling>=1.28",
+  "installer>=1.1",
+  "jsonschema-rs>=0.60.3",
+  "pytest>=9.1.1",
+  "pytest-cov>=7.1",
+  "pytest-mock>=3.16",
+  "spdx-tools>=0.8.5",
+]
+type = [
+  "ty>=0.0.84",
+  { include-group = "bench" },
+  { include-group = "docs" },
+  { include-group = "test" },
+]
+docs = [
+  "furo>=2025.12.19",
+  "hatchling>=1.28",
+  "sphinx>=9.0.4",
+  "sphinx-argparse-cli>=1.23",
+  "sphinx-autodoc-typehints>=3.17",
+  "sphinxcontrib-mermaid>=2.1.1",
+]
+bench = [
+  "pyperf>=2.10",
+  { include-group = "build" },
+  { include-group = "test" },
+]
+build = [
+  "hatch-fancy-pypi-readme>=25.1",
+  "hatch-vcs>=0.5",
+  "hatchling>=1.32.4",
+]
+lint = [ "pre-commit-uv>=4.3" ]
+pkg-meta = [ "check-wheel-contents>=0.6.3", "twine>=7", "uv>=0.12.22" ]
+release-news = [
+  "release-creator>=4.4",
+  "towncrier>=26.9",
+]
+release-notes = [
+  "release-creator>=4.4",
+]
+release-prepare = [
+  "prek>=0.5",
+  "release-creator>=4.4",
+  "towncrier>=26.9",
+]
+
+[tool.hatch]
+version.source = "vcs"
+metadata.hooks.fancy-pypi-readme.content-type = "text/markdown"
+metadata.hooks.fancy-pypi-readme.fragments = [ { path = "README.md" } ]
+build.hooks.vcs.version-file = "src/python_sbom/version.py"
+# writes python-sbom's own SBOM with the hook it ships, after the vcs hook writes the version
+build.hooks.custom.path = "hatch_build.py"
+
+[tool.uv]
+dependency-groups.release-news = { requires-python = ">=3.15" }
+dependency-groups.release-notes = { requires-python = ">=3.15" }
+dependency-groups.release-prepare = { requires-python = ">=3.15" }
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+format.preview = true
+format.docstring-code-line-length = 100
+format.docstring-code-format = true
+lint.select = [
+  "ALL",
+]
+lint.ignore = [
+  "CPY",                                       # The project does not add copyright headers to individual files
+  "DOC",                                       # Public API documentation is generated from signatures
+  "incorrect-blank-line-before-class",         # `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
+  "missing-trailing-comma",                    # Conflict with formatter
+  "multi-line-summary-first-line",             # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
+  "single-line-implicit-string-concatenation", # Conflict with formatter
+  "undocumented-magic-method",                 # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-class",                 # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-function",              # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-init",                  # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-method",                # undocumented-public-api (simplint SMP903) covers the public API instead
+  "undocumented-public-nested-class",          # undocumented-public-api (simplint SMP903) covers the public API instead
+]
+lint.per-file-ignores."bench/**/*.py" = [
+  "import-private-name",                  # Benchmarks time the private entry points the public API wraps
+  "start-process-with-partial-path",      # Fixtures run git from PATH, as a project build does
+  "subprocess-without-shell-equals-true", # Commands are fixed argument lists the harness builds
+  "suspicious-subprocess-import",         # Fixtures and cold cases run git, uv and Python processes
+]
+lint.per-file-ignores."tests/**/*.py" = [
+  "assert",                               # Tests use assertions
+  "D",                                    # Test names document behavior
+  "FBT",                                  # Boolean parameters keep parameterized cases compact
+  "implicit-namespace-package",           # The tests directory is not a package
+  "import-private-name",                  # Unit tests cover the private modules behind the small public API
+  "magic-value-comparison",               # Literal expected values keep assertions local
+  "subprocess-without-shell-equals-true", # Entry-point arguments are fixed by the tests
+  "suspicious-subprocess-import",         # Entry-point tests invoke a local Python executable
+]
+# the fixture mirrors virtualenv's seed/wheels/embed/__init__.py, which holds the bundle table
+lint.per-file-ignores."tests/_seeder/src/**/__init__.py" = [ "non-empty-init-module" ]
+lint.isort = { known-first-party = [
+  "python_sbom",
+], required-imports = [
+  "from __future__ import annotations",
+] }
+lint.preview = true
+
+[tool.codespell]
+builtin = "clear,usage,en-GB_to_en-US"
+ignore-words-list = "acknowledgement"
+count = true
+
+[tool.pyproject-fmt]
+max_supported_python = "3.15"
+
+[tool.ty]
+environment.python-version = "3.15"
+
+[tool.pytest]
+ini_options.testpaths = [ "tests" ]
+# test modules mirror the source modules, so their names repeat across directories
+ini_options.addopts = [ "--import-mode=importlib" ]
+ini_options.filterwarnings = [
+  "error",
+]
+ini_options.verbosity_assertions = 2
+
+[tool.coverage]
+run.parallel = true
+run.plugins = [
+  "covdefaults",
+]
+run.core = "ctrace"  # sysmon (3.14+ default) cannot record the per-test contexts we collect
+paths.source = [
+  "src",
+  ".tox*/*/lib/python*/site-packages",
+  ".tox*/pypy*/site-packages",
+  ".tox*\\*\\Lib\\site-packages",
+  "*/src",
+  "*\\src",
+]
+report.fail_under = 100
+html.show_contexts = true
+html.skip_covered = false
+
+[tool.towncrier]
+name = "python-sbom"
+directory = "docs/changelog.d"
+filename = "docs/changelog.rst"
+template = "release_creator.fragments:template.rst.jinja2"
+title_format = false
+underlines = [ "-", "~", "^" ]
+type = [
+  { directory = "feature", name = "Added", showcontent = true },
+  { directory = "change", name = "Changes", showcontent = true },
+  { directory = "bugfix", name = "Fixed", showcontent = true },
+  { directory = "doc", name = "Documentation", showcontent = true },
+  { directory = "breaking", name = "Breaking changes", showcontent = true },
+  { directory = "security", name = "Security", showcontent = true },
+  { directory = "performance", name = "Performance", showcontent = true },
+  { directory = "deprecation", name = "Deprecated", showcontent = true },
+  { directory = "removal", name = "Removed", showcontent = true },
+  { directory = "packaging", name = "Packaging", showcontent = true },
+]
+
+[tool.python-sbom]
+supplier = { name = "tox-dev", url = [ "https://github.com/tox-dev" ] }
+
+[tool.simplint]
+docstring-style = "rst"
+# the fixture mirrors virtualenv's seed/wheels/embed/__init__.py, which holds the bundle table
+per-file-ignores."tests/_seeder/src/**/__init__.py" = [
+  "init-module-content",
+  "missing-final",
+  "module-variable-prefix"
+]
+
+[tool.nab]
+mode = "universal"
+base-group = "project-runtime"
+uploaded-prior-to = "P7D"
+decision-order = "stable"
+matrix.python = ">=3.15,<3.16"
+matrix.platforms = [ "linux_x86_64" ]
+# release-creator 4.4.0 needs a seven-day cutoff exception.
+# expires 2026-11-09
+packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z
+# simplint 0.7.1, the pre-commit hook, needs a seven-day cutoff exception.
+# expires 2026-11-13
+packages.simplint.uploaded-prior-to = 2026-11-06T21:30:00Z

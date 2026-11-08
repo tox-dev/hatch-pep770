@@ -1,0 +1,163 @@
+requires = [ "tox>=4.64.7", "tox-uv>=1.36.1" ]
+env_list = [ "3.15", "3.14", "3.13", "3.12", "3.11", "3.14t", "3.15t", "docs", "fix", "pkg_meta", "type" ]
+skip_missing_interpreters = true
+
+[env_run_base]
+description = "run the tests with pytest under {env_name}"
+default_base_python = [ "3.15" ]
+package = "wheel"
+wheel_build_env = ".pkg"
+dependency_groups = [ "test" ]
+pass_env = [ "PYTEST_*" ]
+set_env.COVERAGE_FILE = { replace = "env", name = "COVERAGE_FILE", default = "{env_tmp_dir}{/}.coverage" }
+commands = [
+  [
+    "pytest",
+    { replace = "posargs", default = [
+      "--no-cov-on-fail",
+      "--cov",
+      "python_sbom",
+      "--cov",
+      "{tox_root}{/}tests",
+      "--cov-config",
+      "{tox_root}{/}pyproject.toml",
+      "--cov-context",
+      "test",
+      "--cov-report",
+      "term-missing:skip-covered",
+      "--cov-report",
+      "html:{env_tmp_dir}{/}htmlcov",
+      "tests",
+    ], extend = true },
+  ],
+]
+
+[env_pkg_base]
+default_base_python = [ "3.15" ]
+
+[env.docs]
+description = "Build documentation"
+dependency_groups = [ "docs" ]
+commands = [
+  [
+    "python",
+    "-c",
+    # RE2 lacks Python 3.15 wheels: https://github.com/google/re2/issues/647
+    """\
+  import glob; import pathlib; import subprocess; subprocess.check_call(['uv', 'tool', 'run', '--python', '3.14', \
+  '--from', 'proselint>=0.16', 'proselint', 'check', *(path for path in glob.glob('docs/*.rst') if \
+  pathlib.Path(path).name != 'changelog.rst')])\
+  """,
+  ],
+  [
+    "sphinx-build",
+    "-d",
+    "{env_tmp_dir}/doctree",
+    "docs",
+    "{env:READTHEDOCS_OUTPUT:{env_tmp_dir}{/}docs_out}/html",
+    "--color",
+    "-b",
+    "html",
+    "-W",
+    "--keep-going",
+    { replace = "posargs", extend = true },
+  ],
+  [
+    "python",
+    "-c",
+    """\
+  import pathlib; print('documentation available under ' + \
+  (pathlib.Path(r'{env:READTHEDOCS_OUTPUT:{env_tmp_dir}{/}docs_out}/html') / 'index.html').as_uri())\
+  """,
+  ],
+]
+
+[env.fix]
+description = "format the code base to adhere to our styles, and complain about what we cannot do automatically"
+skip_install = true
+dependency_groups = [ "lint" ]
+pass_env = [
+  { replace = "ref", of = [
+    "env_run_base",
+    "pass_env",
+  ], extend = true },
+  "DISABLE_PRE_COMMIT_UV_PATCH",
+  "PROGRAMDATA",
+]
+commands = [ [ "pre-commit", "run", "--all-files", "--show-diff-on-failure", { replace = "posargs", extend = true } ] ]
+
+[env.pkg_meta]
+description = "check that the long description is valid"
+skip_install = true
+dependency_groups = [ "pkg_meta" ]
+commands = [
+  [
+    "uv",
+    "build",
+    "--sdist",
+    "--wheel",
+    "--out-dir",
+    "{env_tmp_dir}",
+    ".",
+  ],
+  [
+    "twine",
+    "check",
+    "--strict",
+    "{env_tmp_dir}{/}*",
+  ],
+  [
+    "check-wheel-contents",
+    "--no-config",
+    # the CycloneDX schemas' Apache-2.0 LICENSE ships beside them and, as a license file, again under .dist-info/licenses
+    "--ignore",
+    "W002",
+    "{env_tmp_dir}",
+  ],
+  [
+    "python",
+    "-c",
+    # the project's own wheel carries the SBOM its hook writes, which lists that hook script among the build tools
+    """\
+  import glob, json, zipfile; (wheel,) = glob.glob(r'{env_tmp_dir}{/}*.whl'); archive = zipfile.ZipFile(wheel); \
+  (sbom,) = (name for name in archive.namelist() if '/sboms/' in name); tools = \
+  json.loads(archive.read(sbom))['metadata']['tools']['components']; assert any(tool['name'] == 'hatch_build.py' for \
+  tool in tools), f'hatch_build.py missing from {sbom}'\
+  """,
+  ],
+  [
+    "python",
+    "-c",
+    # the built wheel validates its own SBOM, so a schema file or validator dependency left out of it fails here
+    """\
+  import glob, pathlib, subprocess, sys; (wheel,) = glob.glob(r'{env_tmp_dir}{/}*.whl'); subprocess.check_call(['uv', \
+  'pip', 'install', '--python', sys.executable, f'python-sbom[validate] @ {pathlib.Path(wheel).as_uri()}'])\
+  """,
+  ],
+  [
+    "python-sbom",
+    "validate",
+    "{env_tmp_dir}",
+  ],
+]
+
+[env.type]
+description = "run type check on code base"
+dependency_groups = [ "type" ]
+commands = [ [ "ty", "check", "--output-format", "concise", "--error-on-warning", "--python-platform", "all", "." ] ]
+
+[env.bench]
+description = "time python-sbom's hot paths with pyperf (not run in CI); `prepare` the fixtures first"
+dependency_groups = [ "bench" ]
+extras = [ "hatch", "validate" ]
+set_env.PYTHONPATH = "{tox_root}"
+commands = [ [ "python", "-m", "bench", { replace = "posargs", extend = true } ] ]
+
+[env.dev]
+description = "dev environment with all deps at {envdir}"
+package = "editable"
+dependency_groups = [ "dev" ]
+commands = [
+  [ "uv", "pip", "tree" ],
+  [ "python", "-c", "import sys; print(sys.executable)" ],
+]
