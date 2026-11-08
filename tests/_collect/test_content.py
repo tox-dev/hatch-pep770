@@ -120,23 +120,30 @@ def test_provider_without_source_is_no_tool(tmp_path: Path, settings: Settings) 
     assert resolve_provider(provider, settings, tmp_path)[1] == ()
 
 
-def test_provider_of_another_project_is_not_reused(tmp_path: Path, settings: Settings) -> None:
-    # two projects whose providers share a module name, built in one process as hatch builds them
+@pytest.mark.parametrize(
+    "layout",
+    [pytest.param("{name}.py", id="module"), pytest.param("{name}/__init__.py", id="package")],
+)
+def test_provider_of_another_project_loads_its_own(tmp_path: Path, settings: Settings, layout: str) -> None:
+    # two projects whose providers share a module name, built in one process as hatch builds them or a test suite builds
+    # copies of one project
     name = f"provider_{tmp_path.name}"
     for project, value in (("first", "1"), ("second", "2")):
-        (tmp_path / project).mkdir()
-        (tmp_path / project / f"{name}.py").write_text(
+        (source := tmp_path / project / layout.format(name=name)).parent.mkdir(parents=True, exist_ok=True)
+        source.write_text(
             f"from python_sbom import ContentProvider\n\n\nclass Content(ContentProvider):\n    value = {value}\n",
             encoding="utf-8",
         )
     try:
-        resolve_provider(f"{name}:Content", settings, tmp_path / "first")
-        with pytest.raises(
-            SbomError, match=rf"this process already imported .*first.*{name}\.py, a module of the same"
-        ):
-            resolve_provider(f"{name}:Content", settings, tmp_path / "second")
+        first, _ = resolve_provider(f"{name}:Content", settings, tmp_path / "first")
+        second, scripts = resolve_provider(f"{name}:Content", settings, tmp_path / "second")
     finally:
         sys.modules.pop(name, None)
+    assert (getattr(first, "value", None), getattr(second, "value", None), scripts) == (
+        1,
+        2,
+        (PurePosixPath(layout.format(name=name)),),
+    )
 
 
 def test_provider_of_the_same_project_loads_again(tmp_path: Path, module: str, settings: Settings) -> None:
