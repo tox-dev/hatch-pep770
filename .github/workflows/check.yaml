@@ -16,7 +16,7 @@ jobs:
   test:
     name: 🧪 test
     if: github.event_name != 'schedule' || github.repository == 'tox-dev/python-sbom'
-    uses: tox-dev/github-workflows/.github/workflows/check.yaml@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+    uses: tox-dev/github-workflows/.github/workflows/check.yaml@0c4cffd63033d38196319524d101caae1eef925b # 6.7.2
     permissions:
       contents: read
     with:
@@ -57,6 +57,6 @@ jobs:
     permissions: {}
     steps:
       - name: 🚦 Require all needed jobs to pass
-        uses: tox-dev/github-workflows/required-checks@e1361e2efa1e9dd9705bb9be719d923cd9154707 # 6.7.1
+        uses: tox-dev/github-workflows/required-checks@0c4cffd63033d38196319524d101caae1eef925b # 6.7.2
         with:
           needs: ${{ toJSON(needs) }}
