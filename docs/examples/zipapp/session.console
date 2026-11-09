@@ -1,0 +1,8 @@
+$ python -m build --wheel
+$ python -m zipfile -e dist/greet-1.0-py3-none-any.whl app
+$ python -m zipapp app --main greet.cli:main --output greet.pyz
+$ python-sbom archive greet.pyz --embed
+wrote greet.pyz.cdx.json
+wrote greet.pyz.cdx.json into greet.pyz
+$ python-sbom validate greet.pyz
+SBOM in greet.pyz is valid

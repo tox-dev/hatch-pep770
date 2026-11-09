@@ -1,5 +1,21 @@
 requires = [ "tox>=4.64.7", "tox-uv>=1.36.1" ]
 env_list = [ "3.15", "3.14", "3.13", "3.12", "3.11", "3.14t", "3.15t", "docs", "fix", "pkg_meta", "type" ]
+labels.examples = [
+  "cibuildwheel",
+  "delocate",
+  "flit-core",
+  "hatchling",
+  "maturin",
+  "meson-python",
+  "pdm-backend",
+  "poetry-core",
+  "scikit-build-core",
+  "setuptools",
+  "uv-build",
+  "zipapp",
+]
+labels.lint = [ "fix", "pkg_meta", "type" ]
+labels.test = [ "3.15", "3.14", "3.13", "3.12", "3.11", "3.14t", "3.15t" ]
 skip_missing_interpreters = true
 
 [env_run_base]
@@ -28,6 +44,9 @@ commands = [
       "--cov-report",
       "html:{env_tmp_dir}{/}htmlcov",
       "tests",
+      # each example builds with a backend of its own, which only its example environment installs
+      "--ignore",
+      "{tox_root}{/}tests{/}examples",
     ], extend = true },
   ],
 ]
@@ -153,6 +172,42 @@ extras = [ "hatch", "validate" ]
 set_env.PYTHONPATH = "{tox_root}"
 commands = [ [ "python", "-m", "bench", { replace = "posargs", extend = true } ] ]
 
+[env.cibuildwheel]
+description = "build the cibuildwheel example of the docs and check its documented session"
+dependency_groups = [ "cibuildwheel" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}cibuildwheel",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.delocate]
+description = "build the delocate example of the docs and check its documented session"
+dependency_groups = [ "delocate" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}delocate",
+    { replace = "posargs", extend = true },
+  ],
+]
+
 [env.dev]
 description = "dev environment with all deps at {envdir}"
 package = "editable"
@@ -160,4 +215,184 @@ dependency_groups = [ "dev" ]
 commands = [
   [ "uv", "pip", "tree" ],
   [ "python", "-c", "import sys; print(sys.executable)" ],
+]
+
+[env.flit-core]
+description = "build the flit-core example of the docs and check its documented session"
+dependency_groups = [ "flit-core" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}flit-core",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.hatchling]
+description = "build the hatchling example of the docs and check its documented session"
+dependency_groups = [ "hatchling" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}hatchling",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.maturin]
+description = "build the maturin example of the docs and check its documented session"
+dependency_groups = [ "maturin" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}maturin",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.meson-python]
+description = "build the meson-python example of the docs and check its documented session"
+dependency_groups = [ "meson-python" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}meson-python",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.pdm-backend]
+description = "build the pdm-backend example of the docs and check its documented session"
+dependency_groups = [ "pdm-backend" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}pdm-backend",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.poetry-core]
+description = "build the poetry-core example of the docs and check its documented session"
+dependency_groups = [ "poetry-core" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}poetry-core",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.scikit-build-core]
+description = "build the scikit-build-core example of the docs and check its documented session"
+dependency_groups = [ "scikit-build-core" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}scikit-build-core",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.setuptools]
+description = "build the setuptools example of the docs and check its documented session"
+dependency_groups = [ "setuptools" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}setuptools",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.uv-build]
+description = "build the uv-build example of the docs and check its documented session"
+dependency_groups = [ "uv-build" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}uv-build",
+    { replace = "posargs", extend = true },
+  ],
+]
+
+[env.zipapp]
+description = "build the zipapp example of the docs and check its documented session"
+dependency_groups = [ "zipapp" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}zipapp",
+    { replace = "posargs", extend = true },
+  ],
 ]

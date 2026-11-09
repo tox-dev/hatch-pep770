@@ -1,0 +1,3 @@
+$ cibuildwheel --only cp313-manylinux_x86_64 --output-dir wheelhouse
+$ python-sbom embed wheelhouse/*.whl
+wrote greet-1.0.dist-info/sboms/greet.cdx.json into greet-1.0-cp313-cp313-manylinux_2_28_x86_64.whl
