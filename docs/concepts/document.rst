@@ -8,8 +8,8 @@ with a repository, the license file follow. A build from a git checkout adds the
 revision. Links to the license file and build scripts point at that commit when the checkout is clean, and at the
 default branch otherwise.
 
-CycloneDX requires each URL to be an IRI reference. A project URL or home page that is not one gets percent-encoded,
-or left out when encoding cannot mend it, as with an scp-style ``git@host:path`` address; either way a
+CycloneDX requires each URL to be an IRI reference. A project URL or home page that is not one gets percent-encoded, or
+left out when encoding cannot mend it, as with an scp-style ``git@host:path`` address; either way a
 ``python:project-url`` or ``python:home-page`` property keeps the text as written.
 
 The components below the root are the wheels the project bundles and the runtime dependencies it declares. A bundled
@@ -31,9 +31,9 @@ values copied from core metadata.
 *****************
 
 The document holds nothing about the build machine. Its timestamp comes from ``SOURCE_DATE_EPOCH``. When that is unset,
-a reproducible hatchling build uses hatchling's fixed 2020-02-02 and a pdm-backend build pdm-backend's fixed
-2016-01-01, the times they stamp on the wheel's entries, and any other build uses the current time. Its serial number derives from the content, so identical documents share one and any
-difference gets a new one.
+a reproducible hatchling build uses hatchling's fixed 2020-02-02 and a pdm-backend build pdm-backend's fixed 2016-01-01,
+the times they stamp on the wheel's entries, and any other build uses the current time. Its serial number derives from
+the content, so identical documents share one and any difference gets a new one.
 
 The build tools are listed down to their files, so a rebuild can check it installed the same bytes. Only what is the
 same on every machine goes in: platform wheels appear without their files, because those differ per operating system and
@@ -42,8 +42,8 @@ launchers and uv's cache files are left out too, since they name the frontend, t
 than the distribution.
 
 Hashing each tool's ``RECORD`` instead would be smaller, but that file lists the installer metadata, so two frontends
-installing the same tools would give two hashes. The cost is size: the file list grows with the build environment, and
-a large build tool such as setuptools adds hundreds of entries.
+installing the same tools would give two hashes. The cost is size: the file list grows with the build environment, and a
+large build tool such as setuptools adds hundreds of entries.
 
 So a rebuild reproduces the wheel byte for byte on any operating system when these match the original build: the source
 tree, as a checkout of the same commit; ``SOURCE_DATE_EPOCH``; the Python version; and the versions of the build backend

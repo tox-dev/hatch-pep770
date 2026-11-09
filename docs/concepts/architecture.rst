@@ -4,11 +4,11 @@
 
 Each concern has its own subpackage, and only the adapters know a build system or the command line. The build backend
 integrations (the hatchling and pdm-backend hooks, the setuptools plugin and the wrapper backend) and the ``embed`` and
-``archive`` commands gather the options, the build scripts and the build facts (time, revision,
-toolchain), and hand them, with a :class:`~python_sbom.ContentProvider`, to the pipeline for their artifact. Each
-pipeline opens its artifact once, reads it, gives the provider a :class:`~python_sbom.ProviderContext` that reads from
-the same open artifact, and maps what it read to components; one function of the model then adds what every artifact
-of the project shares: supplier, source links, revision, tools, dependencies and formulation.
+``archive`` commands gather the options, the build scripts and the build facts (time, revision, toolchain), and hand
+them, with a :class:`~python_sbom.ContentProvider`, to the pipeline for their artifact. Each pipeline opens its artifact
+once, reads it, gives the provider a :class:`~python_sbom.ProviderContext` that reads from the same open artifact, and
+maps what it read to components; one function of the model then adds what every artifact of the project shares:
+supplier, source links, revision, tools, dependencies and formulation.
 
 The diagram follows one build, from the entry point to the document written into the artifact:
 
@@ -32,21 +32,21 @@ Each step lives in a subpackage of its own:
 .. list-table::
     :header-rows: 1
 
-    * - Subpackage
+    - - Subpackage
       - Responsibility
-    * - ``hatch``, ``pdm``, ``setuptools``, ``backend``, ``_cli``
+    - - ``hatch``, ``pdm``, ``setuptools``, ``backend``, ``_cli``
       - the entry points; only these know a build backend or the command line
-    * - ``_generate``
+    - - ``_generate``
       - one pipeline per artifact, wheel or archive, which runs the steps below in order
-    * - ``_collect``
+    - - ``_collect``
       - reads the options, the source revision, the build environment and the artifact's files
-    * - ``_model``
+    - - ``_model``
       - turns what was read into the document; pure functions, no file access
-    * - ``_formats``
+    - - ``_formats``
       - writes the document as CycloneDX JSON, or renders it as SPDX 2.3
-    * - ``_wheel``, ``_backends``
+    - - ``_wheel``, ``_backends``
       - read and rewrite zip files and sdists
-    * - ``_validate``
+    - - ``_validate``
       - checks finished SBOMs, for the ``validate`` command
 
 Every subpackage raises :class:`~python_sbom.SbomError`, which the command line reports without a traceback. Each

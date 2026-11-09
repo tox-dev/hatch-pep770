@@ -26,9 +26,10 @@ it adds.
   included, a dependency names one that no component has, a ``bom-ref`` gets a second dependency entry (the root's
   included, which python-sbom writes), or a root property uses the project's own prefix.
 
-Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and every
-plugin, the wrapper backend, ``python-sbom embed`` and ``python-sbom archive`` load it. When the provider's class lives in the project, the
-SBOM lists its module among the build tools, hashed, because it shapes the document a rebuild has to reproduce:
+Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and
+every plugin, the wrapper backend, ``python-sbom embed`` and ``python-sbom archive`` load it. When the provider's class
+lives in the project, the SBOM lists its module among the build tools, hashed, because it shapes the document a rebuild
+has to reproduce:
 
 .. code-block:: python
 
@@ -37,14 +38,19 @@ SBOM lists its module among the build tools, hashed, because it shapes the docum
 
     class Content(ContentProvider):
         def contributions(self, context):
-            zlib = {'type': 'library', 'bom-ref': 'pkg:generic/zlib@1.3.1', 'name': 'zlib', 'version': '1.3.1'}
+            zlib = {
+                'type': 'library',
+                'bom-ref': 'pkg:generic/zlib@1.3.1',
+                'name': 'zlib',
+                'version': '1.3.1',
+            }
             return Contributions(components=[zlib])
 
 The context has no method that lists files. A provider that needs the wheel's file list reads its ``RECORD`` through
 :meth:`~python_sbom.ProviderContext.read`, by the path of the project's ``.dist-info`` directory, such as
-``seeder-1.0.dist-info/RECORD``; an archive holds that directory at its top level, and the path reads the same there. The
-provider knows the project's name, and a hook subclass, shown below, can hand it hatchling's ``self.metadata.version``.
-Any other member reads the same way, by its path inside the artifact.
+``seeder-1.0.dist-info/RECORD``; an archive holds that directory at its top level, and the path reads the same there.
+The provider knows the project's name, and a hook subclass, shown below, can hand it hatchling's
+``self.metadata.version``. Any other member reads the same way, by its path inside the artifact.
 
 **************************
  Worked example: a seeder
@@ -75,13 +81,13 @@ properties first, in this order, followed by those from its own metadata:
 .. list-table::
     :header-rows: 1
 
-    * - Property
+    - - Property
       - Value
-    * - ``seeder:bundled-wheel``
+    - - ``seeder:bundled-wheel``
       - ``seeder/embed/pip-1.0-py3-none-any.whl``
-    * - ``seeder:seeded-for-python``
+    - - ``seeder:seeded-for-python``
       - ``3.14``
-    * - ``seeder:seeded-for-python``
+    - - ``seeder:seeded-for-python``
       - ``3.15``
 
 A bundled wheel is named by its path inside the artifact, so the wheel's SBOM and an archive's give it the same
@@ -89,6 +95,5 @@ A bundled wheel is named by its path inside the artifact, so the wheel's SBOM an
 
 A hook subclass serves only the hatchling build: the other integrations, ``python-sbom embed`` and ``python-sbom
 archive`` load the provider the ``content-provider`` option or ``--content-provider`` names, and build a class without
-arguments. A project that
-wants the same provider in every SBOM it publishes gives the provider a constructor without arguments, or a module-level
-instance, and names it in the option instead of overriding the hook.
+arguments. A project that wants the same provider in every SBOM it publishes gives the provider a constructor without
+arguments, or a module-level instance, and names it in the option instead of overriding the hook.

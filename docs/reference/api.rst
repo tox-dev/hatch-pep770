@@ -4,8 +4,8 @@
 
 The Python API is what a build backend loads and what a project needs to add its own knowledge to the SBOM: the backend
 integrations and the content provider they call, with the types those take and return. Everything else, from embedding
-to validation, runs through the :doc:`/reference/cli`. The core is importable from ``python_sbom`` without any build backend; each
-integration lives in a module of its own and imports only its backend.
+to validation, runs through the :doc:`/reference/cli`. The core is importable from ``python_sbom`` without any build
+backend; each integration lives in a module of its own and imports only its backend.
 
 .. py:data:: python_sbom.__version__
     :type: str

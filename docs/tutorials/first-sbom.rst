@@ -11,8 +11,8 @@ way a CI job would. It takes about ten minutes. You need Python 3.11 or later, g
 ********************
 
 Make a directory with a package, a license and a ``pyproject.toml``. The project uses `hatchling
-<https://hatch.pypa.io/latest/>`_, the backend python-sbom has the most to say about; :doc:`/reference/backends` lists the
-others.
+<https://hatch.pypa.io/latest/>`_, the backend python-sbom has the most to say about; :doc:`/reference/backends` lists
+the others.
 
 .. code-block:: console
 
@@ -87,12 +87,13 @@ Print a few parts of the document:
     $ unzip -p dist/greet-1.0-py3-none-any.whl greet-1.0.dist-info/sboms/greet.cdx.json > greet.cdx.json
     $ python - <<'EOF'
     import json
+    import pprint
     sbom = json.load(open('greet.cdx.json'))
     root = sbom['metadata']['component']
     print(root['name'], root['version'], root['licenses'])
     print([component['name'] for component in sbom['components']])
     print([reference['url'] for reference in root['externalReferences'] if reference['type'] == 'vcs'])
-    print(sorted(tool['name'] for tool in sbom['metadata']['tools']['components']))
+    pprint.pp(sorted(tool['name'] for tool in sbom['metadata']['tools']['components']), compact=True, width=100)
     EOF
 
 It prints:
@@ -102,7 +103,8 @@ It prints:
     greet 1.0 [{'expression': 'MIT', 'acknowledgement': 'declared'}]
     ['packaging']
     ['https://github.com/you/greet', 'https://github.com/you/greet/tree/<your commit>']
-    ['cpython', 'hatchling', 'installer', 'packageurl-python', 'packaging', 'pathspec', 'pluggy', 'python-sbom', 'tomlkit', 'trove-classifiers', 'zipremove']
+    ['cpython', 'hatchling', 'installer', 'packageurl-python', 'packaging', 'pathspec', 'pluggy',
+     'python-sbom', 'tomlkit', 'trove-classifiers', 'zipremove']
 
 That is four things:
 

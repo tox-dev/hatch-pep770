@@ -19,9 +19,9 @@ python-sbom ships a `hatchling <https://hatch.pypa.io/latest/>`_ build hook. Add
 Every wheel you build now carries the SBOM. An editable wheel carries none, and an sdist carries the source revision
 instead, so a wheel built from it still names its commit.
 
-Put python-sbom's options in ``[tool.python-sbom]``, the table every integration reads, never in the hook's table:
-the hook's table holds only hatchling's own options, such as ``enable-by-default``, and a python-sbom option there fails
-the build with a pointer to ``[tool.python-sbom]``. :doc:`/reference/configuration` lists the options.
+Put python-sbom's options in ``[tool.python-sbom]``, the table every integration reads, never in the hook's table: the
+hook's table holds only hatchling's own options, such as ``enable-by-default``, and a python-sbom option there fails the
+build with a pointer to ``[tool.python-sbom]``. :doc:`/reference/configuration` lists the options.
 
 The hook writes the SBOM once hatchling has written the wheel, so the document describes the final file name and
 metadata, whatever dependencies or tag other hooks changed. The order of the hook tables does not matter.
@@ -50,7 +50,9 @@ find, so enable the hook from a custom hook script that falls back to a hook doi
     if sys.version_info >= (3, 11):
         from python_sbom.hatch import SbomBuildHook
     else:  # no python-sbom here, so these builds carry no SBOM
-        from hatchling.builders.hooks.plugin.interface import BuildHookInterface as SbomBuildHook
+        from hatchling.builders.hooks.plugin.interface import (
+            BuildHookInterface as SbomBuildHook,
+        )
 
 
     def get_build_hook():

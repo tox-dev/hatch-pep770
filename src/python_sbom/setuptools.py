@@ -1,11 +1,4 @@
-"""
-The setuptools plugin, which writes the SBOM into every wheel setuptools builds.
-
-setuptools calls it through the ``setuptools.finalize_distribution_options`` entry point for every build in an
-environment where python-sbom is installed, so it acts only for a project whose ``pyproject.toml`` has a
-``[tool.python-sbom]`` table, empty or not. It then wraps the ``bdist_wheel`` and ``sdist`` commands the project uses,
-its own subclasses passed in ``setup(cmdclass=...)`` included.
-"""
+"""The setuptools plugin, which writes the SBOM into every wheel setuptools builds."""
 
 from __future__ import annotations
 

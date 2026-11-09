@@ -171,3 +171,16 @@ def test_sdist_without_top_directory(checkout: Path, monkeypatch: pytest.MonkeyP
     with pytest.raises(SbomError, match=r"has no top-level directory to add \.python-sbom-revision to"):
         backend.build_sdist(str(checkout / "dist"))
     assert sorted(path.name for path in (checkout / "dist").iterdir()) == ["example-1.0.tar.gz"]
+
+
+def test_wheel_from_sdist_names_its_commit(checkout: Path, git: Git, tmp_path: Path) -> None:
+    with tarfile.open(checkout / "dist" / backend.build_sdist(str(checkout / "dist"))) as archive:
+        archive.extractall(tmp_path / "unpacked", filter="data")
+    unpacked = tmp_path / "unpacked" / "example-1.0"
+    with pytest.MonkeyPatch.context() as patch:
+        patch.chdir(unpacked)
+        (unpacked / "dist").mkdir()
+        wheel = unpacked / "dist" / backend.build_wheel(str(unpacked / "dist"))
+    sbom = zipfile.ZipFile(wheel).read("example-1.0.dist-info/sboms/example.cdx.json")
+    component = json.loads(sbom)["metadata"]["component"]
+    assert git("rev-parse", "HEAD") in json.dumps(component)

@@ -1,12 +1,4 @@
-"""
-A build backend that wraps another one and writes the SBOM into every wheel it builds.
-
-Set ``build-backend = "python_sbom.backend"`` and name the backend to wrap in ``[tool.python-sbom]``, such as
-``build-backend = "mesonpy"``. Every PEP 517 and PEP 660 hook goes to that backend unchanged; the optional ones exist
-here only when it defines them, so a frontend sees the same hooks it would without the wrapper. Once the backend wrote a
-wheel, its SBOM goes in, describing the build's own environment; once it wrote an sdist, the source revision goes in,
-so a wheel built from that sdist still names its commit. An editable wheel carries no code, so it gets no SBOM.
-"""
+"""A build backend that wraps another one and writes the SBOM into every wheel it builds."""
 
 from __future__ import annotations
 

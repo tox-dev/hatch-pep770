@@ -2,9 +2,9 @@
  Why each backend gets its integration
 #######################################
 
-The SBOM describes the finished wheel: its file name, its files with their hashes, and the environment that built it.
-So it has to be written after the backend has written the wheel, inside the build, and every integration is shaped by
-where a backend lets code run at that moment.
+The SBOM describes the finished wheel: its file name, its files with their hashes, and the environment that built it. So
+it has to be written after the backend has written the wheel, inside the build, and every integration is shaped by where
+a backend lets code run at that moment.
 
 ****************************************************
  Plugins where a backend has a hook after the build
@@ -28,9 +28,9 @@ builds as before.
 
 meson-python, maturin, flit-core and uv_build have no plugin interface. poetry-core's build script runs before
 packaging, and scikit-build-core has none that runs after the build either; its own documentation recommends `wrapping
-the backend <https://scikit-build-core.readthedocs.io/en/latest/configuration/wrapping.html>`_. Static SBOM options, such
-as hatchling's ``sbom-files`` or maturin's include list, add a file while the wheel is still being written, too early
-for a document that lists the wheel's own hashes.
+the backend <https://scikit-build-core.readthedocs.io/en/latest/configuration/wrapping.html>`_. Static SBOM options,
+such as hatchling's ``sbom-files`` or maturin's include list, add a file while the wheel is still being written, too
+early for a document that lists the wheel's own hashes.
 
 Every backend shares one interface, though: the hooks of `PEP 517 <https://peps.python.org/pep-0517/>`_ and `PEP 660
 <https://peps.python.org/pep-0660/>`_. ``python_sbom.backend`` implements it by handing each call to the backend the

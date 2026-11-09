@@ -17,16 +17,16 @@ installers to keep SBOMs, so they land in the environment next to the installed 
 General-purpose scanners read the dependencies a package declares or the packages an environment has installed. They
 cannot see a wheel your project ships as a data file, and they cannot say how the wheel was built. The SBOM python-sbom
 writes records both: the wheels you bundle, with their hashes, licenses and vendored packages, and the Python version
-and packages of the build environment. A third party can use that record to rebuild the wheel and compare the bytes.
-The :doc:`changelog` lists the changes in each version.
+and packages of the build environment. A third party can use that record to rebuild the wheel and compare the bytes. The
+:doc:`changelog` lists the changes in each version.
 
 **************
  Installation
 **************
 
 python-sbom runs inside your build, so it goes in ``[build-system] requires``, with the extra for your backend, rather
-than into an environment of yours. It needs Python 3.11 or later. :doc:`/reference/backends` names the extra
-for each backend; the command line, for wheels built elsewhere and for checking SBOMs, installs as a tool:
+than into an environment of yours. It needs Python 3.11 or later. :doc:`/reference/backends` names the extra for each
+backend; the command line, for wheels built elsewhere and for checking SBOMs, installs as a tool:
 
 .. code-block:: bash
 
@@ -61,7 +61,8 @@ for each backend; the command line, for wheels built elsewhere and for checking 
 
         **Want to know how it works?**
 
-        :doc:`/concepts/index` says why each backend gets its integration, what the SBOM records, and how the code is laid out.
+        :doc:`/concepts/index` says why each backend gets its integration, what the SBOM records, and how the code is
+        laid out.
 
 **********
  Features

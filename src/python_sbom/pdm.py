@@ -1,9 +1,4 @@
-"""
-The pdm-backend build hook, which writes the SBOM into every wheel pdm-backend builds.
-
-pdm-backend loads it from the ``pdm.build.hook`` entry point group whenever python-sbom is installed in the build
-environment, so it acts only for a project whose ``pyproject.toml`` has a ``[tool.python-sbom]`` table, empty or not.
-"""
+"""The pdm-backend build hook, which writes the SBOM into every wheel pdm-backend builds."""
 
 from __future__ import annotations
 

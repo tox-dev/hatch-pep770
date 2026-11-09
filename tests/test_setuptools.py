@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tarfile
 import zipfile
 from typing import TYPE_CHECKING, Final
@@ -16,6 +17,12 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from tests.conftest import Git
+
+# setuptools-scm, which the dev environment installs through hatch-vcs, warns about its file finder in every setuptools
+# build
+pytestmark: Final[pytest.MarkDecorator] = pytest.mark.filterwarnings(
+    "ignore:The setuptools.file_finders entry point is deprecated:DeprecationWarning"
+)
 
 # the project's own wheel command, which the plugin must keep
 _SETUP: Final[str] = """\
@@ -160,3 +167,16 @@ def revision_of(sdist: Path) -> bytes | None:
 def test_sdist_of_dirty_checkout_records_no_revision(checkout: Path) -> None:
     (checkout / "LICENSE").write_text("changed\n", encoding="utf-8")
     assert revision_of(checkout / "dist" / build_meta.build_sdist(str(checkout / "dist"))) is None
+
+
+def test_wheel_from_sdist_names_its_commit(checkout: Path, git: Git, tmp_path: Path) -> None:
+    with tarfile.open(checkout / "dist" / build_meta.build_sdist(str(checkout / "dist"))) as archive:
+        archive.extractall(tmp_path / "unpacked", filter="data")
+    unpacked = tmp_path / "unpacked" / "example-1.0"
+    with pytest.MonkeyPatch.context() as patch:
+        patch.chdir(unpacked)
+        (unpacked / "dist").mkdir()
+        wheel = unpacked / "dist" / build_meta.build_wheel(str(unpacked / "dist"))
+    sbom = zipfile.ZipFile(wheel).read("example-1.0.dist-info/sboms/example.cdx.json")
+    component = json.loads(sbom)["metadata"]["component"]
+    assert git("rev-parse", "HEAD") in json.dumps(component)
