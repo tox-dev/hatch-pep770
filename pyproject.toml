@@ -226,6 +226,7 @@ lint.per-file-ignores."bench/**/*.py" = [
 ]
 lint.per-file-ignores."docs/examples/**/*.py" = [
   "implicit-namespace-package", # Each example is a project of its own, with a src layout
+  "print",                      # The examples are command-line programs that print their greeting
 ]
 lint.per-file-ignores."tests/**/*.py" = [
   "assert",                               # Tests use assertions

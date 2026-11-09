@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import sys
-
 from ._greet import hello
 
 
 def main() -> None:
-    sys.stdout.write(f"{hello()}\n")
+    print(hello())
