@@ -11,9 +11,8 @@ from python_sbom._collect._source import copyright_notice, hash_build_scripts
 from python_sbom._errors import SbomError
 from python_sbom._formats._json import dumps
 from python_sbom._model._archive import archive_artifact, bundled_paths
-from python_sbom._model._bom import assemble
+from python_sbom._model._bom import assemble, checked_contributions
 from python_sbom._model._content import ProviderContext
-from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
 from python_sbom._model._names import archive_sbom_file_name
 from python_sbom._wheel._reader import open_artifact

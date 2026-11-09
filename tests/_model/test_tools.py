@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import dataclasses
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 from python_sbom._model._inputs import InstalledDistribution, RecordRow
 from python_sbom._model._metadata import parse_metadata
-from python_sbom._model._tools import tool_components
+from python_sbom._model._tools import script_tool, tool_components
 
 if TYPE_CHECKING:
     from python_sbom._model._inputs import BuildFacts
@@ -64,3 +65,19 @@ def test_tool_bom_ref_and_purl_agree(facts: BuildFacts) -> None:
     )
     (_, component), _ = tool_components(dataclasses.replace(facts, distributions=[tool]))
     assert (component["bom-ref"], component.get("purl")) == ("tool:pkg:pypi/boolean-py@5.0", "pkg:pypi/boolean-py@5.0")
+
+
+def test_script_tool_with_link() -> None:
+    tool = script_tool(PurePosixPath("build/hook.py"), "ef" * 32, "1.0", "https://example.com/hook.py")
+    assert tool == {
+        "type": "application",
+        "bom-ref": "tool:build/hook.py",
+        "name": "hook.py",
+        "version": "1.0",
+        "hashes": [{"alg": "SHA-256", "content": "ef" * 32}],
+        "externalReferences": [{"type": "vcs", "url": "https://example.com/hook.py"}],
+    }
+
+
+def test_script_tool_without_link() -> None:
+    assert "externalReferences" not in script_tool(PurePosixPath("hook.py"), "ef" * 32, "1.0", None)

@@ -16,8 +16,13 @@ description = "SBOMs for Python distributions: write PEP 770 CycloneDX SBOMs int
 keywords = [
   "cyclonedx",
   "hatch",
+  "maturin",
+  "meson-python",
+  "pdm-backend",
+  "pep517",
   "pep770",
   "sbom",
+  "setuptools",
   "spdx",
 ]
 license = "MIT AND Apache-2.0"
@@ -57,6 +62,12 @@ dependencies = [
 optional-dependencies.hatch = [
   "hatchling>=1.28",
 ]
+optional-dependencies.pdm = [
+  "pdm-backend>=2.4",
+]
+optional-dependencies.setuptools = [
+  "setuptools>=77",
+]
 optional-dependencies.validate = [
   "jsonschema-rs>=0.60.3",
   "license-expression>=30",
@@ -68,6 +79,10 @@ urls.Homepage = "https://github.com/tox-dev/python-sbom"
 urls.Source = "https://github.com/tox-dev/python-sbom"
 urls.Tracker = "https://github.com/tox-dev/python-sbom/issues"
 scripts.python-sbom = "python_sbom._cli._main:main"
+entry-points."pdm.build.hook".python-sbom = "python_sbom.pdm:SbomBuildHook"
+entry-points."setuptools.finalize_distribution_options".python-sbom = """\
+  python_sbom.setuptools:finalize_distribution_options\
+  """
 entry-points.hatch.python-sbom = "python_sbom.hatch.hooks"
 
 [dependency-groups]
@@ -79,12 +94,15 @@ dev = [
 ]
 test = [
   "covdefaults>=2.3",
+  "flit-core>=3.12",
   "hatchling>=1.28",
   "installer>=1.1",
   "jsonschema-rs>=0.60.3",
+  "pdm-backend>=2.4",
   "pytest>=9.1.1",
   "pytest-cov>=7.1",
   "pytest-mock>=3.16",
+  "setuptools>=77",
   "spdx-tools>=0.8.5",
 ]
 type = [
@@ -96,9 +114,14 @@ type = [
 docs = [
   "furo>=2025.12.19",
   "hatchling>=1.28",
+  "pdm-backend>=2.4",
+  "setuptools>=77",
   "sphinx>=9.0.4",
   "sphinx-argparse-cli>=1.23",
   "sphinx-autodoc-typehints>=3.17",
+  "sphinx-copybutton>=0.5.2",
+  "sphinx-design>=0.7",
+  "sphinx-inline-tabs>=2025.12.21.14",
   "sphinxcontrib-mermaid>=2.1.1",
 ]
 bench = [
@@ -135,6 +158,10 @@ release-prepare = [
 version.source = "vcs"
 metadata.hooks.fancy-pypi-readme.content-type = "text/markdown"
 metadata.hooks.fancy-pypi-readme.fragments = [ { path = "README.md" } ]
+# PyPI cannot resolve the README's relative image paths, so the logo comes from the default branch there
+metadata.hooks.fancy-pypi-readme.substitutions = [
+  { pattern = '"docs/_static/', replacement = '"https://raw.githubusercontent.com/tox-dev/python-sbom/main/docs/_static/' },
+]
 build.hooks.vcs.version-file = "src/python_sbom/version.py"
 # writes python-sbom's own SBOM with the hook it ships, after the vcs hook writes the version
 build.hooks.custom.path = "hatch_build.py"

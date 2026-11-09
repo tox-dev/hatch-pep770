@@ -10,12 +10,10 @@ from packaging.utils import canonicalize_name
 from ._graph import walk_components
 from ._iri import iri_reference
 from ._licenses import licenses
-from ._names import purl, pypi_url, reference_type, sbom_property, tool_ref
+from ._names import purl, pypi_url, reference_type, sbom_property
 from ._types import Dependency
 
 if TYPE_CHECKING:
-    from pathlib import PurePosixPath
-
     from ._content import BundledWheelInfo
     from ._inputs import BundledWheel, RecordRow
     from ._metadata import CoreMetadata
@@ -159,24 +157,10 @@ def vendored_dependencies(components: list[Component]) -> list[Dependency]:
     return found
 
 
-def script_tool(path: PurePosixPath, sha256: str, version: str, link: str | None) -> Component:
-    tool: Final[Component] = {
-        "type": "application",
-        "bom-ref": tool_ref(str(path)),
-        "name": path.name,
-        "version": version,
-        "hashes": [{"alg": "SHA-256", "content": sha256}],
-    }
-    if link is not None:
-        tool["externalReferences"] = [{"type": "vcs", "url": link}]
-    return tool
-
-
 __all__ = [
     "bundled_wheel_component",
     "component_from_metadata",
     "file_component",
     "mark_bundled",
-    "script_tool",
     "vendored_dependencies",
 ]

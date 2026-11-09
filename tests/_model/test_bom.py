@@ -4,20 +4,28 @@ import dataclasses
 import json
 import uuid
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
 
 import pytest
 
 from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
+from python_sbom._errors import SbomError
+from python_sbom._model._bom import (
+    check_refs,
+    checked_contributions,
+    contributed_properties,
+    formulation,
+    with_header,
+)
 from python_sbom._model._inputs import BuildScript, BundledWheel, Revision
 from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
     from conftest import Describe
 
-    from python_sbom import Component
+    from python_sbom import Component, Dependency, Property
     from python_sbom._model._inputs import BuildFacts, Settings
-    from python_sbom._model._types import OrganizationalEntity
+    from python_sbom._model._types import Body, Formula, OrganizationalEntity
 
 _INTERPRETER: Final[str] = "tool:pkg:generic/cpython@3.15.0"
 
@@ -212,68 +220,6 @@ def test_revision_without_repository_records_commit_only(describe: Describe, fac
     assert [reference["type"] for reference in root["externalReferences"]] == ["distribution", "attestation"]
 
 
-def test_declared_dependency(describe: Describe) -> None:
-    requirement = 'tomli>=2; python_version < "3.11"'
-    document = describe(f"Requires-Dist: {requirement}\n")
-    assert document["components"] == [
-        {
-            "type": "library",
-            "bom-ref": f"requires-dist:{requirement}",
-            "name": "tomli",
-            "purl": "pkg:pypi/tomli",
-            "externalReferences": [{"type": "distribution", "url": "https://pypi.org/project/tomli/"}],
-            "properties": [
-                {"name": "example:requires-dist", "value": requirement},
-                {"name": "example:environment-marker", "value": 'python_version < "3.11"'},
-            ],
-        }
-    ]
-
-
-def test_repeated_requirement_is_one_component(describe: Describe) -> None:
-    document = describe("Requires-Dist: packaging>=24\nRequires-Dist: packaging>=24\n")
-    assert [component["bom-ref"] for component in document["components"]] == ["requires-dist:packaging>=24"]
-
-
-def test_scope_names_bundled_directories(describe: Describe, settings: Settings) -> None:
-    document = describe(settings=dataclasses.replace(settings, bundled_wheels=("src/b/*.whl", "src/a/x/*.whl")))
-    assert document["metadata"]["properties"][0]["value"] == (
-        "Components are the wheels bundled as data files under src/a/x and src/b and the direct runtime dependencies"
-        " declared in the wheel's core metadata, which carry no version because the installer resolves them."
-    )
-
-
-def test_bundled_wheel_and_its_vendored_packages(describe: Describe) -> None:
-    wheel = BundledWheel(
-        path="src/pip-1.0-py3-none-any.whl",
-        sha256="ab" * 32,
-        metadata_name="pip-1.0.dist-info/METADATA",
-        metadata=parse_metadata("Name: pip\nVersion: 1.0\n"),
-        files=[],
-        vendored=[("pip/_vendor/vendor.txt", parse_metadata("Name: urllib3\nVersion: 1.26.4\n"))],
-    )
-
-    class Seeded(ContentProvider):
-        def __init__(self, name: str) -> None:
-            self._name = name
-
-        def bundled_wheel(self, context: ProviderContext, wheel: PurePosixPath) -> BundledWheelInfo:
-            return BundledWheelInfo(
-                properties=[{"name": f"{context.identity.property_prefix}:{self._name}", "value": str(wheel)}]
-            )
-
-    document = describe(bundled=[wheel], content=Seeded("seeded"))
-    assert document["components"][0]["properties"][1] == {
-        "name": "example:seeded",
-        "value": "src/pip-1.0-py3-none-any.whl",
-    }
-    bundled_ref = "bundled:src/pip-1.0-py3-none-any.whl"
-    assert document["dependencies"][:2] == [
-        {"ref": "pkg:pypi/example@1.0", "dependsOn": [bundled_ref]},
-        {"ref": bundled_ref, "dependsOn": [f"{bundled_ref}#vendored/pkg:pypi/urllib3@1.26.4"]},
-    ]
-
-
 @pytest.mark.parametrize(
     ("revision", "tree"),
     [
@@ -393,3 +339,127 @@ def test_bundled_wheel_supplier_is_the_projects_choice(
         content=content,
     )
     assert document["components"][0].get("supplier") == expected
+
+
+def test_document_serial_derives_from_body() -> None:
+    body: Body = {
+        "metadata": {
+            "timestamp": "2023-11-14T22:13:20+00:00",
+            "lifecycles": [{"phase": "build"}],
+            "tools": {"components": []},
+            "component": {"type": "application", "bom-ref": "app", "name": "app"},
+        },
+        "components": [],
+        "dependencies": [],
+    }
+    namespace = uuid.uuid5(uuid.NAMESPACE_URL, "https://example.org/sboms")
+    assert with_header(body, namespace) == {
+        "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "serialNumber": f"urn:uuid:{uuid.uuid5(namespace, json.dumps(body, sort_keys=True))}",
+        "version": 1,
+        **body,
+    }
+
+
+def test_check_refs_refuses_repeated_refs() -> None:
+    body: Body = {
+        "metadata": {
+            "timestamp": "2023-11-14T22:13:20+00:00",
+            "lifecycles": [{"phase": "build"}],
+            "tools": {"components": [{"type": "application", "bom-ref": "app", "name": "tool"}]},
+            "component": {"type": "application", "bom-ref": "app", "name": "app"},
+        },
+        "components": [],
+        "dependencies": [],
+    }
+    with pytest.raises(SbomError, match="bom-ref values repeat: app"):
+        check_refs(body)
+
+
+def test_check_refs_refuses_unknown_dependency() -> None:
+    body: Body = {
+        "metadata": {
+            "timestamp": "2023-11-14T22:13:20+00:00",
+            "lifecycles": [{"phase": "build"}],
+            "tools": {"components": []},
+            "component": {"type": "application", "bom-ref": "app", "name": "app"},
+        },
+        "components": [],
+        "dependencies": [{"ref": "app", "dependsOn": ["ghost"]}],
+    }
+    with pytest.raises(SbomError, match="dependencies name bom-refs no component has: ghost"):
+        check_refs(body)
+
+
+def test_contributed_properties_keep_their_own_prefix() -> None:
+    properties: list[Property] = [{"name": "extra:key", "value": "1"}]
+    assert contributed_properties(properties, "example") == properties
+
+
+def test_contributed_properties_refuse_the_project_prefix() -> None:
+    with pytest.raises(SbomError, match="example:vcs-commit use the example: prefix python-sbom writes"):
+        contributed_properties([{"name": "example:vcs-commit", "value": "0"}], "example")
+
+
+def _partial(**fields: str | list[dict[str, str]]) -> Component:
+    # a component a provider got wrong, which the types alone would not let through
+    return cast("Component", fields)
+
+
+def test_check_refs_refuses_a_second_dependency_entry_for_a_ref() -> None:
+    # as when a provider adds an entry for the root, whose entry python-sbom writes
+    body = _body([], [{"ref": "app", "dependsOn": []}, {"ref": "app", "dependsOn": []}], [])
+    with pytest.raises(SbomError, match="dependencies list more than one entry for: app"):
+        check_refs(body)
+
+
+def _body(components: list[Component], dependencies: list[Dependency], formulation: list[Formula]) -> Body:
+    return {
+        "metadata": {
+            "timestamp": "2023-11-14T22:13:20+00:00",
+            "lifecycles": [{"phase": "build"}],
+            "tools": {"components": []},
+            "component": {"type": "application", "bom-ref": "app", "name": "app"},
+        },
+        "components": components,
+        "dependencies": dependencies,
+        "formulation": formulation,
+    }
+
+
+@pytest.mark.parametrize(
+    "ref", [pytest.param("formula:build", id="formula"), pytest.param("workflow:build", id="workflow")]
+)
+def test_check_refs_refuses_a_component_taking_a_formulation_ref(facts: BuildFacts, ref: str) -> None:
+    formula = formulation("build", "build the app", [], "app", facts)
+    body = _body([{"type": "library", "bom-ref": ref, "name": "clash"}], [], [formula])
+    with pytest.raises(SbomError, match=f"bom-ref values repeat: {ref}"):
+        check_refs(body)
+
+
+@pytest.mark.parametrize(
+    ("contributions", "missing"),
+    [
+        pytest.param(Contributions(components=[_partial(type="library", name="zlib")]), "bom-ref", id="component"),
+        pytest.param(
+            Contributions(
+                components=[
+                    _partial(type="library", name="zlib", **{"bom-ref": "zlib", "components": [{"type": "file"}]})
+                ]
+            ),
+            "bom-ref, name",
+            id="nested",
+        ),
+        pytest.param(Contributions(tools=[_partial(name="cmake", **{"bom-ref": "tool:cmake"})]), "type", id="tool"),
+    ],
+)
+def test_contributions_need_the_fields_the_build_reads(contributions: Contributions, missing: str) -> None:
+    with pytest.raises(SbomError, match=f"content provider ContentProvider added a component without {missing}: "):
+        checked_contributions(contributions, ContentProvider())
+
+
+def test_complete_contributions_pass() -> None:
+    contributions = Contributions(components=[{"type": "library", "bom-ref": "zlib", "name": "zlib"}])
+    assert checked_contributions(contributions, ContentProvider()) is contributions

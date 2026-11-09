@@ -9,7 +9,7 @@ import pytest
 from python_sbom._formats._json import dumps
 from python_sbom._model._inputs import InstalledDistribution, RecordRow
 from python_sbom._model._metadata import parse_metadata
-from python_sbom._validate._document import is_document, validate_document
+from python_sbom._validate._document import validate_document
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -18,9 +18,9 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from python_sbom import Component, License
+    from python_sbom._formats._json import Json
     from python_sbom._model._inputs import BuildFacts
     from python_sbom._model._types import Document
-    from python_sbom._validate._limits import Json
 
 # what auditwheel writes: CycloneDX 1.4 conventions, a legacy tools array, no timestamp
 _FOREIGN: Final[bytes] = json.dumps({
@@ -299,20 +299,6 @@ def test_license_policy(describe: Describe) -> None:
 def test_unexpected_error_is_reported(describe: Describe, mocker: MockerFixture) -> None:
     mocker.patch("python_sbom._validate._document.render_spdx", autospec=True, side_effect=RuntimeError("x" * 300))
     assert validate_document(dumps(describe()), None) == [f"could not be checked, RuntimeError: {'x' * 200}"]
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        pytest.param(json.loads(_FOREIGN), True, id="foreign"),
-        pytest.param({"metadata": {"component": {"name": "plain"}}}, False, id="root-without-bom-ref"),
-        pytest.param({"metadata": {"component": {"bom-ref": "plain"}}}, False, id="root-without-name"),
-        pytest.param({"metadata": {}}, False, id="no-root"),
-        pytest.param([], False, id="not-an-object"),
-    ],
-)
-def test_is_document(value: Json, expected: bool) -> None:
-    assert is_document(value) is expected
 
 
 def test_repeated_dependency_entry_cannot_hide_an_invalid_one(describe: Describe) -> None:

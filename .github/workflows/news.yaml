@@ -28,3 +28,11 @@ jobs:
           venv: ${{ runner.temp }}/release-tools
       - name: 🔍 Validate changelog fragments
         uses: tox-dev/github-workflows/validate-news@0c4cffd63033d38196319524d101caae1eef925b # 6.7.2
+        with:
+          exclude-newer-package: |
+            nab=2026-11-05T05:51:00Z
+            nab-index=2026-11-05T05:51:00Z
+            nab-markersets=2026-11-05T05:51:00Z
+            nab-project=2026-11-05T05:51:00Z
+            nab-provider=2026-11-05T05:51:00Z
+            nab-resolver=2026-11-05T05:51:00Z

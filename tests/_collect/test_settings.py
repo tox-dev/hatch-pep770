@@ -37,7 +37,8 @@ def test_table(tmp_path: Path) -> None:
         "default-branch = 'dev'\n"
         "bundled-wheels = ['src/*.whl']\n"
         "supplier = { name = 'Example Org' }\n"
-        "content-provider = 'sbom:Content'\n",
+        "content-provider = 'sbom:Content'\n"
+        "build-backend = 'mesonpy'\n",
         encoding="utf-8",
     )
     assert settings_from_pyproject(tmp_path) == Settings(
@@ -46,11 +47,14 @@ def test_table(tmp_path: Path) -> None:
         default_branch="dev",
         bundled_wheels=("src/*.whl",),
         content_provider="sbom:Content",
+        build_backend="mesonpy",
     )
 
 
 def test_unknown_option() -> None:
-    with pytest.raises(SbomError, match=r"here has unknown option\(s\) bundled, suplier; known: bundled-wheels"):
+    with pytest.raises(
+        SbomError, match=r"here has unknown option\(s\) bundled, suplier; known: build-backend, bundled-wheels"
+    ):
         settings_from_table({"suplier": {}, "bundled": []}, "here")
 
 
@@ -62,6 +66,7 @@ def test_unknown_option() -> None:
         pytest.param({"bundled-wheels": "*.whl"}, "`bundled-wheels` in here must be an array", id="bundled-not-list"),
         pytest.param({"bundled-wheels": [1]}, "`bundled-wheels` in here must be an array", id="bundled-not-strings"),
         pytest.param({"content-provider": 1}, "`content-provider` in here must be a string", id="content-provider"),
+        pytest.param({"build-backend": 1}, "`build-backend` in here must be a string", id="build-backend"),
         pytest.param({"supplier": "Example"}, "`supplier` in here must be a table", id="supplier-not-table"),
         pytest.param({"supplier": {"name": 1}}, "`supplier` in here must be a table", id="supplier-name"),
         pytest.param({"supplier": {"name": "a", "url": "x"}}, "`supplier` in here must be a table", id="supplier-url"),

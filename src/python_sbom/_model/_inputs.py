@@ -60,6 +60,8 @@ class Settings:
         uncommitted changes
     :param bundled_wheels: glob patterns, relative to the project directory, of wheels the project ships as data files
     :param content_provider: ``module:attribute`` of the content provider, or ``None``
+    :param build_backend: the build backend ``python_sbom.backend`` wraps, as ``module`` or ``module:object``, or
+        ``None``
 
     """
 
@@ -68,6 +70,7 @@ class Settings:
     default_branch: str
     bundled_wheels: tuple[str, ...]
     content_provider: str | None
+    build_backend: str | None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

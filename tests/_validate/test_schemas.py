@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from conftest import Describe
 
     from python_sbom import Component
+    from python_sbom._formats._json import Json
     from python_sbom._formats._spdx import Spdx
-    from python_sbom._validate._limits import Json
 
 
 @pytest.mark.parametrize(

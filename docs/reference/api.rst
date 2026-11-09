@@ -1,23 +1,37 @@
-Python API
-==========
+############
+ Python API
+############
 
-The Python API is what a project needs to add its own knowledge to the SBOM: the hatchling build hook and the content
-provider it calls, with the types those take and return. Everything else, from embedding to validation, runs through the
-:doc:`cli`. The core is importable from ``python_sbom`` without hatchling; the hook lives in ``python_sbom.hatch``.
+The Python :term:`API` is what a :term:`build backend` loads and what a project needs to add its own knowledge to the
+:term:`SBOM`: the backend integrations and the content provider they call, with the types those take and return.
+Everything else, from embedding to :term:`validation`, runs through the :doc:`/reference/cli`. The core is importable
+from ``python_sbom`` without any build backend; each integration lives in a module of its own and imports only its
+backend.
 
 .. py:data:: python_sbom.__version__
     :type: str
 
     The installed version of python-sbom.
 
-Hatchling build hook
---------------------
+**********************
+ Backend integrations
+**********************
 
 .. autoclass:: python_sbom.hatch.SbomBuildHook
     :members: content_provider
 
-Content provider
-----------------
+.. autoclass:: python_sbom.pdm.SbomBuildHook
+    :members: pdm_build_hook_enabled, pdm_build_initialize, pdm_build_update_files, pdm_build_finalize
+
+.. autofunction:: python_sbom.setuptools.finalize_distribution_options
+
+.. autofunction:: python_sbom.backend.build_wheel
+
+.. autofunction:: python_sbom.backend.build_sdist
+
+******************
+ Content provider
+******************
 
 .. autoclass:: python_sbom.ContentProvider
     :members: bundled_wheel, contributions
@@ -33,16 +47,18 @@ Content provider
 
 .. autoclass:: python_sbom.ProjectIdentity
 
-Component types
----------------
+*****************
+ Component types
+*****************
 
-These :class:`~typing.TypedDict` types describe the JSON a provider builds. Each follows the CycloneDX 1.6 object of the
-same name; the `CycloneDX 1.6 reference <https://cyclonedx.org/docs/1.6/json/#components>`_ describes every key.
+These :class:`~typing.TypedDict` types describe the :term:`JSON` a provider builds. Each follows the :term:`CycloneDX`
+1.6 object of the same name; the `CycloneDX 1.6 reference <https://cyclonedx.org/docs/1.6/json/#components>`_ describes
+every key.
 
 .. py:class:: python_sbom.Component
 
-    A CycloneDX 1.6 component, a distribution, an application, the interpreter or a file, as a dictionary with the keys
-    the CycloneDX component object defines. python-sbom uses ``type``, ``bom-ref``, ``name``, ``version``, ``purl``,
+    A CycloneDX 1.6 :term:`component`, a distribution, an application, the interpreter or a file, as a dictionary with
+    the keys the CycloneDX component object defines. python-sbom uses ``type``, ``bom-ref``, ``name``, ``version``, ``purl``,
     ``supplier`` (an :class:`~python_sbom.OrganizationalEntity`), ``authors`` (:class:`~python_sbom.Contact`),
     ``description``, ``licenses`` (:class:`~python_sbom.License`), ``copyright``, ``hashes``
     (:class:`~python_sbom.Hash`), ``externalReferences`` (:class:`~python_sbom.ExternalReference`), ``properties``
@@ -81,7 +97,8 @@ same name; the `CycloneDX 1.6 reference <https://cyclonedx.org/docs/1.6/json/#co
 .. autoclass:: python_sbom.IdentityMethod
     :no-members:
 
-Errors
-------
+********
+ Errors
+********
 
 .. autoexception:: python_sbom.SbomError

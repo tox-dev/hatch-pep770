@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 
 import pytest
@@ -9,7 +8,6 @@ from python_sbom import BundledWheelInfo
 from python_sbom._model._components import (
     bundled_wheel_component,
     component_from_metadata,
-    script_tool,
     vendored_dependencies,
 )
 from python_sbom._model._inputs import BundledWheel, RecordRow
@@ -308,22 +306,6 @@ def test_bundled_wheel_supplier_never_comes_from_the_wheel() -> None:
     )
     component = bundled_wheel_component(wheel, "example", BundledWheelInfo())
     assert "supplier" not in component
-
-
-def test_script_tool_with_link() -> None:
-    tool = script_tool(PurePosixPath("build/hook.py"), "ef" * 32, "1.0", "https://example.com/hook.py")
-    assert tool == {
-        "type": "application",
-        "bom-ref": "tool:build/hook.py",
-        "name": "hook.py",
-        "version": "1.0",
-        "hashes": [{"alg": "SHA-256", "content": "ef" * 32}],
-        "externalReferences": [{"type": "vcs", "url": "https://example.com/hook.py"}],
-    }
-
-
-def test_script_tool_without_link() -> None:
-    assert "externalReferences" not in script_tool(PurePosixPath("hook.py"), "ef" * 32, "1.0", None)
 
 
 def test_vendored_spellings_of_one_package_merge() -> None:

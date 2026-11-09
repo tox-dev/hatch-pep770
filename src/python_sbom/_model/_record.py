@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Final
 from installer.records import RecordEntry
 
 from python_sbom._errors import SbomError
-from python_sbom._model._inputs import RecordRow
+
+from ._inputs import RecordRow
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

@@ -6,7 +6,7 @@ import pytest
 
 from python_sbom._errors import SbomError
 from python_sbom._model._inputs import RecordRow
-from python_sbom._wheel._record import record_rows
+from python_sbom._model._record import record_rows
 
 
 @pytest.mark.parametrize(

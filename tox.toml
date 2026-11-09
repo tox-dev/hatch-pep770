@@ -45,8 +45,8 @@ commands = [
     # RE2 lacks Python 3.15 wheels: https://github.com/google/re2/issues/647
     """\
   import glob; import pathlib; import subprocess; subprocess.check_call(['uv', 'tool', 'run', '--python', '3.14', \
-  '--from', 'proselint>=0.16', 'proselint', 'check', *(path for path in glob.glob('docs/*.rst') if \
-  pathlib.Path(path).name != 'changelog.rst')])\
+  '--from', 'proselint>=0.16', 'proselint', 'check', *(path for path in glob.glob('docs/**/*.rst', recursive=True) if \
+  pathlib.Path(path).name not in {'changelog.rst', 'index.rst'} and 'changelog.d' not in pathlib.Path(path).parts)])\
   """,
   ],
   [

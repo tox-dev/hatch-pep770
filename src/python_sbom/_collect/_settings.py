@@ -32,7 +32,7 @@ def settings_from_pyproject(root: Path) -> Settings:
 
 
 def settings_from_table(table: Mapping[str, Toml], where: str) -> Settings:
-    known = {"bundled-wheels", "content-provider", "default-branch", "repository", "supplier"}
+    known = {"build-backend", "bundled-wheels", "content-provider", "default-branch", "repository", "supplier"}
     if unknown := sorted(table.keys() - known):
         msg = f"{where} has unknown option(s) {', '.join(unknown)}; known: {', '.join(sorted(known))}"
         raise SbomError(msg)
@@ -48,12 +48,16 @@ def settings_from_table(table: Mapping[str, Toml], where: str) -> Settings:
     if not isinstance(content_provider := table.get("content-provider"), str | None):
         msg = f"`content-provider` in {where} must be a string, `module:attribute`"
         raise SbomError(msg)
+    if not isinstance(build_backend := table.get("build-backend"), str | None):
+        msg = f"`build-backend` in {where} must be a string, the backend to wrap, `module` or `module:object`"
+        raise SbomError(msg)
     return Settings(
         supplier=_supplier(table.get("supplier"), where),
         repository=None if repository is None else repository.rstrip("/"),
         default_branch=default_branch,
         bundled_wheels=tuple(patterns),
         content_provider=content_provider,
+        build_backend=build_backend,
     )
 
 

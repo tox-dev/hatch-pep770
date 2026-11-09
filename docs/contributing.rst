@@ -4,54 +4,39 @@ Contributing
 How the code fits together
 --------------------------
 
-Each artifact has one pipeline in ``_generate``, and the two read alike. An adapter, the hatchling hook or a command of
-the command line, gathers the options, the content provider, the build scripts and the build facts (time, source
-revision and toolchain). The pipeline opens the artifact once, reads it into a tree (``_collect/_wheel.py`` or
-``_collect/_archive.py``), maps the tree to an ``Artifact`` with a pure function (``_model/_wheel.py`` or
-``_model/_archive.py``), and hands that to ``_model/_bom.py``, which adds what every artifact of the project shares.
-:doc:`explanation` draws the packages and their imports.
+:doc:`/concepts/architecture` traces one build from its entry point to the written document. Tests mirror the source:
+each module has its tests at the same relative path under ``tests``, in a file named after it.
 
-To record a new field, read it at the edge into ``_model/_inputs.py`` and write it in ``_model``; to add a subcommand,
-write a ``run`` function in a new ``_cli/_<command>.py`` and register its arguments and the
-``"python_sbom._cli._<command>:run"`` handler in ``_cli/_parser.py``, which loads the module only when the command runs.
-Tests mirror the source: ``tests/<package>/test_<module>.py``.
+What the code guarantees
+------------------------
 
-What each layer guarantees
---------------------------
+A change is easiest to review against the guarantee it touches. Each guarantee below has a test that fails when it
+breaks, and most of those tests cross a boundary on purpose: unit tests of one part did not catch these mismatches.
 
-A change is easiest to review against the guarantee of the layer it touches, and the test named here is the one that
-fails when that guarantee breaks. Each test crosses a boundary on purpose: unit tests of one layer did not catch the
-mismatches between layers these guard against.
-
-- ``_wheel`` reads an artifact through one open handle per build, checked once for clashing member names, and never
-  trusts a member's stated size. The bytes it hands on are the bytes the artifact ships.
-  ``tests/_wheel/test_reader.py``, and ``test_embed_rewrites_record_by_parsed_path`` for rewriting RECORD.
-- ``_collect`` turns the project and the artifact into inputs. Source configuration only selects: a bundled wheel is
-  described from the artifact's copy, matched by digest, and a selected wheel the artifact does not ship is refused. A
-  provider module another project already imported in the same process is refused rather than reused.
-  ``test_bundled_wheel_not_shipped_is_refused``, ``test_provider_of_another_project_is_not_reused``.
-- ``_model`` builds documents with pure functions. ``_model/_graph.py`` defines the sets every layer judges alike:
-  ``artifact_contents`` is what the artifact holds or declares wherever the document nests it, ``shipped_libraries`` is
-  what it carries bytes for, and ``reference_problems`` is the one check of repeated and unknown references that
-  generation refuses and validation reports. ``test_archive_bundled_wheel_judged_wherever_it_sits``.
-- ``_validate`` reads hostile input: bounded size, depth and component count before the schema runs, then references,
-  the SPDX rendering and the license policy over ``artifact_contents``.
-  ``test_repeated_dependency_entry_cannot_hide_an_invalid_one``.
-- ``_formats`` renders without losing identity: every SPDX id is unique because it ends in the full digest of its
-  ``bom-ref``. ``test_spdx_ids_of_refs_differing_in_dropped_characters_stay_distinct``.
-- ``_generate`` orders reading, building and writing: an artifact stays open while its document is built, is closed
-  before it is rewritten, and is never overwritten by its own SBOM. ``test_archive_refuses_output_over_archive``, in
-  ``tests/_cli`` since the command line is where an output path reaches it.
+- Reading an artifact uses one open handle per build, checked once for clashing member names, and never trusts a
+  member's stated size, so the bytes described are the bytes the artifact ships.
+- Source configuration only selects. A :term:`bundled wheel` is described from the artifact's copy, matched by digest,
+  and a selected :term:`wheel` the artifact does not ship is refused. Two projects whose :term:`content providers
+  <content provider>` share a module name, built in one process, each load their own copy.
+- Generation and :term:`validation` judge the same sets: what the artifact holds or declares, wherever the document
+  nests it, and what it carries bytes for. Repeated and unknown references are one check, which generation refuses and
+  validation reports.
+- Validation treats its input as hostile. It bounds size, nesting depth and :term:`component` count before the schema
+  runs, then checks references, the :term:`SPDX` rendering and the license policy.
+- Every SPDX id ends in the full digest of its ``bom-ref``, so references that differ only in characters SPDX drops
+  still get distinct ids.
+- An artifact stays open while its document is built and closes before it is rewritten, and the ``archive`` command
+  refuses an output path that would overwrite the :term:`archive` it describes.
 
 Updating the schemas
 --------------------
 
-``python-sbom validate`` checks documents against the official CycloneDX schema files, which ship byte for byte under
-``src/python_sbom/_validate/schemas``. Each comes from a tag of `CycloneDX/specification
+``python-sbom validate`` checks documents against the official :term:`CycloneDX` schema files, which ship byte for byte
+under ``src/python_sbom/_validate/schemas``. Each comes from a tag of `CycloneDX/specification
 <https://github.com/CycloneDX/specification>`_: ``bom-1.6.schema.json`` and the ``jsf-0.82.schema.json`` it references
 from ``1.6.2``, and ``spdx.schema.json`` and the Apache-2.0 ``LICENSE`` from ``1.7.2``, the newest, since the
-cyclonedx.org URL every schema version references serves the newest license list. These commands fetch the shipped files
-from their raw URLs; change the tag to take a newer release:
+cyclonedx.org :term:`URL` every schema version references serves the newest license list. These commands fetch the
+shipped files from their raw URLs; change the tag to take a newer release:
 
 .. code-block:: console
 
@@ -62,16 +47,16 @@ from their raw URLs; change the tag to take a newer release:
     $ curl -fsSLO https://raw.githubusercontent.com/CycloneDX/specification/1.7.2/LICENSE
     $ sha256sum *
 
-Put each file's tag and SHA-256 into the cases of ``test_schema_files_are_the_upstream_release`` in
+Put each file's tag and :term:`SHA-256` into the cases of ``test_schema_files_are_the_upstream_release`` in
 ``tests/_validate/test_schemas.py``, which fails when a shipped file is not the release it names. ``.gitattributes``
-marks the directory ``-text`` and ``.pre-commit-config.yaml`` excludes it, so neither git nor the hooks rewrite the
+marks the directory ``-text`` and ``.pre-commit-config.yaml`` excludes it, so neither git_ nor the hooks rewrite the
 files' line endings, whitespace or formatting.
 
 Benchmarks
 ----------
 
-``bench/`` times python-sbom's hot paths with `pyperf <https://pyperf.readthedocs.io/>`_; CI does not run it. The
-``bench`` tox environment passes its arguments to ``python -m bench``:
+``bench/`` times python-sbom's hot paths with pyperf_; :term:`CI` does not run it. The ``bench`` tox_ environment passes
+its arguments to ``python -m bench``:
 
 .. code-block:: console
 
@@ -80,11 +65,11 @@ Benchmarks
     $ tox r -e bench -- compare ../baseline/.tox/bench-results/cpython3.15 .tox/bench-results/cpython3.15
 
 ``prepare`` builds the fixtures, the only step that needs the network. ``run`` times each case in its own pyperf process
-tree and writes one JSON file per case under ``.tox/bench-results/<python>/``; options after a second ``--`` reach
-pyperf. ``profile`` runs each case once under cProfile, and under py-spy with ``--py-spy``. Both take case names to run
-only those, and ``list`` prints the names. ``report`` renders result files as a Markdown table, and ``compare`` puts two
-result directories side by side. The timed process imports the python-sbom its environment installed, so to compare two
-revisions, run the cases from a checkout of each and compare their result directories.
+tree and writes one :term:`JSON` file per case under ``.tox/bench-results/<python>/``; options after a second ``--``
+reach pyperf. ``profile`` runs each case once under cProfile, and under py-spy_ with ``--py-spy``. Both take case names
+to run only those, and ``list`` prints the names. ``report`` renders result files as a Markdown table, and ``compare``
+puts two result directories side by side. The timed process imports the python-sbom its environment installed, so to
+compare two revisions, run the cases from a checkout of each and compare their result directories.
 
 Changelog fragments
 -------------------
@@ -112,7 +97,7 @@ pull request. Supplied fragments are still checked when the label is present. Bo
 they include one.
 
 The release workflow links each fragment to its merged pull request and credits its human author. If several people
-authored a change, put their `GitHub <https://github.com/>`_ handles in a ``by`` credit in the fragment; omit bots and
-reviewers. The changelog uses linked names, while ``GitHub`` Release notes use ``@handle``.
+authored a change, put their GitHub_ handles in a ``by`` credit in the fragment; omit bots and reviewers. The changelog
+uses linked names, while ``GitHub`` Release notes use ``@handle``.
 
 Build the documentation with ``tox r -e docs``; ``tox r -e docs -- -b linkcheck`` checks its external links.
