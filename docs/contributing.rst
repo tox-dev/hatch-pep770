@@ -15,28 +15,28 @@ breaks, and most of those tests cross a boundary on purpose: unit tests of one p
 
 - Reading an artifact uses one open handle per build, checked once for clashing member names, and never trusts a
   member's stated size, so the bytes described are the bytes the artifact ships.
-- Source configuration only selects. A bundled wheel is described from the artifact's copy, matched by digest, and a
-  selected wheel the artifact does not ship is refused. Two projects whose content providers share a module name, built
-  in one process, each load their own copy.
-- Generation and validation judge the same sets: what the artifact holds or declares, wherever the document nests it,
-  and what it carries bytes for. Repeated and unknown references are one check, which generation refuses and validation
-  reports.
-- Validation treats its input as hostile. It bounds size, nesting depth and component count before the schema runs, then
-  checks references, the SPDX rendering and the license policy.
+- Source configuration only selects. A :term:`bundled wheel` is described from the artifact's copy, matched by digest,
+  and a selected :term:`wheel` the artifact does not ship is refused. Two projects whose :term:`content providers
+  <content provider>` share a module name, built in one process, each load their own copy.
+- Generation and :term:`validation` judge the same sets: what the artifact holds or declares, wherever the document
+  nests it, and what it carries bytes for. Repeated and unknown references are one check, which generation refuses and
+  validation reports.
+- Validation treats its input as hostile. It bounds size, nesting depth and :term:`component` count before the schema
+  runs, then checks references, the :term:`SPDX` rendering and the license policy.
 - Every SPDX id ends in the full digest of its ``bom-ref``, so references that differ only in characters SPDX drops
   still get distinct ids.
 - An artifact stays open while its document is built and closes before it is rewritten, and the ``archive`` command
-  refuses an output path that would overwrite the archive it describes.
+  refuses an output path that would overwrite the :term:`archive` it describes.
 
 Updating the schemas
 --------------------
 
-``python-sbom validate`` checks documents against the official CycloneDX schema files, which ship byte for byte under
-``src/python_sbom/_validate/schemas``. Each comes from a tag of `CycloneDX/specification
+``python-sbom validate`` checks documents against the official :term:`CycloneDX` schema files, which ship byte for byte
+under ``src/python_sbom/_validate/schemas``. Each comes from a tag of `CycloneDX/specification
 <https://github.com/CycloneDX/specification>`_: ``bom-1.6.schema.json`` and the ``jsf-0.82.schema.json`` it references
 from ``1.6.2``, and ``spdx.schema.json`` and the Apache-2.0 ``LICENSE`` from ``1.7.2``, the newest, since the
-cyclonedx.org URL every schema version references serves the newest license list. These commands fetch the shipped files
-from their raw URLs; change the tag to take a newer release:
+cyclonedx.org :term:`URL` every schema version references serves the newest license list. These commands fetch the
+shipped files from their raw URLs; change the tag to take a newer release:
 
 .. code-block:: console
 
@@ -47,16 +47,16 @@ from their raw URLs; change the tag to take a newer release:
     $ curl -fsSLO https://raw.githubusercontent.com/CycloneDX/specification/1.7.2/LICENSE
     $ sha256sum *
 
-Put each file's tag and SHA-256 into the cases of ``test_schema_files_are_the_upstream_release`` in
+Put each file's tag and :term:`SHA-256` into the cases of ``test_schema_files_are_the_upstream_release`` in
 ``tests/_validate/test_schemas.py``, which fails when a shipped file is not the release it names. ``.gitattributes``
-marks the directory ``-text`` and ``.pre-commit-config.yaml`` excludes it, so neither git nor the hooks rewrite the
+marks the directory ``-text`` and ``.pre-commit-config.yaml`` excludes it, so neither git_ nor the hooks rewrite the
 files' line endings, whitespace or formatting.
 
 Benchmarks
 ----------
 
-``bench/`` times python-sbom's hot paths with `pyperf <https://pyperf.readthedocs.io/>`_; CI does not run it. The
-``bench`` tox environment passes its arguments to ``python -m bench``:
+``bench/`` times python-sbom's hot paths with pyperf_; :term:`CI` does not run it. The ``bench`` tox_ environment passes
+its arguments to ``python -m bench``:
 
 .. code-block:: console
 
@@ -65,11 +65,11 @@ Benchmarks
     $ tox r -e bench -- compare ../baseline/.tox/bench-results/cpython3.15 .tox/bench-results/cpython3.15
 
 ``prepare`` builds the fixtures, the only step that needs the network. ``run`` times each case in its own pyperf process
-tree and writes one JSON file per case under ``.tox/bench-results/<python>/``; options after a second ``--`` reach
-pyperf. ``profile`` runs each case once under cProfile, and under py-spy with ``--py-spy``. Both take case names to run
-only those, and ``list`` prints the names. ``report`` renders result files as a Markdown table, and ``compare`` puts two
-result directories side by side. The timed process imports the python-sbom its environment installed, so to compare two
-revisions, run the cases from a checkout of each and compare their result directories.
+tree and writes one :term:`JSON` file per case under ``.tox/bench-results/<python>/``; options after a second ``--``
+reach pyperf. ``profile`` runs each case once under cProfile, and under py-spy_ with ``--py-spy``. Both take case names
+to run only those, and ``list`` prints the names. ``report`` renders result files as a Markdown table, and ``compare``
+puts two result directories side by side. The timed process imports the python-sbom its environment installed, so to
+compare two revisions, run the cases from a checkout of each and compare their result directories.
 
 Changelog fragments
 -------------------
@@ -97,7 +97,7 @@ pull request. Supplied fragments are still checked when the label is present. Bo
 they include one.
 
 The release workflow links each fragment to its merged pull request and credits its human author. If several people
-authored a change, put their `GitHub <https://github.com/>`_ handles in a ``by`` credit in the fragment; omit bots and
-reviewers. The changelog uses linked names, while ``GitHub`` Release notes use ``@handle``.
+authored a change, put their GitHub_ handles in a ``by`` credit in the fragment; omit bots and reviewers. The changelog
+uses linked names, while ``GitHub`` Release notes use ``@handle``.
 
 Build the documentation with ``tox r -e docs``; ``tox r -e docs -- -b linkcheck`` checks its external links.

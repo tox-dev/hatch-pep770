@@ -2,9 +2,9 @@
  Use it with setuptools
 ########################
 
-python-sbom ships a `setuptools <https://setuptools.pypa.io/>`_ plugin, registered in setuptools'
-``setuptools.finalize_distribution_options`` entry point group, the one setuptools-scm uses. Add python-sbom to the
-build requirements, with the ``setuptools`` extra, and add a ``[tool.python-sbom]`` table, empty or not:
+python-sbom ships a setuptools_ plugin, registered in setuptools' ``setuptools.finalize_distribution_options`` entry
+point group, the one setuptools-scm_ uses. Add python-sbom to the build requirements, with the ``setuptools`` extra, and
+add a ``[tool.python-sbom]`` table, empty or not:
 
 .. code-block:: toml
 
@@ -15,7 +15,8 @@ build requirements, with the ``setuptools`` extra, and add a ``[tool.python-sbom
     [tool.python-sbom]
     supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-Every wheel you build now carries the SBOM, and every sdist the source revision. An editable wheel carries none.
+Every :term:`wheel` you build now carries the :term:`SBOM`, and every :term:`sdist` the :term:`source revision`. An
+editable wheel carries none.
 
 setuptools calls the plugin for every build in an environment where python-sbom is installed, so the table is what turns
 it on: a project without ``[tool.python-sbom]``, or without a ``pyproject.toml``, builds as before.
@@ -36,10 +37,10 @@ that command to ``setup.py``'s ``cmdclass``, or wrap the backend instead, as :do
  Pitfall: build output in the checkout
 ***************************************
 
-setuptools writes ``build/`` and ``<name>.egg-info/`` into the project directory, and frontends run ``egg_info`` before
-they ask for the wheel or sdist. python-sbom counts untracked files as changes, so unless git ignores both, every build
-reads the checkout as modified: the wheel's SBOM names no exact commit, and the sdist carries no source revision. Ignore
-them:
+setuptools writes ``build/`` and ``<name>.egg-info/`` into the project directory, and :term:`frontends <build frontend>`
+run ``egg_info`` before they ask for the wheel or sdist. python-sbom counts untracked files as changes, so unless git_
+ignores both, every build reads the checkout as modified: the wheel's SBOM names no exact commit, and the sdist carries
+no source revision. Ignore them:
 
 .. code-block:: text
 

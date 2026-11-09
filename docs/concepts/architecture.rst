@@ -2,13 +2,13 @@
  Architecture
 ##############
 
-Only the entry points know a build system or the command line: the hatchling and pdm-backend hooks, the setuptools
-plugin, the wrapper backend, and the ``embed`` and ``archive`` commands. Each gathers the options, the build scripts and
-the build facts (time, revision, toolchain) and hands them, with a :class:`~python_sbom.ContentProvider`, to the
-pipeline for its artifact. The pipeline opens the artifact once, reads it, gives the provider a
+Only the entry points know a build system or the command line: the hatchling_ and pdm-backend_ hooks, the setuptools_
+plugin, the :term:`wrapper backend`, and the ``embed`` and ``archive`` commands. Each gathers the options, the build
+scripts and the build facts (time, revision, toolchain) and hands them, with a :class:`~python_sbom.ContentProvider`, to
+the pipeline for its artifact. The pipeline opens the artifact once, reads it, gives the provider a
 :class:`~python_sbom.ProviderContext` that reads from the same open artifact, and maps what it read to components. It
-then adds what every artifact of the project shares: supplier, source links, revision, tools, dependencies and
-formulation.
+then adds what every artifact of the project shares: :term:`supplier`, source links, revision, tools, dependencies and
+:term:`formulation`.
 
 The diagram follows one build, from the entry point to the document written into the artifact:
 
@@ -27,9 +27,9 @@ The diagram follows one build, from the entry point to the document written into
         class entry,write io;
         class collect,provider,model core;
 
-Every step raises :class:`~python_sbom.SbomError`, which the command line reports without a traceback. Each
-integration imports its own build backend and nothing else does, so the provider API and the command line work without
-any backend installed.
+Every step raises :class:`~python_sbom.SbomError`, which the command line reports without a traceback. Each integration
+imports its own :term:`build backend` and nothing else does, so the provider :term:`API` and the command line work
+without any backend installed.
 
 The one extension point is the :class:`~python_sbom.ContentProvider`, which every entry point loads from the
 ``content-provider`` option. A hatchling custom hook can override

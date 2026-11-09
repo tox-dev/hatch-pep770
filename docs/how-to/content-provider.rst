@@ -3,8 +3,8 @@
 #############################
 
 The options cover what every project shares. A project that knows more than its metadata says adds it through a content
-provider, and the same provider serves the wheel's SBOM and the SBOM of any other archive the project publishes, through
-every integration.
+provider, and the same provider serves the :term:`wheel`'s :term:`SBOM` and the SBOM of any other :term:`archive` the
+project publishes, through every integration.
 
 ******************
  Write a provider
@@ -16,20 +16,20 @@ properties, and :meth:`~python_sbom.ProviderContext.read`, which reads a file of
 of the built wheel or of the archive. Each returns a value whose fields default to empty, so a provider names only what
 it adds.
 
-- :meth:`~python_sbom.ContentProvider.bundled_wheel` returns the properties and the supplier of one bundled wheel. The
-  properties follow ``<prefix>:bundled-wheel`` and come before those from the wheel's metadata. A wheel's supplier comes
-  only from here, never from the wheel's own metadata.
-- :meth:`~python_sbom.ContentProvider.contributions` returns extra top-level components, the dependencies between them,
-  root properties and build tools, such as the C libraries a native wheel links. They join the document before the
-  root's dependencies and the serial number derive from it. The build fails when a component or tool lacks ``type``,
-  ``bom-ref`` or ``name``, a ``bom-ref`` repeats, the ``formula:`` and ``workflow:`` refs of the build's formulation
-  included, a dependency names one that no component has, a ``bom-ref`` gets a second dependency entry (the root's
-  included, which python-sbom writes), or a root property uses the project's own prefix.
+- :meth:`~python_sbom.ContentProvider.bundled_wheel` returns the properties and the :term:`supplier` of one
+  :term:`bundled wheel`. The properties follow ``<prefix>:bundled-wheel`` and come before those from the wheel's
+  metadata. A wheel's supplier comes only from here, never from the wheel's own metadata.
+- :meth:`~python_sbom.ContentProvider.contributions` returns extra top-level :term:`components <component>`, the
+  dependencies between them, root properties and build tools, such as the C libraries a native wheel links. They join
+  the document before the root's dependencies and the serial number derive from it. The build fails when a component or
+  tool lacks ``type``, ``bom-ref`` or ``name``, a ``bom-ref`` repeats, the ``formula:`` and ``workflow:`` refs of the
+  build's :term:`formulation` included, a dependency names one that no component has, a ``bom-ref`` gets a second
+  dependency entry (the root's included, which python-sbom writes), or a root property uses the project's own prefix.
 
 Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and
-every plugin, the wrapper backend, ``python-sbom embed`` and ``python-sbom archive`` load it. When the provider's class
-lives in the project, the SBOM lists its module among the build tools, hashed, because it shapes the document a rebuild
-has to reproduce:
+every plugin, the :term:`wrapper backend`, ``python-sbom embed`` and ``python-sbom archive`` load it. When the
+provider's class lives in the project, the SBOM lists its module among the build tools, hashed, because it shapes the
+document a rebuild has to reproduce:
 
 .. code-block:: python
 
@@ -49,7 +49,7 @@ has to reproduce:
 The context has no method that lists files. A provider that needs the wheel's file list reads its ``RECORD`` through
 :meth:`~python_sbom.ProviderContext.read`, by the path of the project's ``.dist-info`` directory, such as
 ``seeder-1.0.dist-info/RECORD``; an archive holds that directory at its top level, and the path reads the same there.
-The provider knows the project's name, and a hook subclass, shown below, can hand it hatchling's
+The provider knows the project's name, and a hook subclass, shown below, can hand it hatchling_'s
 ``self.metadata.version``. Any other member reads the same way, by its path inside the artifact.
 
 **************************
@@ -75,7 +75,7 @@ that supplier's wheels. The test suite builds this project:
 .. literalinclude:: ../../tests/_seeder/hatch_build.py
     :language: python
 
-The SBOM lists ``hatch_build.py`` among the build tools, hashed. The bundled pip wheel's component then carries these
+The SBOM lists ``hatch_build.py`` among the build tools, hashed. The bundled pip_ wheel's component then carries these
 properties first, in this order, followed by those from its own metadata:
 
 .. list-table::

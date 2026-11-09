@@ -2,9 +2,9 @@
  Use it with any other backend
 ###############################
 
-Backends without a plugin interface, such as meson-python, maturin, scikit-build-core, flit-core, poetry-core and
-uv_build, get the SBOM through ``python_sbom.backend``, a build backend that wraps yours. Make it the project's backend,
-keep yours in the build requirements, and name yours in ``[tool.python-sbom]``:
+Backends without a plugin interface, such as meson-python_, maturin_, scikit-build-core_, flit-core_, poetry-core_ and
+uv_build_, get the :term:`SBOM` through ``python_sbom.backend``, a :term:`build backend` that wraps yours. Make it the
+project's backend, keep yours in the build requirements, and name yours in ``[tool.python-sbom]``:
 
 .. code-block:: toml
 
@@ -17,12 +17,13 @@ keep yours in the build requirements, and name yours in ``[tool.python-sbom]``:
     supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
 ``build-backend`` takes what ``[build-system] build-backend`` took before: a module, or ``module:object``. Every hook a
-frontend calls goes to your backend unchanged, ``--config-settings`` included, and the optional hooks exist only when
-your backend defines them, so frontends behave as before. Once your backend has written a wheel, the wrapper writes the
-SBOM into it; once it has written an sdist, it adds the source revision.
+:term:`frontend <build frontend>` calls goes to your backend unchanged, ``--config-settings`` included, and the optional
+hooks exist only when your backend defines them, so frontends behave as before. Once your backend has written a
+:term:`wheel`, the wrapper writes the SBOM into it; once it has written an :term:`sdist`, it adds the :term:`source
+revision`.
 
 The wrapper runs inside the build's isolated environment, so the SBOM lists the tools that built the wheel, such as
-meson-python, meson, ninja and patchelf, with the versions the frontend installed.
+meson-python, `meson <meson_>`_, ninja_ and patchelf, with the versions the frontend installed.
 
 **************
  Each backend
@@ -38,24 +39,24 @@ Use the module name from your current ``[build-system] build-backend``:
       - Notes
     - - `meson-python <https://meson-python.readthedocs.io/>`_
       - ``mesonpy``
-      - Its sdist step needs a git or Mercurial checkout, as without the wrapper.
-    - - `maturin <https://www.maturin.rs/>`_
+      - Its sdist step needs a git_ or Mercurial checkout, as without the wrapper.
+    - - maturin_
       - ``maturin``
       - maturin writes its own SBOM of the Rust crates next to python-sbom's; see below.
-    - - `scikit-build-core <https://scikit-build-core.readthedocs.io/>`_
+    - - scikit-build-core_
       - ``scikit_build_core.build``
-      - A project built with hatchling and scikit-build-core's hatch plugin uses :doc:`/how-to/hatchling` instead.
-    - - `flit-core <https://flit.pypa.io/>`_
+      - A project built with hatchling_ and scikit-build-core's hatch plugin uses :doc:`/how-to/hatchling` instead.
+    - - flit-core_
       - ``flit_core.buildapi``
       -
     - - `poetry-core <https://python-poetry.org/docs/pyproject/>`_
       - ``poetry.core.masonry.api``
       -
-    - - `uv_build <https://docs.astral.sh/uv/concepts/build-backend/>`_
+    - - uv_build_
       - ``uv_build``
       - ``uv build`` builds a uv_build project in its own process, skipping the build interface; with the wrapper as the
         backend, it calls the build interface, so the wrapper runs.
-    - - pdm-backend, setuptools
+    - - pdm-backend_, setuptools_
       - ``pdm.backend``, ``setuptools.build_meta``
       - Use :doc:`/how-to/pdm-backend` or :doc:`/how-to/setuptools` instead; wrap them only when the plugin cannot act.
 
@@ -63,17 +64,16 @@ maturin's own SBOM
 ==================
 
 `maturin writes a CycloneDX SBOM <https://www.maturin.rs/sbom>`_ of the Rust crates a wheel links, as
-``<crate>.cyclonedx.json``. PEP 770 allows several SBOMs per wheel, so python-sbom's ``<name>.cdx.json`` sits next to
-it: maturin's lists the crates, python-sbom's the wheel's files, metadata, build tools and source revision.
+``<crate>.cyclonedx.json``. :term:`PEP 770` allows several SBOMs per wheel, so python-sbom's ``<name>.cdx.json`` sits
+next to it: maturin's lists the crates, python-sbom's the wheel's files, metadata, build tools and source revision.
 
 ***********************************************
  Pitfall: builds that skip the build interface
 ***********************************************
 
-The wrapper runs only when a frontend builds through the standard build interface: pip, uv, ``python -m build`` and
-cibuildwheel do. Tools that call the backend's own command line do not: ``maturin build``, which `maturin-action
-<https://github.com/PyO3/maturin-action>`_ runs, and ``meson`` called directly. Describe those wheels after the build,
-as :doc:`/how-to/built-elsewhere` shows.
+The wrapper runs only when a frontend builds through the standard build interface: pip_, uv_, ``python -m build`` and
+cibuildwheel_ do. Tools that call the backend's own command line do not: ``maturin build``, which maturin-action_ runs,
+and ``meson`` called directly. Describe those wheels after the build, as :doc:`/how-to/built-elsewhere` shows.
 
 *************************************
  Pitfall: a backend in your own tree

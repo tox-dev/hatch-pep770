@@ -2,10 +2,11 @@
  Python API
 ############
 
-The Python API is what a build backend loads and what a project needs to add its own knowledge to the SBOM: the backend
-integrations and the content provider they call, with the types those take and return. Everything else, from embedding
-to validation, runs through the :doc:`/reference/cli`. The core is importable from ``python_sbom`` without any build
-backend; each integration lives in a module of its own and imports only its backend.
+The Python :term:`API` is what a :term:`build backend` loads and what a project needs to add its own knowledge to the
+:term:`SBOM`: the backend integrations and the content provider they call, with the types those take and return.
+Everything else, from embedding to :term:`validation`, runs through the :doc:`/reference/cli`. The core is importable
+from ``python_sbom`` without any build backend; each integration lives in a module of its own and imports only its
+backend.
 
 .. py:data:: python_sbom.__version__
     :type: str
@@ -50,13 +51,14 @@ backend; each integration lives in a module of its own and imports only its back
  Component types
 *****************
 
-These :class:`~typing.TypedDict` types describe the JSON a provider builds. Each follows the CycloneDX 1.6 object of the
-same name; the `CycloneDX 1.6 reference <https://cyclonedx.org/docs/1.6/json/#components>`_ describes every key.
+These :class:`~typing.TypedDict` types describe the :term:`JSON` a provider builds. Each follows the :term:`CycloneDX`
+1.6 object of the same name; the `CycloneDX 1.6 reference <https://cyclonedx.org/docs/1.6/json/#components>`_ describes
+every key.
 
 .. py:class:: python_sbom.Component
 
-    A CycloneDX 1.6 component, a distribution, an application, the interpreter or a file, as a dictionary with the keys
-    the CycloneDX component object defines. python-sbom uses ``type``, ``bom-ref``, ``name``, ``version``, ``purl``,
+    A CycloneDX 1.6 :term:`component`, a distribution, an application, the interpreter or a file, as a dictionary with
+    the keys the CycloneDX component object defines. python-sbom uses ``type``, ``bom-ref``, ``name``, ``version``, ``purl``,
     ``supplier`` (an :class:`~python_sbom.OrganizationalEntity`), ``authors`` (:class:`~python_sbom.Contact`),
     ``description``, ``licenses`` (:class:`~python_sbom.License`), ``copyright``, ``hashes``
     (:class:`~python_sbom.Hash`), ``externalReferences`` (:class:`~python_sbom.ExternalReference`), ``properties``

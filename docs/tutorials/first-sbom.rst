@@ -2,17 +2,16 @@
  Your first SBOM
 #################
 
-In this tutorial you build a small package with an SBOM inside its wheel, look at what the SBOM says, and check it the
-way a CI job would. It takes about ten minutes. You need Python 3.11 or later, git, and `uv
-<https://docs.astral.sh/uv/>`_; any other build frontend, such as ``python -m build``, works the same.
+In this tutorial you build a small package with an :term:`SBOM` inside its :term:`wheel`, look at what the SBOM says,
+and check it the way a :term:`CI` job would. It takes about ten minutes. You need Python 3.11 or later, git_, and uv_;
+any other :term:`build frontend`, such as ``python -m build``, works the same.
 
 ********************
  Create the project
 ********************
 
-Make a directory with a package, a license and a ``pyproject.toml``. The project uses `hatchling
-<https://hatch.pypa.io/latest/>`_, the backend python-sbom has the most to say about; :doc:`/reference/backends` lists
-the others.
+Make a directory with a package, a license and a ``pyproject.toml``. The project uses hatchling_, the backend
+python-sbom has the most to say about; :doc:`/reference/backends` lists the others.
 
 .. code-block:: console
 
@@ -42,10 +41,10 @@ the others.
     supplier = { name = 'You', url = ['https://github.com/you'] }
 
 The empty ``[tool.hatch.build.hooks.python-sbom]`` table turns the hook on. ``[tool.python-sbom]`` holds python-sbom's
-own options; here it names you as the supplier.
+own options; here it names you as the :term:`supplier`.
 
-Commit it, with the build output ignored, so the SBOM can name the exact source revision. A checkout with uncommitted or
-untracked files has no commit that reproduces it, and then the SBOM names none:
+Commit it, with the build output ignored, so the SBOM can name the exact :term:`source revision`. A checkout with
+uncommitted or untracked files has no commit that reproduces it, and then the SBOM names none:
 
 .. code-block:: console
 
@@ -73,8 +72,8 @@ List the wheel's ``.dist-info`` and you find the SBOM next to the metadata:
     greet-1.0.dist-info/sboms/greet.cdx.json
     greet-1.0.dist-info/RECORD
 
-The sdist holds a ``.python-sbom-revision`` file with your commit. uv built the wheel from that sdist, not from your
-checkout, and the file is how the wheel still knows which commit it came from.
+The :term:`sdist` holds a ``.python-sbom-revision`` file with your commit. uv built the wheel from that sdist, not from
+your checkout, and the file is how the wheel still knows which commit it came from.
 
 ***************
  Read the SBOM
@@ -132,7 +131,7 @@ That is the check a CI job runs before publishing; :doc:`/how-to/validate` shows
  Where to go next
 ******************
 
-- Your project uses another build backend? Pick its guide: :doc:`/how-to/pdm-backend`, :doc:`/how-to/setuptools` or
-  :doc:`/how-to/other-backends`.
+- Your project uses another :term:`build backend`? Pick its guide: :doc:`/how-to/pdm-backend`, :doc:`/how-to/setuptools`
+  or :doc:`/how-to/other-backends`.
 - Your project bundles wheels or knows more than its metadata says: :doc:`/how-to/content-provider`.
 - Every option python-sbom reads: :doc:`/reference/configuration`.

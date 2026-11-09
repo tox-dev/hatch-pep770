@@ -7,9 +7,15 @@
     <section class="hero">
       <img class="hero-logo only-light" src="_static/logo-light.svg" alt="">
       <img class="hero-logo only-dark" src="_static/logo-dark.svg" alt="">
-      <p class="hero-title">Every wheel you ship, <span>with its SBOM inside</span>.</p>
-      <p class="hero-tagline">A build plugin that writes a CycloneDX SBOM into each wheel your build backend makes,
-      where PEP 770 tells installers and scanners to look for it.</p>
+      <p class="hero-title">Every wheel you ship,
+      <span>with its <abbr title="software bill of materials">SBOM</abbr> inside</span>.</p>
+      <p class="hero-tagline">A build plugin that writes a
+      <a href="concepts/glossary.html#term-SBOM">software bill of materials (SBOM)</a> in the
+      <a href="concepts/glossary.html#term-CycloneDX">CycloneDX</a> format into each
+      <a href="concepts/glossary.html#term-wheel">wheel</a> your
+      <a href="concepts/glossary.html#term-build-backend">build backend</a> makes, where
+      <a href="concepts/glossary.html#term-PEP-770">PEP 770</a> (a Python Enhancement Proposal) tells installers and
+      scanners to look for it.</p>
       <div class="hero-actions">
         <a class="primary" href="tutorials/first-sbom.html">Get started</a>
         <a class="secondary" href="how-to/index.html">How-to guides</a>
@@ -17,9 +23,9 @@
       </div>
     </section>
 
-python-sbom writes a `CycloneDX <https://cyclonedx.org/>`_ 1.6 SBOM into every wheel you build, at
-``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where `PEP 770 <https://peps.python.org/pep-0770/>`_ tells
-installers to keep SBOMs, so they land in the environment next to the installed package, where scanners look for them.
+python-sbom writes a :term:`CycloneDX` 1.6 :term:`SBOM` into every :term:`wheel` you build, at
+``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where :term:`PEP 770` tells installers to keep SBOMs, so
+they land in the environment next to the installed package, where scanners look for them.
 
 General-purpose scanners read the dependencies a package declares or the packages an environment has installed. They
 cannot see a wheel your project ships as a data file, and they cannot say how the wheel was built. The SBOM python-sbom
@@ -33,8 +39,8 @@ writes records both. The :doc:`changelog` lists the changes in each version.
         :link: /reference/backends
         :link-type: doc
 
-        A plugin for hatchling, pdm-backend and setuptools, and a wrapper backend for meson-python, maturin and the
-        rest.
+        A plugin for hatchling_, pdm-backend_ and setuptools_, and a :term:`wrapper backend` for meson-python_,
+        maturin_ and the rest.
 
     .. grid-item-card:: How the wheel was built
         :class-card: feature
@@ -56,8 +62,8 @@ writes records both. The :doc:`changelog` lists the changes in each version.
         :link: /how-to/validate
         :link-type: doc
 
-        ``python-sbom validate`` checks every SBOM against the CycloneDX schema in CI, and ``spdx`` renders it as SPDX
-        2.3.
+        ``python-sbom validate`` checks every SBOM against the CycloneDX schema in :term:`CI`, and ``spdx`` renders it
+        as :term:`SPDX` 2.3.
 
 A build, the SBOM it wrote, and the check a CI job runs before publishing:
 
@@ -76,7 +82,7 @@ A build, the SBOM it wrote, and the check a CI job runs before publishing:
 *********
 
 python-sbom runs inside your build, so it goes in ``[build-system] requires`` with the extra for your backend, and a
-``[tool.python-sbom]`` table names you as the supplier. It needs Python 3.11 or later.
+``[tool.python-sbom]`` table names you as the :term:`supplier`. It needs Python 3.11 or later.
 
 .. tab:: hatchling
 
@@ -169,7 +175,7 @@ The command line, which describes wheels built elsewhere and checks SBOMs, insta
         :link: /reference/index
         :link-type: doc
 
-        The backends, the configuration, the command line and the Python API.
+        The backends, the configuration, the command line and the Python :term:`API`.
 
     .. grid-item-card:: Want to know how it works?
         :class-card: feature

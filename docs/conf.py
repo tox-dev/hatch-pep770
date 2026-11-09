@@ -115,6 +115,35 @@ always_document_param_types: Final[bool] = True
 typehints_document_rtype: Final[bool] = True
 typehints_defaults: Final[str] = "comma"
 
+# every page links the first mention of these projects by name, as in `hatchling`_
+rst_epilog: Final[str] = """
+.. _hatchling: https://hatch.pypa.io/latest/
+.. _pdm-backend: https://backend.pdm-project.org/
+.. _setuptools-scm: https://setuptools-scm.readthedocs.io/
+.. _setuptools: https://setuptools.pypa.io/
+.. _meson-python: https://mesonbuild.com/meson-python/
+.. _Meson: https://mesonbuild.com/
+.. _ninja: https://ninja-build.org/
+.. _maturin-action: https://github.com/PyO3/maturin-action
+.. _maturin: https://www.maturin.rs/
+.. _scikit-build-core: https://scikit-build-core.readthedocs.io/
+.. _flit-core: https://flit.pypa.io/
+.. _poetry-core: https://python-poetry.org/docs/pyproject/#poetry-and-pep-517
+.. _uv_build: https://docs.astral.sh/uv/concepts/build-backend/
+.. _uv: https://docs.astral.sh/uv/
+.. _pipx: https://pipx.pypa.io/
+.. _pip: https://pip.pypa.io/
+.. _virtualenv: https://virtualenv.pypa.io/
+.. _auditwheel: https://github.com/pypa/auditwheel
+.. _delocate: https://github.com/matthew-brett/delocate
+.. _cibuildwheel: https://cibuildwheel.pypa.io/
+.. _pyperf: https://pyperf.readthedocs.io/
+.. _py-spy: https://github.com/benfred/py-spy
+.. _tox: https://tox.wiki/
+.. _git: https://git-scm.com/
+.. _GitHub: https://github.com/
+.. _actions/attest: https://github.com/actions/attest
+"""
 intersphinx_mapping: Final[dict[str, tuple[str, None]]] = {"python": ("https://docs.python.org/3.11", None)}
 extlinks: Final[dict[str, tuple[str, str]]] = {
     "pr": ("https://github.com/tox-dev/python-sbom/pull/%s", "#%s"),

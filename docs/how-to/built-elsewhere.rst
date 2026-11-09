@@ -2,10 +2,11 @@
  Describe a wheel built outside the build interface
 ####################################################
 
-Some wheels never pass through a python-sbom plugin or the wrapper backend: maturin-action calls ``maturin build``
-directly, and ``auditwheel repair`` or ``delocate`` rename a wheel after the build and may copy libraries into it.
-``python-sbom embed`` describes such a wheel after the fact. It writes the same document the plugins write, adds its
-``RECORD`` row, keeps every other entry of the wheel as it was, and replaces an SBOM python-sbom wrote before.
+Some :term:`wheels <wheel>` never pass through a python-sbom plugin or the :term:`wrapper backend`: maturin-action_
+calls ``maturin build`` directly, and ``auditwheel repair`` or ``delocate`` rename a wheel after the build and may copy
+libraries into it. ``python-sbom embed`` describes such a wheel after the fact. It writes the same document the plugins
+write, adds its ``RECORD`` row, keeps every other entry of the wheel as it was, and replaces an :term:`SBOM` python-sbom
+wrote before.
 
 ***********************
  Embed after the build
@@ -51,12 +52,12 @@ Run ``embed`` on the repaired wheel, so the SBOM names the file you publish:
     $ auditwheel repair dist/*.whl --wheel-dir wheelhouse
     $ python-sbom embed wheelhouse/*.whl
 
-auditwheel's own SBOM, ``auditwheel.cdx.json``, stays in the wheel next to python-sbom's.
+auditwheel_'s own SBOM, ``auditwheel.cdx.json``, stays in the wheel next to python-sbom's.
 
 **************************
  Name the source revision
 **************************
 
-``embed`` reads the commit from the checkout it runs in. A wheel built from an sdist elsewhere names its commit through
-``--commit`` or the ``PYTHON_SBOM_COMMIT`` environment variable; :doc:`/reference/configuration` lists the order in
-which python-sbom looks for it.
+``embed`` reads the commit from the checkout it runs in. A wheel built from an :term:`sdist` elsewhere names its commit
+through ``--commit`` or the ``PYTHON_SBOM_COMMIT`` environment variable; :doc:`/reference/configuration` lists the order
+in which python-sbom looks for it.

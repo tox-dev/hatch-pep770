@@ -2,8 +2,8 @@
  Use it with hatchling
 #######################
 
-python-sbom ships a `hatchling <https://hatch.pypa.io/latest/>`_ build hook. Add it to the build requirements, with the
-``hatch`` extra, and enable it with an empty table:
+python-sbom ships a hatchling_ :term:`build hook`. Add it to the build requirements, with the ``hatch`` extra, and
+enable it with an empty table:
 
 .. code-block:: toml
 
@@ -16,8 +16,8 @@ python-sbom ships a `hatchling <https://hatch.pypa.io/latest/>`_ build hook. Add
     [tool.python-sbom]
     supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-Every wheel you build now carries the SBOM. An editable wheel carries none, and an sdist carries the source revision
-instead, so a wheel built from it still names its commit.
+Every :term:`wheel` you build now carries the :term:`SBOM`. An editable wheel carries none, and an :term:`sdist` carries
+the :term:`source revision` instead, so a wheel built from it still names its commit.
 
 Put python-sbom's options in ``[tool.python-sbom]``, the table every integration reads, never in the hook's table: the
 hook's table holds only hatchling's own options, such as ``enable-by-default``, and a python-sbom option there fails the

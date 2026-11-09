@@ -12,21 +12,22 @@
 [![Downloads](https://static.pepy.tech/badge/python-sbom/month)](https://pepy.tech/project/python-sbom)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/tox-dev/python-sbom/badge)](https://scorecard.dev/viewer/?uri=github.com/tox-dev/python-sbom)
 
-SBOMs for Python distributions. python-sbom writes a [CycloneDX](https://cyclonedx.org/) SBOM into every wheel you
-build, where [PEP 770](https://peps.python.org/pep-0770/) tells installers to keep it. The SBOM records your project,
-the runtime dependencies it declares, any wheels it bundles, and the build toolchain, and a rebuild with the same inputs
-reproduces it byte for byte.
+Software bills of materials (SBOMs) for Python distributions. python-sbom writes a [CycloneDX](https://cyclonedx.org/)
+SBOM into every [wheel](https://packaging.python.org/en/latest/specifications/binary-distribution-format/) you build,
+where [PEP 770](https://peps.python.org/pep-0770/) (a Python Enhancement Proposal) tells installers to keep it. The SBOM
+records your project, the runtime dependencies it declares, any wheels it bundles, and the build toolchain, and a
+rebuild with the same inputs reproduces it byte for byte.
 
 ## Use
 
-python-sbom works with every build backend. Pick the integration for yours:
+python-sbom works with every [build backend](https://peps.python.org/pep-0517/). Pick the integration for yours:
 
-| Backend                                                                  | Add to `[build-system] requires` | Turn it on                                                                        |
-| ------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------- |
-| [hatchling](https://hatch.pypa.io/latest/)                               | `python-sbom[hatch]`             | `[tool.hatch.build.hooks.python-sbom]`                                            |
-| [pdm-backend](https://backend.pdm-project.org/)                          | `python-sbom[pdm]`               | `[tool.python-sbom]`                                                              |
-| [setuptools](https://setuptools.pypa.io/)                                | `python-sbom[setuptools]`        | `[tool.python-sbom]`                                                              |
-| any other, such as meson-python, maturin, scikit-build-core or flit-core | `python-sbom`                    | `build-backend = "python_sbom.backend"`, and your backend in `[tool.python-sbom]` |
+| Backend                                                                                                                                                                                                           | Add to `[build-system] requires` | Turn it on                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------- |
+| [hatchling](https://hatch.pypa.io/latest/)                                                                                                                                                                        | `python-sbom[hatch]`             | `[tool.hatch.build.hooks.python-sbom]`                                            |
+| [pdm-backend](https://backend.pdm-project.org/)                                                                                                                                                                   | `python-sbom[pdm]`               | `[tool.python-sbom]`                                                              |
+| [setuptools](https://setuptools.pypa.io/)                                                                                                                                                                         | `python-sbom[setuptools]`        | `[tool.python-sbom]`                                                              |
+| any other, such as [meson-python](https://mesonbuild.com/meson-python/), [maturin](https://www.maturin.rs/), [scikit-build-core](https://scikit-build-core.readthedocs.io/) or [flit-core](https://flit.pypa.io/) | `python-sbom`                    | `build-backend = "python_sbom.backend"`, and your backend in `[tool.python-sbom]` |
 
 With hatchling:
 
@@ -49,14 +50,15 @@ requires = ["meson-python>=0.18", "python-sbom>=0.2"]
 build-backend = "mesonpy"
 ```
 
-For a wheel built outside the build interface, such as with `maturin build`, or renamed after it by `auditwheel repair`,
-embed the SBOM afterwards:
+For a wheel built outside the build interface, such as with [`maturin build`](https://www.maturin.rs/), or renamed after
+it by [`auditwheel repair`](https://github.com/pypa/auditwheel), embed the SBOM afterwards:
 
 ```console
 python-sbom embed dist/*.whl
 ```
 
-To convert and validate SBOMs in CI, install the command line in a tool environment of its own:
+To convert and validate SBOMs in continuous integration (CI), install the command line in a tool environment of its own
+with [pipx](https://pipx.pypa.io/) or [uv](https://docs.astral.sh/uv/):
 
 ```console
 pipx install 'python-sbom[validate]'
@@ -64,5 +66,6 @@ python-sbom validate dist/
 ```
 
 The [documentation](https://python-sbom.readthedocs.io) starts with a tutorial, then has a guide per backend, the
-options and commands, and how the SBOM is built. It also covers describing a zipapp, adding project knowledge through a
-content provider, and rendering an SBOM as SPDX.
+options and commands, and how the SBOM is built. It also covers describing a
+[zipapp](https://docs.python.org/3/library/zipapp.html), adding project knowledge through a content provider, and
+rendering an SBOM as [SPDX](https://spdx.dev/) (Software Package Data Exchange).
