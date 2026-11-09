@@ -92,6 +92,17 @@ def revision_of(sdist: Path) -> bytes | None:
         return handle.read()
 
 
+def test_sdist_holds_only_project_files(checkout: Path) -> None:
+    with tarfile.open(checkout / "dist" / build_sdist(str(checkout / "dist"))) as archive:
+        assert sorted(archive.getnames()) == [
+            "example-1.0/.python-sbom-revision",
+            "example-1.0/LICENSE",
+            "example-1.0/PKG-INFO",
+            "example-1.0/pyproject.toml",
+            "example-1.0/src/example/__init__.py",
+        ]
+
+
 def test_sdist_of_dirty_checkout_records_no_revision(checkout: Path) -> None:
     (checkout / "LICENSE").write_text("changed\n", encoding="utf-8")
     assert revision_of(checkout / "dist" / build_sdist(str(checkout / "dist"))) is None

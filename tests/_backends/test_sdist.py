@@ -46,6 +46,14 @@ def test_sdist_already_holding_the_file_is_kept(sdist: Path) -> None:
     assert sdist.read_bytes() == first
 
 
+def test_rewrite_is_reproducible(sdist: Path, tmp_path: Path) -> None:
+    (again := tmp_path / "again" / sdist.name).parent.mkdir()
+    again.write_bytes(sdist.read_bytes())
+    add_to_sdist(sdist, ".python-sbom-revision", b"node: x\n")
+    add_to_sdist(again, ".python-sbom-revision", b"node: x\n")
+    assert sdist.read_bytes() == again.read_bytes()
+
+
 def test_failed_rewrite_keeps_the_sdist(sdist: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     original = sdist.read_bytes()
 

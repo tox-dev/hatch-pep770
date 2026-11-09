@@ -56,9 +56,6 @@ Use the module name from your current ``[build-system] build-backend``:
     * - pdm-backend, setuptools
       - ``pdm.backend``, ``setuptools.build_meta``
       - Use :doc:`pdm-backend` or :doc:`setuptools` instead; wrap them only when the plugin cannot act.
-    * - A backend in your own tree
-      - its module, found through ``backend-path``
-      - The frontend puts ``backend-path`` on ``sys.path`` before it loads the wrapper, so the wrapper finds your module.
 
 maturin's own SBOM
 ~~~~~~~~~~~~~~~~~~
@@ -74,6 +71,13 @@ The wrapper runs only when a frontend builds through the standard build interfac
 cibuildwheel do. Tools that call the backend's own command line do not: ``maturin build``, which `maturin-action
 <https://github.com/PyO3/maturin-action>`_ runs, and ``meson`` called directly. Describe those wheels after the build, as
 :doc:`built-elsewhere` shows.
+
+Pitfall: a backend in your own tree
+-----------------------------------
+
+The wrapper cannot wrap a backend the project ships in its own tree. Such a backend loads through ``[build-system]
+backend-path``, and a frontend loads only a backend found on that path, so it refuses ``python_sbom.backend``, which
+lives in the build environment. Describe those wheels after the build, as :doc:`built-elsewhere` shows.
 
 Pitfall: tools that rename the wheel afterwards
 -----------------------------------------------

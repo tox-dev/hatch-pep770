@@ -91,6 +91,23 @@ def test_wheel_command_that_writes_no_wheel(project: Path) -> None:
         build_meta.build_wheel(str(project / "dist"))
 
 
+@pytest.mark.parametrize(
+    ("commands", "named"),
+    [
+        pytest.param('bdist_wheel = "custom:Wheel"', "bdist_wheel", id="wheel"),
+        pytest.param('sdist = "custom:Sdist"\nbdist_wheel = "custom:Wheel"', "bdist_wheel, sdist", id="both"),
+    ],
+)
+def test_pyproject_replacing_commands(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, commands: str, named: str
+) -> None:
+    write_project(
+        tmp_path / "project", f"\n[tool.python-sbom]\n\n[tool.setuptools.cmdclass]\n{commands}\n", monkeypatch
+    )
+    with pytest.raises(SbomError, match=rf"^\[tool.setuptools.cmdclass\] replaces {named} after python-sbom wraps it"):
+        finalize_distribution_options(Distribution())
+
+
 def test_project_without_table_has_no_sbom(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = write_project(tmp_path / "project", "", monkeypatch)
     assert sboms(root / "dist" / build_meta.build_wheel(str(root / "dist"))) == []

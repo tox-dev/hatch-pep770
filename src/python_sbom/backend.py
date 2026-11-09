@@ -114,7 +114,6 @@ def _load(root: Path) -> _Backend:
     if module == __name__:
         msg = f"[tool.python-sbom] build-backend names {reference}, which would wrap itself"
         raise SbomError(msg)
-    # a backend in the project's own tree loads too: the frontend put backend-path on sys.path before loading this one
     loaded = importlib.import_module(module)
     # PEP 517 requires every backend to define the two mandatory hooks
     return cast("_Backend", reduce(getattr, attribute.split("."), loaded) if attribute else loaded)

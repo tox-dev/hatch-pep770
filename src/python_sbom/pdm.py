@@ -8,6 +8,7 @@ environment, so it acts only for a project whose ``pyproject.toml`` has a ``[too
 from __future__ import annotations
 
 import calendar
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,7 @@ class SbomBuildHook:
     """Write the SBOM into a wheel pdm-backend built, and record the source revision in an sdist."""
 
     _revision: Revision | None = None
+    _scratch: tempfile.TemporaryDirectory[str] | None = None
 
     def pdm_build_hook_enabled(self, context: Context) -> bool:  # ruff: ignore[no-self-use] # pdm-backend calls it on the hook
         """
@@ -53,8 +55,9 @@ class SbomBuildHook:
         """
         if context.target != "sdist" or (record := revision_record(self._revision)) is None:
             return
-        # in pdm-backend's own build directory, which it ignores in git and cleans
-        (written := context.ensure_build_dir() / REVISION_FILE).write_bytes(record)
+        # outside pdm-backend's build directory, whose every file lands in the sdist, the .gitignore it writes there too
+        self._scratch = tempfile.TemporaryDirectory(prefix="python-sbom-")
+        (written := Path(self._scratch.name) / REVISION_FILE).write_bytes(record)
         files[REVISION_FILE] = written
 
     def pdm_build_finalize(self, context: Context, artifact: Path) -> None:
@@ -65,6 +68,8 @@ class SbomBuildHook:
         :param artifact: the built wheel or sdist
 
         """
+        if self._scratch is not None:
+            self._scratch.cleanup()
         if context.target != "wheel":
             return
         # what a wheel needs loads only when one is built, so an sdist build stays light

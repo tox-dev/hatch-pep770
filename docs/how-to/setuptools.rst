@@ -26,5 +26,20 @@ Pitfall: commands set in ``pyproject.toml``
 -------------------------------------------
 
 setuptools applies ``[tool.setuptools.cmdclass]`` after the plugin runs, so a ``bdist_wheel`` or ``sdist`` named there
-replaces the plugin's and the wheel gets no SBOM. Move that command to ``setup.py``'s ``cmdclass``, or wrap the backend
-instead, as :doc:`other-backends` shows with ``build-backend = "setuptools.build_meta"``.
+would replace the plugin's and the wheel would get no SBOM. The plugin stops such a build with an error instead. Move
+that command to ``setup.py``'s ``cmdclass``, or wrap the backend instead, as :doc:`other-backends` shows with
+``build-backend = 'setuptools.build_meta'``.
+
+Pitfall: build output in the checkout
+-------------------------------------
+
+setuptools writes ``build/`` and ``<name>.egg-info/`` into the project directory, and frontends run ``egg_info`` before
+they ask for the wheel or sdist. python-sbom counts untracked files as changes, so unless git ignores both, every build
+reads the checkout as modified: the wheel's SBOM names no exact commit, and the sdist carries no source revision. Ignore
+them:
+
+.. code-block:: text
+
+    build/
+    dist/
+    *.egg-info/

@@ -27,7 +27,7 @@ does.
       - ``[tool.python-sbom]``
       - ``python-sbom[setuptools]``
       - :doc:`../how-to/setuptools`
-    * - meson-python, maturin, scikit-build-core, flit-core, poetry-core, uv_build, an in-tree backend
+    * - meson-python, maturin, scikit-build-core, flit-core, poetry-core, uv_build
       - ``python_sbom.backend``, which wraps the backend
       - ``[build-system] build-backend = 'python_sbom.backend'`` and ``[tool.python-sbom] build-backend``
       - ``python-sbom``
