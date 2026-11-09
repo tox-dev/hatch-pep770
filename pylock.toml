@@ -3416,28 +3416,28 @@ sha256 = "b854164df26db268af05f49aa5c0344b10e27a494343ff05b1e0bad3b135f5a7"
 
 [[packages]]
 name = "ty"
-version = "0.0.95"
+version = "0.0.100"
 marker = "\"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
-name = "ty-0.0.95.tar.gz"
-upload-time = 2026-10-29T19:21:51.955948+00:00
-url = "https://files.pythonhosted.org/packages/39/08/d63954788578b9189dbf85081d8cbdba9a32a9a6a29729129a0da09cd3a0/ty-0.0.95.tar.gz"
-size = 8115525
+name = "ty-0.0.100.tar.gz"
+upload-time = 2026-11-09T20:16:27.534294+00:00
+url = "https://files.pythonhosted.org/packages/2a/b4/ac430b910566e28b1cd01faf7ee07ca38bcd7585b30fce8fd25dfc104edc/ty-0.0.100.tar.gz"
+size = 8238916
 
 [packages.sdist.hashes]
-sha256 = "a480853a74d43074b2d4b28025d406b9d7223f7fe9f3a6c2adec3eacdbf14ca0"
+sha256 = "ca75081ead663c077e40b90c38b6e9f039b6d168051e02918a8a1d7ecc4fa0dd"
 
 [[packages.wheels]]
-name = "ty-0.0.95-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-upload-time = 2026-10-29T19:21:30.801674+00:00
-url = "https://files.pythonhosted.org/packages/90/64/636308717989afa2fe765604ae2a76189f470d566e5e58da4482b625d64e/ty-0.0.95-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-size = 16312046
+name = "ty-0.0.100-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+upload-time = 2026-11-09T20:16:05.195593+00:00
+url = "https://files.pythonhosted.org/packages/b8/56/02b46b2a5f78f6edbd29afde54fce4461dd6462f901974deac0c9c1a987b/ty-0.0.100-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+size = 16749475
 
 [packages.wheels.hashes]
-sha256 = "6d47be2db5db80cd70c582b240a71dd8e9be215ce9288298c863c7c3611ef02b"
+sha256 = "e23076fd67dc5c740a5cd292f3bbc10b82127dd01df3cb559e12b3144ceef72d"
 
 [[packages]]
 name = "typing-extensions"
@@ -3780,6 +3780,6 @@ platforms = [
 
 [tool.nab.validation]
 version = 1
-all-inputs-sha256 = "8aa355f4b82a36557184f7ad1d7371fa543d87d6c74d90f845353792ed9270c2"
-selection-inputs-sha256 = "805268f7d0f2a4ebfdd771a30b5a8805b5b635d5a8154627aef8fbb43fe52ac9"
-contents-sha256 = "b7167570fd0c38375480f42b84d1200c4c3d70c3ee6d66872f38bfd35e8c9a5e"
+all-inputs-sha256 = "8ef75757f8e1b5983439523925f4e1274fa3dd3df4383ba69c15d13a73ea28fe"
+selection-inputs-sha256 = "c471b6f745f74f253a2c2ba7095b5b07a49f5b770f1a9ff8b71a6eb8704a9431"
+contents-sha256 = "ef98574fb95a6767aed70351a3b1ab64e68e6d5c01614aaa8e57a1800ede1cd7"

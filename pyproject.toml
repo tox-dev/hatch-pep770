@@ -106,7 +106,7 @@ test = [
   "spdx-tools>=0.8.5",
 ]
 type = [
-  "ty>=0.0.84",
+  "ty>=0.0.100",
   { include-group = "bench" },
   { include-group = "docs" },
   { include-group = "test" },
@@ -330,3 +330,6 @@ packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z
 # simplint 0.7.1, the pre-commit hook, needs a seven-day cutoff exception.
 # expires 2026-11-13
 packages.simplint.uploaded-prior-to = 2026-11-06T21:30:00Z
+# ty 0.0.100 renamed unresolved-attribute to missing-attribute, needs a seven-day cutoff exception.
+# expires 2026-11-16
+packages.ty.uploaded-prior-to = 2026-11-09T20:30:00Z
