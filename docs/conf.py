@@ -61,8 +61,8 @@ html_theme_options: Final[dict[str, str | bool | dict[str, str]]] = {
     "source_repository": "https://github.com/tox-dev/python-sbom",
     "source_branch": "main",
     "source_directory": "docs/",
-    "light_logo": "logo-horizontal-light.svg",
-    "dark_logo": "logo-horizontal-dark.svg",
+    "light_logo": "logo-light.svg",
+    "dark_logo": "logo-dark.svg",
     "sidebar_hide_name": True,
     "light_css_variables": {
         "color-brand-primary": "#2b6599",

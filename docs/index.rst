@@ -181,7 +181,7 @@ The command line, which describes wheels built elsewhere and checks SBOMs, insta
 .. toctree::
     :hidden:
 
-    self
+    Home <self>
     tutorials/index
     how-to/index
     reference/index

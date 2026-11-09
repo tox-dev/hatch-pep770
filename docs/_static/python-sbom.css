@@ -28,6 +28,11 @@ body[data-theme="dark"] {
   min-width: 0;
 }
 
+/* the logo is a square icon, which at the sidebar's full width would push the navigation below the fold */
+.sidebar-logo {
+  max-width: 7rem;
+}
+
 h1,
 h2,
 h3 {
