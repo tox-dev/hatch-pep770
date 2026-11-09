@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tox-dev/python-sbom/main/docs/_static/logo-horizontal-dark.svg">
-  <img alt="python-sbom" src="https://raw.githubusercontent.com/tox-dev/python-sbom/main/docs/_static/logo-horizontal-light.svg" width="480">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/_static/logo-horizontal-dark.svg">
+  <img alt="python-sbom" src="docs/_static/logo-horizontal-light.svg" width="480">
 </picture>
 
 # python-sbom
