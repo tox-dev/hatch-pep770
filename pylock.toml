@@ -2538,6 +2538,34 @@ size = 22496
 sha256 = "eb09aedbabfb650607e9b4b68c9d240b90b1e1be221d6ad71d61c52e29f7932b"
 
 [[packages]]
+name = "sphinx-design"
+version = "0.7.0"
+marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.11"
+dependencies = [
+    { name = "sphinx" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "sphinx_design-0.7.0.tar.gz"
+upload-time = 2026-01-19T13:12:53.297780+00:00
+url = "https://files.pythonhosted.org/packages/13/7b/804f311da4663a4aecc6cf7abd83443f3d4ded970826d0c958edc77d4527/sphinx_design-0.7.0.tar.gz"
+size = 2203582
+
+[packages.sdist.hashes]
+sha256 = "d2a3f5b19c24b916adb52f97c5f00efab4009ca337812001109084a740ec9b7a"
+
+[[packages.wheels]]
+name = "sphinx_design-0.7.0-py3-none-any.whl"
+upload-time = 2026-01-19T13:12:51.077508+00:00
+url = "https://files.pythonhosted.org/packages/30/cf/45dd359f6ca0c3762ce0490f681da242f0530c49c81050c035c016bfdd3a/sphinx_design-0.7.0-py3-none-any.whl"
+size = 2220350
+
+[packages.wheels.hashes]
+sha256 = "f82bf179951d58f55dca78ab3706aeafa496b741a91b1911d371441127d64282"
+
+[[packages]]
 name = "sphinxcontrib-applehelp"
 version = "2.0.0"
 marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"type\" in dependency_groups"
@@ -3172,6 +3200,6 @@ platforms = [
 
 [tool.nab.validation]
 version = 1
-all-inputs-sha256 = "7f1d9852c53bf99d0bd21fe4b2fa9901e5535bf2c548bbeb6e6766abce34df13"
-selection-inputs-sha256 = "fd0a3eebacae5dc1398881d7575e197fdaf111de0851bb4580f95f0550dacbf1"
-contents-sha256 = "25a3e308d3d587cf8b53605e5b29c78f801be4e0cb07f46178f2cd0b246ab44f"
+all-inputs-sha256 = "a7a6d9acf4693d1f9625940243de4d1ab7f3783aa21d4a1810f214d44a40cfbd"
+selection-inputs-sha256 = "08d5a86c1d91fae37a1430d4ffd6169ded6b732883d7ae803a6dc97dbdd9d8ae"
+contents-sha256 = "d840f4ca97d2d556ce0075680be1bbbbeac508d8859659f8852bf985c756afeb"

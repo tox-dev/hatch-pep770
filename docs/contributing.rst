@@ -9,7 +9,7 @@ of the command line, gathers the options, the content provider, the build script
 revision and toolchain). The pipeline opens the artifact once, reads it into a tree (``_collect/_wheel.py`` or
 ``_collect/_archive.py``), maps the tree to an ``Artifact`` with a pure function (``_model/_wheel.py`` or
 ``_model/_archive.py``), and hands that to ``_model/_bom.py``, which adds what every artifact of the project shares.
-:doc:`explanation/architecture` draws the packages and their imports.
+:ref:`concepts:Architecture` draws the packages and their imports.
 
 To record a new field, read it at the edge into ``_model/_inputs.py`` and write it in ``_model``; to add a subcommand,
 write a ``run`` function in a new ``_cli/_<command>.py`` and register its arguments and the

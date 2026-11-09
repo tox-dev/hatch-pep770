@@ -1,15 +1,19 @@
-Tutorial: your first SBOM
-=========================
+###########
+ Tutorials
+###########
+*****************
+ Your first SBOM
+*****************
 
 In this tutorial you build a small package with an SBOM inside its wheel, look at what the SBOM says, and check it the
 way a CI job would. It takes about ten minutes. You need Python 3.11 or later, git, and `uv
 <https://docs.astral.sh/uv/>`_; any other build frontend, such as ``python -m build``, works the same.
 
 Create the project
-------------------
+==================
 
 Make a directory with a package, a license and a ``pyproject.toml``. The project uses `hatchling
-<https://hatch.pypa.io/latest/>`_, the backend python-sbom has the most to say about; :doc:`reference/backends` lists the
+<https://hatch.pypa.io/latest/>`_, the backend python-sbom has the most to say about; :ref:`reference:Supported backends` lists the
 others.
 
 .. code-block:: console
@@ -51,7 +55,7 @@ untracked files has no commit that reproduces it, and then the SBOM names none:
     $ git init --quiet && git add . && git commit --quiet --message first
 
 Build the wheel
----------------
+===============
 
 .. code-block:: console
 
@@ -74,7 +78,7 @@ The sdist holds a ``.python-sbom-revision`` file with your commit. uv built the 
 checkout, and the file is how the wheel still knows which commit it came from.
 
 Read the SBOM
--------------
+=============
 
 Print a few parts of the document:
 
@@ -107,10 +111,10 @@ That is four things:
 - a link to your repository at the exact commit you built;
 - the build tools: the interpreter, hatchling, python-sbom and every other package of the build environment.
 
-:doc:`explanation/document` says what each part is for.
+:ref:`concepts:What the SBOM records` says what each part is for.
 
 Check it
---------
+========
 
 Install the command line with its ``validate`` extra and check the wheel:
 
@@ -119,12 +123,12 @@ Install the command line with its ``validate`` extra and check the wheel:
     $ uvx --from 'python-sbom[validate]' python-sbom validate dist/ --allow-license MIT
     SBOM in greet-1.0-py3-none-any.whl is valid
 
-That is the check a CI job runs before publishing; :doc:`how-to/validate` shows how to wire it in.
+That is the check a CI job runs before publishing; :ref:`how-to:Check SBOMs in CI` shows how to wire it in.
 
 Where to go next
-----------------
+================
 
-- Your project uses another build backend? Pick its guide: :doc:`how-to/pdm-backend`, :doc:`how-to/setuptools` or
-  :doc:`how-to/other-backends`.
-- Your project bundles wheels or knows more than its metadata says: :doc:`how-to/content-provider`.
-- Every option python-sbom reads: :doc:`reference/configuration`.
+- Your project uses another build backend? Pick its guide: :ref:`how-to:Use it with pdm-backend`, :ref:`how-to:Use it with setuptools` or
+  :ref:`how-to:Use it with any other backend`.
+- Your project bundles wheels or knows more than its metadata says: :ref:`how-to:Add what your project knows`.
+- Every option python-sbom reads: :ref:`reference:Configuration`.

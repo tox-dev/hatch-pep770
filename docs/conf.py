@@ -40,19 +40,28 @@ extensions: Final[list[str]] = [
     "sphinx.ext.inheritance_diagram",
     "sphinx_argparse_cli",
     "sphinx_autodoc_typehints",
+    "sphinx_design",
     "sphinxcontrib.mermaid",
 ]
 
 master_doc: Final[str] = "index"
 source_suffix: Final[str] = ".rst"
 exclude_patterns: Final[list[str]] = ["changelog.d/*"]
-autosectionlabel_maxdepth: Final[int] = 2
+autosectionlabel_maxdepth: Final[int] = 3
+autosectionlabel_prefix_document: Final[bool] = True
+# every release repeats the same category headings, such as Added and Fixed
+suppress_warnings: Final[list[str]] = ["autosectionlabel.changelog"]
 
 html_theme: Final[str] = "furo"
 html_title: Final[str] = "python-sbom: SBOMs for Python distributions"
 html_last_updated_fmt: Final[str] = _NOW.isoformat()
 html_static_path: Final[list[str]] = ["_static"]
-html_css_files: Final[list[str]] = ["changelog-toc.css"]
+html_css_files: Final[list[str]] = ["changelog-toc.css", "custom.css"]
+# the browser renders each diagram, so it follows furo's light and dark toggle
+mermaid_output_format: Final[str] = "raw"
+mermaid_light_theme: Final[str] = "neutral"
+# the default fixed 500px height pads a wide diagram with empty bands
+mermaid_height: Final[str] = "auto"
 pygments_style: Final[str] = "sphinx"
 pygments_dark_style: Final[str] = "monokai"
 

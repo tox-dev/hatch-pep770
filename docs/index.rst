@@ -1,68 +1,130 @@
-python-sbom
-===========
+#############
+ python-sbom
+#############
 
-SBOMs for Python distributions. python-sbom writes a `CycloneDX <https://cyclonedx.org/>`_ 1.6 SBOM into every wheel you
-build, at ``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where `PEP 770
-<https://peps.python.org/pep-0770/>`_ tells installers to keep SBOMs, so they land in the environment next to the
-installed package, where scanners look for them.
+python-sbom writes a `CycloneDX <https://cyclonedx.org/>`_ 1.6 SBOM into every wheel you build, at
+``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where `PEP 770 <https://peps.python.org/pep-0770/>`_ tells
+installers to keep SBOMs, so they land in the environment next to the installed package, where scanners look for them:
+
+.. code-block:: toml
+
+    [build-system]
+    build-backend = 'hatchling.build'
+    requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.2']
+
+    [tool.hatch.build.hooks.python-sbom]
 
 General-purpose scanners read the dependencies a package declares or the packages an environment has installed. They
 cannot see a wheel your project ships as a data file, and they cannot say how the wheel was built. The SBOM python-sbom
 writes records both: the wheels you bundle, with their hashes, licenses and vendored packages, and the Python version
 and packages of the build environment. A third party can use that record to rebuild the wheel and compare the bytes.
+The :doc:`changelog` lists the changes in each version.
 
-It works with every build backend: hatchling, pdm-backend and setuptools through a plugin each, and any other backend,
-such as meson-python, maturin or scikit-build-core, through a backend that wraps it.
+**************
+ Installation
+**************
 
-How these pages are organized
------------------------------
+python-sbom runs inside your build, so it goes in ``[build-system] requires``, with the extra for your backend, rather
+than into an environment of yours. It needs Python 3.11 or later. :ref:`reference:Supported backends` names the extra
+for each backend; the command line, for wheels built elsewhere and for checking SBOMs, installs as a tool:
 
-- :doc:`tutorial` walks you through your first SBOM, from an empty project to a validated wheel.
-- The **how-to guides** each solve one task: set python-sbom up for your build backend, describe a wheel built outside
-  the standard build interface, describe a zipapp, add what your project knows, render SPDX, or check SBOMs in CI.
-- The **reference** lists every option, command and class.
-- The **explanation** says how python-sbom is built, what the SBOM records and why, and why each backend gets the
-  integration it does.
+.. code-block:: bash
+
+    pipx install 'python-sbom[validate]'
+
+*******************
+ Learn python-sbom
+*******************
+
+.. grid:: 1 2 2 2
+    :gutter: 2
+
+    .. grid-item-card::
+
+        **New to python-sbom?**
+
+        The :doc:`tutorials` build a first package with an SBOM, read it, and check it.
+
+    .. grid-item-card::
+
+        **Have a specific task?**
+
+        Each of the :doc:`how-to` sets python-sbom up for one backend or handles one kind of artifact.
+
+    .. grid-item-card::
+
+        **Looking up an option?**
+
+        The :doc:`reference` lists the backends, the configuration, the command line and the Python API.
+
+    .. grid-item-card::
+
+        **Want to know how it works?**
+
+        :doc:`concepts` says why each backend gets its integration, what the SBOM records, and how the code is laid out.
+
+**********
+ Features
+**********
+
+.. grid:: 1 2 2 3
+    :gutter: 2
+
+    .. grid-item-card::
+        **Every build backend**
+
+        A plugin for hatchling, pdm-backend and setuptools, and a wrapper backend for the rest.
+
+        - :ref:`how-to:Use it with hatchling`
+        - :ref:`how-to:Use it with pdm-backend`
+        - :ref:`how-to:Use it with setuptools`
+        - :ref:`how-to:Use it with any other backend`
+
+    .. grid-item-card::
+        **Wheels built elsewhere**
+
+        Describe a wheel after ``maturin build``, ``auditwheel repair`` or ``delocate``.
+
+        - :ref:`how-to:Describe a wheel built outside the build interface`
+
+    .. grid-item-card::
+        **Bundled wheels**
+
+        Each wheel a project ships as data gets its hashes, license, files and vendored packages.
+
+        - :ref:`reference:Bundled wheels`
+        - :ref:`how-to:Add what your project knows`
+
+    .. grid-item-card::
+        **Reproducible builds**
+
+        The source revision and the build tools, down to their files, so a third party can rebuild the wheel.
+
+        - :ref:`concepts:Reproducibility`
+        - :ref:`reference:The source revision`
+
+    .. grid-item-card::
+        **Zipapps and other archives**
+
+        The same SBOM for a ``.pyz`` or another zip the project publishes.
+
+        - :ref:`how-to:Describe a zipapp or another archive`
+
+    .. grid-item-card::
+        **Checks and SPDX**
+
+        Validate SBOMs in CI against the CycloneDX schema, and render them as SPDX 2.3.
+
+        - :ref:`how-to:Check SBOMs in CI`
+        - :ref:`how-to:Render an SBOM as SPDX`
 
 .. toctree::
-   :hidden:
+    :hidden:
 
-   tutorial
-
-.. toctree::
-   :caption: How-to guides
-   :hidden:
-
-   how-to/hatchling
-   how-to/pdm-backend
-   how-to/setuptools
-   how-to/other-backends
-   how-to/built-elsewhere
-   how-to/archive
-   how-to/content-provider
-   how-to/spdx
-   how-to/validate
-
-.. toctree::
-   :caption: Reference
-   :hidden:
-
-   reference/backends
-   reference/configuration
-   reference/cli
-   reference/api
-
-.. toctree::
-   :caption: Explanation
-   :hidden:
-
-   explanation/backends
-   explanation/document
-   explanation/architecture
-
-.. toctree::
-   :caption: Project
-   :hidden:
-
-   changelog
-   contributing
+    self
+    tutorials
+    how-to
+    reference
+    concepts
+    changelog
+    contributing
