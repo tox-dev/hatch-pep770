@@ -7,11 +7,13 @@ from pathlib import Path
 from tomllib import loads
 from typing import TYPE_CHECKING, Final
 
+from docutils import nodes
+
 import python_sbom
 from python_sbom import __version__
 
 if TYPE_CHECKING:
-    from docutils.nodes import Element, reference
+    from docutils.nodes import Element, document, reference
     from sphinx.addnodes import pending_xref
     from sphinx.application import Sphinx
     from sphinx.environment import BuildEnvironment
@@ -168,6 +170,7 @@ def setup(app: Sphinx) -> None:
     # annotations name the private modules that define a type, and pathlib.Path an undocumented private alias
     app.connect("missing-reference", _resolve_private_path)
     app.connect("source-read", _include_unreleased)
+    app.connect("doctree-read", _anchor_by_label)
 
 
 def _resolve_private_path(
@@ -215,3 +218,12 @@ def _include_unreleased(app: Sphinx, docname: str, source: list[str]) -> None:
             ".. towncrier release notes start",
             f".. _release-unreleased:\n\nUnreleased\n----------\n\n{joined}\n.. towncrier release notes start",
         )
+
+
+def _anchor_by_label(app: Sphinx, doctree: document) -> None:  # ruff: ignore[unused-function-argument] # the event's signature
+    # a heading links by its title's id unless that id is taken, so the changelog's repeated "Added" and "Fixed" would
+    # link by whichever id was left; a heading that has an explicit label, such as release-0-1-2-fixed, links by it
+    for section in doctree.findall(nodes.section):
+        names = [name for name in section["names"] if doctree.nametypes.get(name) and doctree.nameids.get(name)]
+        if explicit := [doctree.nameids[name] for name in names]:
+            section["ids"] = [*explicit, *(ident for ident in section["ids"] if ident not in explicit)]
