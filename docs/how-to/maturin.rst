@@ -4,8 +4,7 @@
 
 maturin_ has written an :term:`SBOM` of a :term:`wheel`'s Rust crates since 1.12. python-sbom adds a second one with
 what maturin's leaves out: the Python package, its declared dependencies, the build tools and the source revision. It
-links to maturin's by file name and SHA-256, so a scanner that reads it also finds the crates. This guide sets that up
-for each way a maturin project builds its wheels.
+links to maturin's by file name and SHA-256, so a scanner that reads it can find the crates.
 
 **********************
  What each SBOM holds
@@ -30,11 +29,11 @@ Both sit in the wheel's ``.dist-info/sboms`` directory, as :term:`PEP 770` allow
       - the runtime dependencies the core metadata declares
     - - Also records
       -
-      - supplier, authors and license; the build tools and interpreter; the :term:`source revision`; a link to every
-        other SBOM in the directory, with its SHA-256
+      - supplier, authors and license; the build tools and interpreter; the :term:`source revision`; a link to each
+        other file in the directory, with its SHA-256
 
-Keep maturin's: python-sbom does not list Rust crates, so turning it off with ``[tool.maturin.sbom] rust = false``
-loses them. When maturin's repair copies shared libraries into the wheel, it adds a third SBOM, ``auditwheel.cdx.json``,
+Leave maturin's SBOM on. python-sbom does not list Rust crates, so ``[tool.maturin.sbom] rust = false`` drops the only
+list of them from the wheel. When maturin's repair copies shared libraries into the wheel, it adds a third SBOM, ``auditwheel.cdx.json``,
 which python-sbom links the same way.
 
 ********************************
@@ -55,9 +54,9 @@ pip_, uv_, ``python -m build`` and cibuildwheel_ build through the standard buil
     build-backend = 'maturin'
     supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-Every hook goes to maturin unchanged, so ``[tool.maturin]`` and ``--config-settings`` behave as before. Once maturin has
-written the wheel, with its own SBOM inside, the wrapper adds python-sbom's. It runs in the build's isolated
-environment, so the SBOM lists the maturin version the frontend installed.
+The wrapper passes every hook to maturin unchanged, so ``[tool.maturin]`` and ``--config-settings`` behave as before.
+Once maturin has written the wheel, with its own SBOM inside, the wrapper adds python-sbom's from within the build's
+isolated environment, so the SBOM lists the maturin version the frontend installed.
 
 .. code-block:: console
 

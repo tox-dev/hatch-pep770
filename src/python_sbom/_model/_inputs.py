@@ -120,7 +120,7 @@ class Artifact:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class WheelTree:
     # what a built wheel holds, read from the wheel without unpacking it: its file name, its core metadata, the wheels
-    # it bundles and the SHA-256 of each SBOM another tool put next to ours, by its path under the sboms directory; and
+    # it bundles and the SHA-256 of each other file in its sboms directory, by its path there; and
     # what the project adds: the copyright line of its license files and the scripts that built it
     name: str
     metadata: CoreMetadata

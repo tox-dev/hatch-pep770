@@ -29,7 +29,7 @@ def read_wheel(
         copyright=copyright_notice(root, metadata.values("license_files")),
         bundled=artifact.bundled_wheels(_shipped_copies(root, settings, artifact)),
         build_scripts=hash_build_scripts(root, build_scripts),
-        # maturin, auditwheel and others write their own, which a reader of ours should be able to find
+        # maturin and auditwheel write SBOMs of their own here; ours links to them so a reader can find them
         other_sboms={
             name.removeprefix(sboms): artifact.digest(name)
             for name in sorted(artifact.members)

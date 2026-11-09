@@ -65,7 +65,7 @@ def _other_sbom(path: str, digest: str) -> ExternalReference:
     return {
         "type": "bom",
         "url": quote(path),
-        "comment": "another SBOM of this wheel, which a different tool wrote",
+        "comment": "another file in this wheel's sboms directory",
         "hashes": [{"alg": "SHA-256", "content": digest}],
     }
 

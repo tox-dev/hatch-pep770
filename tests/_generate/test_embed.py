@@ -74,7 +74,7 @@ def linked(tmp_path: Path, write_wheel: WriteWheel) -> tuple[Path, str]:
             "pkg-1.0.dist-info/sboms/vendor/c:d.spdx.json": _SPDX,
         },
     )
-    # the second run replaces the SBOM the first wrote, and links to neither
+    # a second embed replaces the first one's SBOM and links to neither that copy nor itself
     embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
     return wheel, embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
 
