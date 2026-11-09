@@ -3,6 +3,21 @@ Changelog
 
 .. towncrier release notes start
 
+.. _release-0-2-0:
+
+0.2.0 (2026-11-09)
+------------------
+
+.. _release-0-2-0-added:
+
+Added
+~~~~~
+
+- Write the SBOM with any build backend: a pdm-backend hook and a setuptools plugin act for every project with a
+  ``[tool.python-sbom]`` table, and ``python_sbom.backend`` wraps any other backend, such as meson-python or maturin,
+  named by the new ``build-backend`` option. Each records the source revision in the sdist, as the hatchling hook does
+  (:pr:`7`) by :user:`gaborbernat`.
+
 .. _release-0-1-2:
 
 0.1.2 (2026-11-08)
