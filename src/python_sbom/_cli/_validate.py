@@ -1,3 +1,5 @@
+"""The validate subcommand: check the SBOMs of wheels, archives and standalone documents."""
+
 from __future__ import annotations
 
 import sys

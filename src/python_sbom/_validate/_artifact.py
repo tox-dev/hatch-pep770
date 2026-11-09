@@ -1,3 +1,5 @@
+"""Find the SBOMs in a wheel or archive, or read a standalone one, and check each."""
+
 from __future__ import annotations
 
 import zipfile

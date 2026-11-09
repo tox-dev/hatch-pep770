@@ -1,3 +1,5 @@
+"""The content provider interface, the context it reads and the contributions it returns."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

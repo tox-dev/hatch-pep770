@@ -1,3 +1,5 @@
+"""Find the commit a build comes from, and write the record an sdist keeps it in for the wheels built from it."""
+
 from __future__ import annotations
 
 import os

@@ -1,3 +1,5 @@
+"""The CycloneDX 1.6 types python-sbom writes, as typed dictionaries."""
+
 from __future__ import annotations
 
 from typing import NotRequired, TypedDict

@@ -1,3 +1,5 @@
+"""Open a built artifact once and read its members through one checked handle."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager

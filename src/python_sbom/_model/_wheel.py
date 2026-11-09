@@ -1,3 +1,5 @@
+"""Describe a wheel: its declared dependencies, the wheels it bundles and the other SBOMs it carries."""
+
 from __future__ import annotations
 
 from itertools import starmap

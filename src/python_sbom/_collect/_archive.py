@@ -1,3 +1,5 @@
+"""Read an archive's members, distributions and bundled wheels into the tree the model describes."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final

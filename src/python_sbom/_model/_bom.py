@@ -1,3 +1,5 @@
+"""Assemble the CycloneDX document from the artifact, the tools and the provider's contributions."""
+
 from __future__ import annotations
 
 import json

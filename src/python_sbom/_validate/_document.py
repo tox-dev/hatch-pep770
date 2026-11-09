@@ -1,3 +1,5 @@
+"""Check an SBOM's size, nesting and schema, and in one python-sbom wrote, its serial, references, SPDX and licenses."""
+
 from __future__ import annotations
 
 import math

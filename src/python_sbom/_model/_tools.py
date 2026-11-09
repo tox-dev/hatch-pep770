@@ -1,3 +1,5 @@
+"""Describe the build tools: the interpreter, the installed distributions and the build scripts."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final

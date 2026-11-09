@@ -1,3 +1,5 @@
+"""The facts the edge gathers and the model turns into a document."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

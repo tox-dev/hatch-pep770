@@ -1,3 +1,5 @@
+"""Check the licenses of the libraries an artifact ships against the allowed SPDX ids."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final

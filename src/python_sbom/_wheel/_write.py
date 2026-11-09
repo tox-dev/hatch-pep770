@@ -1,3 +1,5 @@
+"""Write the SBOM into a wheel and its RECORD, or append it to an archive."""
+
 from __future__ import annotations
 
 import csv

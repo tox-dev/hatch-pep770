@@ -1,3 +1,5 @@
+"""Read python-sbom's settings from a project's [tool.python-sbom] table."""
+
 from __future__ import annotations
 
 import tomllib

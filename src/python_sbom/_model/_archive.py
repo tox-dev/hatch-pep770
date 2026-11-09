@@ -1,3 +1,5 @@
+"""Describe an archive: its own files, the distributions it holds and the wheels it bundles."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

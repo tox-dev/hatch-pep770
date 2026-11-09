@@ -1,3 +1,5 @@
+"""Write documents as JSON, and parse JSON input and check it has the fields a document needs."""
+
 from __future__ import annotations
 
 import json

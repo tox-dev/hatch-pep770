@@ -1,3 +1,5 @@
+"""The archive subcommand: write the SBOM of a zipapp or other non-wheel zip archive, and optionally embed it."""
+
 from __future__ import annotations
 
 import sys

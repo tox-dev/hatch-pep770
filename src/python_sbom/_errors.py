@@ -1,3 +1,5 @@
+"""The errors python-sbom raises."""
+
 from __future__ import annotations
 
 

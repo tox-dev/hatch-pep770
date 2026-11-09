@@ -1,3 +1,5 @@
+"""Resolve the content provider, from an instance, a module:attribute name or the option, and the files defining it."""
+
 from __future__ import annotations
 
 import inspect

@@ -1,3 +1,5 @@
+"""Walk a document's components, pick what the artifact holds and ships, and check the references between them."""
+
 from __future__ import annotations
 
 from collections import Counter

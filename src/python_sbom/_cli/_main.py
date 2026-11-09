@@ -1,3 +1,5 @@
+"""The command line's entry point: parse the arguments and run the chosen subcommand."""
+
 from __future__ import annotations
 
 import pkgutil

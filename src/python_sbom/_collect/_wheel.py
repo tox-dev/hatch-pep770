@@ -1,3 +1,5 @@
+"""Read a built wheel's metadata, bundled wheels and other SBOMs, with what the project tree adds, into a WheelTree."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final

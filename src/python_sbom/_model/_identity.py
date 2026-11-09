@@ -1,3 +1,5 @@
+"""Decide how a project's SBOMs name it: its property prefix, its repository URL and the namespace of their serials."""
+
 from __future__ import annotations
 
 import uuid
