@@ -127,9 +127,9 @@ Install the command line with its ``validate`` extra and check the wheel:
 
 That is the check a CI job runs before publishing; :doc:`/how-to/validate` shows how to wire it in.
 
-******************
- Where to go next
-******************
+************
+ Next steps
+************
 
 - Your project uses another :term:`build backend`? Pick its guide: :doc:`/how-to/pdm-backend`, :doc:`/how-to/setuptools`
   or :doc:`/how-to/other-backends`.

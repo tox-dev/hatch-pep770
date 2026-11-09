@@ -26,9 +26,9 @@ build with a pointer to ``[tool.python-sbom]``. :doc:`/reference/configuration` 
 The hook writes the SBOM once hatchling has written the wheel, so the document describes the final file name and
 metadata, whatever dependencies or tag other hooks changed. The order of the hook tables does not matter.
 
-**************************************************************
- When a project supports Python versions python-sbom does not
-**************************************************************
+***************************************************
+ Projects that still build on Python 3.10 or older
+***************************************************
 
 python-sbom needs Python 3.11 or later. A project that still builds on older interpreters guards the requirement with a
 marker. An enabled ``python-sbom`` hook table would then fail those builds, since hatchling refuses a hook it cannot
