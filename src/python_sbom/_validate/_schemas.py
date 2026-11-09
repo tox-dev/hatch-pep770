@@ -23,9 +23,8 @@ if TYPE_CHECKING:
     from jsonschema_rs import ValidationError
     from spdx_tools.spdx.model import Document, SpdxNoAssertion, SpdxNone
 
+    from python_sbom._formats._json import Json
     from python_sbom._formats._spdx import Spdx
-
-    from ._limits import Json
 
 
 def schema_error(document: Json) -> str | None:

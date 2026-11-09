@@ -9,9 +9,8 @@ from python_sbom._collect._revision import revision_reader
 from python_sbom._collect._settings import settings_from_pyproject
 from python_sbom._collect._wheel import read_wheel
 from python_sbom._formats._json import dumps
-from python_sbom._model._bom import assemble
+from python_sbom._model._bom import assemble, checked_contributions
 from python_sbom._model._content import ProviderContext
-from python_sbom._model._document import checked_contributions
 from python_sbom._model._identity import project_identity
 from python_sbom._model._wheel import wheel_artifact
 from python_sbom._wheel._reader import open_artifact

@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-import json
 import math
 import re
 from importlib.util import find_spec
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
 from python_sbom._errors import MissingExtraError, SbomError
+from python_sbom._formats._json import Json, has_path, is_document, load_json
 from python_sbom._formats._spdx import render_spdx
 from python_sbom._model._graph import artifact_contents, reference_problems, repeated, walk_components
 from python_sbom._model._names import SBOM_FILE
 
-from ._limits import MAX_COMPONENTS, MAX_TEXT, Json, byte_limit
+from ._limits import MAX_COMPONENTS, MAX_TEXT, byte_limit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
     from python_sbom._model._types import Component, Document
 
@@ -80,7 +79,7 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
         prop.get("name", "").endswith(f":{SBOM_FILE}") for prop in loaded.get("metadata", {}).get("properties", [])
     ):
         return []
-    missing: Final[list[str]] = [".".join(path) for path in _REQUIRED if not _has(loaded, path)]
+    missing: Final[list[str]] = [".".join(path) for path in _REQUIRED if not has_path(loaded, path)]
     # is_document holds once nothing is missing; asking it narrows the loaded JSON to a document
     if missing or not is_document(loaded):
         return [f"lacks {', '.join(missing)}, which every document python-sbom writes carries"]
@@ -100,23 +99,6 @@ def _problems(raw: bytes, allowed_licenses: frozenset[str] | None, max_component
             license_problems(artifact_contents(loaded["metadata"]["component"], loaded["components"]), allowed_licenses)
         )
     return problems
-
-
-def load_json(raw: bytes) -> Any:  # ruff: ignore[any-type] # json.loads' own type: any shape until checked
-    # why bytes are no JSON value, worded once for validate and for spdx, which renders a document without validating it
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except UnicodeDecodeError as error:
-        msg = f"is not UTF-8: {error.reason} at byte {error.start}"
-        raise SbomError(msg) from error
-    except json.JSONDecodeError as error:
-        msg = f"is not JSON: {error}"
-        raise SbomError(msg) from error
-    except RecursionError as error:
-        # the JSON parser recurses once per level and gives up near the recursion limit, long before the depth check
-        # sees the document
-        msg = "nests too deep for the JSON parser to read"
-        raise SbomError(msg) from error
 
 
 def _census_problems(document: Json, max_components: int) -> list[str]:
@@ -165,19 +147,6 @@ def _push_containers(
     return []
 
 
-def _has(value: Json, path: tuple[str, ...]) -> bool:
-    for key in path:
-        if not isinstance(value, dict) or key not in value:
-            return False
-        value = value[key]
-    return True
-
-
-def is_document(value: object) -> TypeIs[Document]:
-    # what the SPDX rendering reads without a fallback; the schema leaves even these optional
-    return isinstance(value, dict) and all(_has(value, ("metadata", "component", key)) for key in ("bom-ref", "name"))
-
-
 def _reference_problems(document: Document) -> list[str]:
     root: Final[Component] = document["metadata"]["component"]
     tools: Final[list[Component]] = document["metadata"]["tools"]["components"]
@@ -215,7 +184,5 @@ def _reference_problems(document: Document) -> list[str]:
 
 
 __all__ = [
-    "is_document",
-    "load_json",
     "validate_document",
 ]

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from python_sbom._backends._sdist import add_to_sdist
+from python_sbom._wheel._sdist import add_to_sdist
 
 if TYPE_CHECKING:
     from pathlib import Path

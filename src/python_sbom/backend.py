@@ -76,7 +76,7 @@ def build_sdist(sdist_directory: str, config_settings: ConfigSettings = None) ->
     :returns: the sdist's file name
 
     """
-    from ._backends._sdist import add_to_sdist  # ruff: ignore[import-outside-top-level] # wheel builds skip it
+    from ._wheel._sdist import add_to_sdist  # ruff: ignore[import-outside-top-level] # wheel builds skip it
 
     revision = default_revision(Path.cwd())
     name = _wrapped().build_sdist(sdist_directory, config_settings)

@@ -11,8 +11,8 @@ from packaging.requirements import InvalidRequirement, Requirement
 from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BundledWheel, RecordRow
 from python_sbom._model._metadata import CoreMetadata, parse_metadata
+from python_sbom._model._record import record_rows
 
-from ._record import record_rows
 from ._zip import open_archive, read_member, read_wheel_metadata, sha256_hex
 
 if TYPE_CHECKING:

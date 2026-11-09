@@ -8,6 +8,8 @@ from ._components import component_from_metadata, file_component
 from ._names import purl, tool_ref
 
 if TYPE_CHECKING:
+    from pathlib import PurePosixPath
+
     from ._inputs import BuildFacts
     from ._types import Component, Dependency
 
@@ -43,6 +45,20 @@ def tool_components(facts: BuildFacts) -> tuple[list[Component], list[Dependency
     return tools, dependencies
 
 
+def script_tool(path: PurePosixPath, sha256: str, version: str, link: str | None) -> Component:
+    tool: Final[Component] = {
+        "type": "application",
+        "bom-ref": tool_ref(str(path)),
+        "name": path.name,
+        "version": version,
+        "hashes": [{"alg": "SHA-256", "content": sha256}],
+    }
+    if link is not None:
+        tool["externalReferences"] = [{"type": "vcs", "url": link}]
+    return tool
+
+
 __all__ = [
+    "script_tool",
     "tool_components",
 ]

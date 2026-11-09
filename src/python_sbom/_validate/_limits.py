@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from typing import Final, TypeAlias
-
-# a JSON value, as json.loads hands it over
-Json: TypeAlias = "str | int | float | bool | list[Json] | dict[str, Json] | None"
+from typing import Final
 
 # every check takes time in proportion to the count, so the cap bounds the work an untrusted document can ask for, far
 # above the few thousand components a wheel with its build tools' files lists
@@ -22,6 +19,5 @@ def byte_limit(max_components: int) -> int:
 __all__ = [
     "MAX_COMPONENTS",
     "MAX_TEXT",
-    "Json",
     "byte_limit",
 ]

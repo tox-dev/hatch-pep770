@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING, Protocol
 import pytest
 
 from python_sbom import ContentProvider, ProviderContext
-from python_sbom._model._bom import assemble
-from python_sbom._model._document import checked_contributions
+from python_sbom._model._bom import assemble, checked_contributions
 from python_sbom._model._identity import project_identity
 from python_sbom._model._inputs import BuildFacts, BuildScript, BundledWheel, Interpreter, Settings, WheelTree
 from python_sbom._model._metadata import parse_metadata

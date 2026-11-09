@@ -19,7 +19,7 @@ from packaging.utils import canonicalize_name
 from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BuildFacts, InstalledDistribution, Interpreter, RecordRow
 from python_sbom._model._metadata import parse_metadata
-from python_sbom._wheel._record import record_rows
+from python_sbom._model._record import record_rows
 
 if TYPE_CHECKING:
     from collections.abc import Container, Sequence
