@@ -3,6 +3,30 @@ Changelog
 
 .. towncrier release notes start
 
+.. _release-0-3-0:
+
+0.3.0 (2026-11-09)
+------------------
+
+.. _release-0-3-0-added:
+
+Added
+~~~~~
+
+- A wheel's SBOM now links to every other file in its ``.dist-info/sboms`` directory, such as maturin's or auditwheel's,
+  by file name and SHA-256, and ``python-sbom validate`` also checks the ``.cyclonedx.json`` files maturin writes
+  (:pr:`8`) by :user:`gaborbernat`.
+
+.. _release-0-3-0-documentation:
+
+Documentation
+~~~~~~~~~~~~~
+
+- Give each build backend its own how-to page, under a new backends section, built around an example project whose build
+  and check the test suite runs, and add one for maturin projects: what maturin's SBOM and python-sbom's each hold, and
+  how to add python-sbom's when a build frontend, ``maturin build`` or maturin-action builds the wheel (:pr:`8`) by
+  :user:`gaborbernat`.
+
 .. _release-0-2-0:
 
 0.2.0 (2026-11-09)
