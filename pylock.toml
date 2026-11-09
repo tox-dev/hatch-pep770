@@ -5,6 +5,8 @@ environments = [
 requires-python = ">=3.11"
 extras = [
     "hatch",
+    "pdm",
+    "setuptools",
     "validate",
 ]
 dependency-groups = [
@@ -645,6 +647,31 @@ size = 163877
 
 [packages.wheels.hashes]
 sha256 = "46ce42d27e5cdde09ee7197349663e97cb106679bd9e75db3a09679fbc7aa1a8"
+
+[[packages]]
+name = "flit-core"
+version = "4.2.0"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.8"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "flit_core-4.2.0.tar.gz"
+upload-time = 2026-10-27T21:07:48.907048+00:00
+url = "https://files.pythonhosted.org/packages/d3/8b/0370578a456986d6995344967a479dd5c9d4e064681550c2a9594bb58b4a/flit_core-4.2.0.tar.gz"
+size = 59707
+
+[packages.sdist.hashes]
+sha256 = "84e4e4d8fdd45ba2613800a3ebc6834de26d47ec9746efc3719f94181137b460"
+
+[[packages.wheels]]
+name = "flit_core-4.2.0-py3-none-any.whl"
+upload-time = 2026-10-27T21:07:46.392085+00:00
+url = "https://files.pythonhosted.org/packages/d9/f0/e546c28b937f094b354ca29b9060c5f1dd5043a332b2905049a51420b7a2/flit_core-4.2.0-py3-none-any.whl"
+size = 48025
+
+[packages.wheels.hashes]
+sha256 = "2bee22dc8ba89c2e35b4e1ad575e596aac945c85672dd8f3cad21b629036e044"
 
 [[packages]]
 name = "furo"
@@ -1455,6 +1482,31 @@ size = 57328
 sha256 = "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
 
 [[packages]]
+name = "pdm-backend"
+version = "2.5.0"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"pdm\" in extras"
+requires-python = ">=3.9"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "pdm_backend-2.5.0.tar.gz"
+upload-time = 2026-09-30T13:35:35.980912+00:00
+url = "https://files.pythonhosted.org/packages/fc/d5/a82f533ed51f91a2183faf67a1fcb3b759615ffeca95d05b3e7648bf84bf/pdm_backend-2.5.0.tar.gz"
+size = 199083
+
+[packages.sdist.hashes]
+sha256 = "7953b994563d3151755e3364b9d0cfe817ed0eaecdf27c8f777f412d26bcd98a"
+
+[[packages.wheels]]
+name = "pdm_backend-2.5.0-py3-none-any.whl"
+upload-time = 2026-09-30T13:35:34.996150+00:00
+url = "https://files.pythonhosted.org/packages/5e/a6/c743c589188f9e45e1a7c8f3e2e725f9b5df5decd72779fbfc1695b45866/pdm_backend-2.5.0-py3-none-any.whl"
+size = 199650
+
+[packages.wheels.hashes]
+sha256 = "5b8746b567a16a1fd506ce66ee28e89d46374526f52238aa1b96cc2c08245c63"
+
+[[packages]]
 name = "platformdirs"
 version = "4.14.0"
 marker = "\"dev\" in dependency_groups or \"lint\" in dependency_groups"
@@ -2220,7 +2272,7 @@ sha256 = "de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177"
 [[packages]]
 name = "setuptools"
 version = "84.2.1"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"setuptools\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -3109,6 +3161,7 @@ command-line = [
     "lock",
     "--all-groups",
     "--all-extras",
+    "--no-cache",
 ]
 input-path = "pyproject.toml"
 mode = "universal"
@@ -3119,6 +3172,6 @@ platforms = [
 
 [tool.nab.validation]
 version = 1
-all-inputs-sha256 = "ccce22a3e18b958cdef60a6925cea289e8979f89899df0a6c90910e746591cdd"
-selection-inputs-sha256 = "cb44884cc59469f40513d64048847ea2d328504995bb7469d924665ec67c247a"
-contents-sha256 = "44f1d0f11596b036b76fd9dc9245369b0132a90f5568d8506481c3a70d7d4cf9"
+all-inputs-sha256 = "094bf17d3c490e247a292920874efe18da3a393e3ecc378316de679911da468d"
+selection-inputs-sha256 = "ad4fdf90cab37b9439622f4e9dd81f0852ed02fe424987b2f0a713a860e68d3b"
+contents-sha256 = "d3f13586c1c4a839f46b8df04f6e5a29a3780dd92b72288d8d89ed0d82a4a4e6"
