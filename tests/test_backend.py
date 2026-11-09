@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, Final
 import flit_core.buildapi
 import pytest
 
-from python_sbom import backend
-from python_sbom._errors import SbomError
+from python_sbom import SbomError, backend
 from python_sbom._validate._artifact import validate
 
 if TYPE_CHECKING:

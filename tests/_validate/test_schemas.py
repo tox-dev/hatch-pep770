@@ -9,7 +9,7 @@ import pytest
 from spdx_tools.spdx.parser.jsonlikedict.json_like_dict_parser import JsonLikeDictParser
 from spdx_tools.spdx.validation.document_validator import validate_full_spdx_document
 
-from python_sbom._errors import MissingExtraError
+from python_sbom import MissingExtraError
 from python_sbom._formats._json import dumps
 from python_sbom._formats._spdx import render_spdx
 from python_sbom._validate._document import validate_document

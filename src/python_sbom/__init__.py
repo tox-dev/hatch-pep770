@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ._errors import SbomError
+from ._errors import MissingExtraError, SbomError
 from ._model._content import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
 from ._model._identity import ProjectIdentity
 from ._model._inputs import Settings
@@ -36,6 +36,7 @@ __all__ = [
     "IdentityMethod",
     "License",
     "LicenseInfo",
+    "MissingExtraError",
     "OrganizationalEntity",
     "ProjectIdentity",
     "Property",

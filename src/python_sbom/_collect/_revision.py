@@ -7,7 +7,7 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import] # runs git to re
 import warnings
 from typing import TYPE_CHECKING, Final, Protocol
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._inputs import Revision
 
 if TYPE_CHECKING:

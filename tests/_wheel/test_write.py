@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._wheel._write import append_member, write_sbom
 
 if TYPE_CHECKING:

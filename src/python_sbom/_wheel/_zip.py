@@ -9,7 +9,7 @@ from typing import IO, TYPE_CHECKING, Final
 
 from installer.sources import WheelFile
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._metadata import CoreMetadata, parse_metadata
 
 if TYPE_CHECKING:

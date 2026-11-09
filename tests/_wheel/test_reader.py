@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._wheel._reader import open_artifact
 
 

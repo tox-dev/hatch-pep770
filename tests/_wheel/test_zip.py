@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._wheel._zip import open_archive, read_member, sha256_hex
 
 if TYPE_CHECKING:

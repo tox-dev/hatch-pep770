@@ -7,7 +7,7 @@ from importlib.machinery import PathFinder
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._content import ContentProvider
 
 if TYPE_CHECKING:

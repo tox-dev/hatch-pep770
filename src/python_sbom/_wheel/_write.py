@@ -15,7 +15,7 @@ import zipremove
 from installer.records import Hash, RecordEntry
 from installer.utils import copyfileobj_with_hashing
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 
 from ._zip import open_archive, wheel_source
 

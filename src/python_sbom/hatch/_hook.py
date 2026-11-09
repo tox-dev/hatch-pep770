@@ -11,10 +11,10 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 from hatchling.builders.utils import get_reproducible_timestamp
 from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 
+from python_sbom import SbomError
 from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._revision import REVISION_FILE, default_revision, revision_record
 from python_sbom._collect._settings import settings_from_table
-from python_sbom._errors import SbomError
 
 if TYPE_CHECKING:
     from collections.abc import Callable

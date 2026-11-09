@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from python_sbom import SbomError
 from python_sbom._collect._archive import read_archive
 from python_sbom._collect._content import resolve_provider
 from python_sbom._collect._facts import collect_facts
 from python_sbom._collect._revision import revision_reader
 from python_sbom._collect._settings import settings_from_pyproject
 from python_sbom._collect._source import copyright_notice, hash_build_scripts
-from python_sbom._errors import SbomError
 from python_sbom._formats._json import dumps
 from python_sbom._model._archive import archive_artifact, bundled_paths
 from python_sbom._model._bom import assemble, checked_contributions
