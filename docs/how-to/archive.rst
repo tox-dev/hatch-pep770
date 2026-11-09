@@ -22,3 +22,15 @@ validate virtualenv.pyz`` finds it. It goes in deflated at level 9 whatever the 
 zipapp may store them all and the :term:`SBOM`, megabytes of :term:`JSON`, would then add its full size. The entry
 carries a fixed time and Unix attributes and the other members keep their bytes, so adding it to one archive gives the
 same bytes on every system with the same zlib.
+
+*****************************
+ A zipapp built from a wheel
+*****************************
+
+:example:`zipapp` builds its wheel with the hatchling hook, unpacks it into a zipapp, and describes the zipapp:
+
+.. literalinclude:: /examples/zipapp/session.console
+    :language: console
+
+The archive's SBOM sits at its top level, as ``greet.pyz.cdx.json``, and the wheel's SBOM, which names the wheel, stays
+under ``greet-1.0.dist-info/sboms``.

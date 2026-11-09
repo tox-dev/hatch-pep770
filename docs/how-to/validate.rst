@@ -18,10 +18,11 @@ also catches a build that lost the plugin.
  What it checks
 ****************
 
-Every SBOM gets the CycloneDX 1.6 schema check. For the SBOM python-sbom wrote, it also requires the ``urn:uuid`` serial
-number `actions/attest`_ needs to recognize the format, checks that every reference resolves, and validates the
-:term:`SPDX` rendering. An SBOM another tool wrote, such as auditwheel_'s ``auditwheel.cdx.json`` or maturin_'s
-``<crate>.cyclonedx.json``, gets the schema check alone.
+Every SBOM gets the CycloneDX 1.6 schema check, the limits on size, nesting and component count, and a check that no
+``bom-ref`` repeats. For the SBOM python-sbom wrote, it also requires the ``urn:uuid`` serial number `actions/attest`_
+needs to recognize the format, checks that every reference resolves, and validates the :term:`SPDX` rendering. An SBOM
+another tool wrote, such as auditwheel_'s ``auditwheel.cdx.json`` or maturin_'s ``<crate>.cyclonedx.json``, gets only
+the checks every SBOM gets.
 
 **************************************
  Limit the licenses of bundled wheels

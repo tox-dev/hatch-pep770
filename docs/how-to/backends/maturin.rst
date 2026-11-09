@@ -33,8 +33,8 @@ Both sit in the wheel's ``.dist-info/sboms`` directory, as :term:`PEP 770` allow
         other file in the directory, with its SHA-256
 
 Leave maturin's SBOM on. python-sbom does not list Rust crates, so ``[tool.maturin.sbom] rust = false`` drops the only
-list of them from the wheel. When maturin's repair copies shared libraries into the wheel, it adds a third SBOM, ``auditwheel.cdx.json``,
-which python-sbom links the same way.
+list of them from the wheel. When maturin's repair copies shared libraries into the wheel, it adds a third SBOM,
+``auditwheel.cdx.json``, which python-sbom links the same way.
 
 ********************************
  Wheels a build frontend builds
@@ -44,26 +44,24 @@ pip_, uv_, ``python -m build`` and cibuildwheel_ build through the standard buil
 :term:`wrapper backend` the project's backend, keep maturin in the build requirements, and name it in
 ``[tool.python-sbom]``:
 
-.. code-block:: toml
+.. literalinclude:: /examples/maturin/pyproject.toml
+    :language: toml
+    :caption: pyproject.toml
 
-    [build-system]
-    build-backend = 'python_sbom.backend'
-    requires = ['maturin>=1.12,<2', 'python-sbom>=0.3']
+.. literalinclude:: /examples/maturin/Cargo.toml
+    :language: toml
+    :caption: Cargo.toml
 
-    [tool.python-sbom]
-    build-backend = 'maturin'
-    supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+:example:`maturin` holds the whole project, a Rust binary with one Python dependency.
 
 The wrapper passes every hook to maturin unchanged, so ``[tool.maturin]`` and ``--config-settings`` behave as before.
 Once maturin has written the wheel, with its own SBOM inside, the wrapper adds python-sbom's from within the build's
 isolated environment, so the SBOM lists the maturin version the frontend installed.
 
-.. code-block:: console
+Build a wheel and check it; ``validate`` checks both SBOMs:
 
-    $ uv build --wheel
-    $ unzip -Z1 dist/*.whl '*/sboms/*'
-    matex-1.0.dist-info/sboms/matex.cyclonedx.json
-    matex-1.0.dist-info/sboms/matex.cdx.json
+.. literalinclude:: /examples/maturin/session.console
+    :language: console
 
 ***************************************************
  Wheels ``maturin build`` or maturin-action builds
@@ -72,11 +70,8 @@ isolated environment, so the SBOM lists the maturin version the frontend install
 ``maturin build`` and maturin-action_ call maturin's own command line, so the wrapper never runs. Describe those wheels
 afterwards with ``python-sbom embed``, run from the project root so it finds ``[tool.python-sbom]``:
 
-.. code-block:: console
-
-    $ maturin build --release --out dist
-    $ python-sbom embed dist/*.whl
-    wrote matex-1.0.dist-info/sboms/matex.cdx.json into matex-1.0-py3-none-manylinux_2_34_x86_64.whl
+.. literalinclude:: /examples/maturin/session-maturin-build.console
+    :language: console
 
 ``embed`` lists the packages of the environment it runs in as the build tools. maturin-action builds with a maturin
 binary of its own, so install the same maturin version next to python-sbom, and the SBOM records the version that built
@@ -102,15 +97,8 @@ revision of a wheel built from an :term:`sdist`.
  Check it
 **********
 
-``python-sbom validate`` checks maturin's ``.cyclonedx.json`` file as well as the ``.cdx.json`` ones:
-
-.. code-block:: console
-
-    $ python-sbom validate dist/
-    SBOM in matex-1.0-py3-none-manylinux_2_34_x86_64.whl is valid
-
-python-sbom's own SBOM gets the full check; maturin's and auditwheel's get the CycloneDX schema check alone, as
-:doc:`/how-to/validate` describes.
+``python-sbom validate`` checks maturin's ``.cyclonedx.json`` file as well as the ``.cdx.json`` ones. maturin's gets the
+checks :doc:`/how-to/validate` lists for an SBOM another tool wrote.
 
 ************************************************
  Pitfall: a build backend in the project's tree
@@ -125,5 +113,5 @@ path. Run ``python-sbom embed`` on the finished wheels instead, as for ``maturin
 ***********************************
 
 maturin applies its manylinux repair while it writes the wheel, so the file name is final. A later ``delocate`` or
-``auditwheel repair`` renames the wheel, and the SBOM written before it names a file that is never published. Run
+``auditwheel repair`` can rename the wheel, and the SBOM written before it then names a file that is never published. Run
 ``python-sbom embed`` on the repaired wheel.

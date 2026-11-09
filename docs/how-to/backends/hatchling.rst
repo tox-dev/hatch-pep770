@@ -5,19 +5,17 @@
 python-sbom ships a hatchling_ :term:`build hook`. Add it to the build requirements, with the ``hatch`` extra, and
 enable it with an empty table:
 
-.. code-block:: toml
-
-    [build-system]
-    build-backend = 'hatchling.build'
-    requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.2']
-
-    [tool.hatch.build.hooks.python-sbom]
-
-    [tool.python-sbom]
-    supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+.. literalinclude:: /examples/hatchling/pyproject.toml
+    :language: toml
+    :caption: pyproject.toml
 
 Every :term:`wheel` you build now carries the :term:`SBOM`. An editable wheel carries none, and an :term:`sdist` carries
-the :term:`source revision` instead, so a wheel built from it still names its commit.
+the :term:`source revision` instead, so a wheel built from it still names its commit. Build one and check it:
+
+.. literalinclude:: /examples/hatchling/session.console
+    :language: console
+
+:example:`hatchling` holds the whole project.
 
 Put python-sbom's options in ``[tool.python-sbom]``, the table every integration reads, never in the hook's table: the
 hook's table holds only hatchling's own options, such as ``enable-by-default``, and a python-sbom option there fails the

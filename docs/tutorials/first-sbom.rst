@@ -19,29 +19,12 @@ python-sbom has the most to say about; :doc:`/reference/backends` lists the othe
     $ mkdir -p src/greet && touch src/greet/__init__.py
     $ printf 'Copyright (c) 2026 You\n\nMIT terms\n' > LICENSE
 
-.. code-block:: toml
-
-    [build-system]
-    build-backend = 'hatchling.build'
-    requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.2']
-
-    [project]
-    name = 'greet'
-    version = '1.0'
-    description = 'says hello'
-    license = 'MIT'
-    license-files = ['LICENSE']
-    requires-python = '>=3.11'
-    dependencies = ['packaging>=24']
-    urls.Source = 'https://github.com/you/greet'
-
-    [tool.hatch.build.hooks.python-sbom]
-
-    [tool.python-sbom]
-    supplier = { name = 'You', url = ['https://github.com/you'] }
+.. literalinclude:: /examples/hatchling/pyproject.toml
+    :language: toml
+    :caption: pyproject.toml
 
 The empty ``[tool.hatch.build.hooks.python-sbom]`` table turns the hook on. ``[tool.python-sbom]`` holds python-sbom's
-own options; here it names you as the :term:`supplier`.
+own options; here it names you as the :term:`supplier`. :example:`hatchling` holds the finished project.
 
 Commit it, with the build output ignored, so the SBOM can name the exact :term:`source revision`. A checkout with
 uncommitted or untracked files has no commit that reproduces it, and then the SBOM names none:
@@ -131,7 +114,7 @@ That is the check a CI job runs before publishing; :doc:`/how-to/validate` shows
  Next steps
 ************
 
-- Your project uses another :term:`build backend`? Pick its guide: :doc:`/how-to/pdm-backend`, :doc:`/how-to/setuptools`
-  or :doc:`/how-to/other-backends`; a Rust extension built with maturin: :doc:`/how-to/maturin`.
+- Your project uses another :term:`build backend`? :doc:`/how-to/backends/index` has a guide with a complete project
+  for each one python-sbom is tested with.
 - Your project bundles wheels or knows more than its metadata says: :doc:`/how-to/content-provider`.
 - Every option python-sbom reads: :doc:`/reference/configuration`.

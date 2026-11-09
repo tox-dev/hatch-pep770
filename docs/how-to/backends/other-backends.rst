@@ -2,19 +2,14 @@
  Use it with any other backend
 ###############################
 
-Backends without a plugin interface, such as meson-python_, maturin_, scikit-build-core_, flit-core_, poetry-core_ and
-uv_build_, get the :term:`SBOM` through ``python_sbom.backend``, a :term:`build backend` that wraps yours. Make it the
-project's backend, keep yours in the build requirements, and name yours in ``[tool.python-sbom]``:
+Backends without a plugin interface get the :term:`SBOM` through ``python_sbom.backend``, a :term:`build backend` that
+wraps yours. The table below links a guide with a complete project for each backend python-sbom is tested with; this
+page covers how the wrapper works for those and any other backend. Make ``python_sbom.backend`` the project's backend,
+keep yours in the build requirements, and name yours in ``[tool.python-sbom]``, as the meson-python project does:
 
-.. code-block:: toml
-
-    [build-system]
-    build-backend = 'python_sbom.backend'
-    requires = ['meson-python>=0.18', 'meson>=1.6', 'ninja', 'python-sbom>=0.2']
-
-    [tool.python-sbom]
-    build-backend = 'mesonpy'
-    supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+.. literalinclude:: /examples/meson-python/pyproject.toml
+    :language: toml
+    :caption: pyproject.toml
 
 ``build-backend`` takes what ``[build-system] build-backend`` took before: a module, or ``module:object``. Every hook a
 :term:`frontend <build frontend>` calls goes to your backend unchanged, ``--config-settings`` included, and the optional
@@ -36,29 +31,29 @@ Use the module name from your current ``[build-system] build-backend``:
 
     - - Backend
       - ``[tool.python-sbom] build-backend``
-      - Notes
-    - - `meson-python <https://meson-python.readthedocs.io/>`_
+      - Guide
+    - - meson-python_
       - ``mesonpy``
-      - Its sdist step needs a git_ or Mercurial checkout, as without the wrapper.
-    - - maturin_
-      - ``maturin``
-      - maturin writes its own SBOM of the Rust crates next to python-sbom's; :doc:`/how-to/maturin` covers both.
+      - :doc:`/how-to/backends/meson-python`
     - - scikit-build-core_
       - ``scikit_build_core.build``
-      - A project built with hatchling_ and scikit-build-core's hatch plugin uses :doc:`/how-to/hatchling` instead.
+      - :doc:`/how-to/backends/scikit-build-core`
+    - - maturin_
+      - ``maturin``
+      - :doc:`/how-to/backends/maturin`
     - - flit-core_
       - ``flit_core.buildapi``
-      -
-    - - `poetry-core <https://python-poetry.org/docs/pyproject/>`_
+      - :doc:`/how-to/backends/flit-core`
+    - - poetry-core_
       - ``poetry.core.masonry.api``
-      -
+      - :doc:`/how-to/backends/poetry-core`
     - - uv_build_
       - ``uv_build``
-      - ``uv build`` builds a uv_build project in its own process, skipping the build interface; with the wrapper as the
-        backend, it calls the build interface, so the wrapper runs.
+      - :doc:`/how-to/backends/uv-build`
     - - pdm-backend_, setuptools_
       - ``pdm.backend``, ``setuptools.build_meta``
-      - Use :doc:`/how-to/pdm-backend` or :doc:`/how-to/setuptools` instead; wrap them only when the plugin cannot act.
+      - :doc:`/how-to/backends/pdm-backend`, :doc:`/how-to/backends/setuptools`: use their plugin, and wrap them only
+        when it cannot act
 
 ***********************************************
  Pitfall: builds that skip the build interface
@@ -80,6 +75,6 @@ lives in the build environment. Describe those wheels after the build, as :doc:`
  Pitfall: tools that rename the wheel afterwards
 *************************************************
 
-``auditwheel repair`` and ``delocate`` rename a wheel to its final platform tag and may copy shared libraries into it,
-so the SBOM the wrapper wrote names the old file and misses those libraries. Run ``python-sbom embed`` on the repaired
+``auditwheel repair`` renames a wheel to its manylinux tag, ``delocate`` can change its macOS tag, and both may copy
+shared libraries into it, so the SBOM the wrapper wrote can name the old file and misses those libraries. Run ``python-sbom embed`` on the repaired
 wheel, as :doc:`/how-to/built-elsewhere` shows.
