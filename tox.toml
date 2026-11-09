@@ -158,6 +158,15 @@ extras = [ "hatch", "validate" ]
 set_env.PYTHONPATH = "{tox_root}"
 commands = [ [ "python", "-m", "bench", { replace = "posargs", extend = true } ] ]
 
+[env.dev]
+description = "dev environment with all deps at {envdir}"
+package = "editable"
+dependency_groups = [ "dev" ]
+commands = [
+  [ "uv", "pip", "tree" ],
+  [ "python", "-c", "import sys; print(sys.executable)" ],
+]
+
 [env_base.example]
 factors = [
   { backend = [
