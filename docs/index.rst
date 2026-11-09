@@ -92,7 +92,7 @@ for each backend; the command line, for wheels built elsewhere and for checking 
 
         Each wheel a project ships as data gets its hashes, license, files and vendored packages.
 
-        - :ref:`reference:Bundled wheels`
+        - :ref:`bundled-wheels`
         - :ref:`how-to:Add what your project knows`
 
     .. grid-item-card::
@@ -100,8 +100,8 @@ for each backend; the command line, for wheels built elsewhere and for checking 
 
         The source revision and the build tools, down to their files, so a third party can rebuild the wheel.
 
-        - :ref:`concepts:Reproducibility`
-        - :ref:`reference:The source revision`
+        - :ref:`reproducibility`
+        - :ref:`source-revision`
 
     .. grid-item-card::
         **Zipapps and other archives**

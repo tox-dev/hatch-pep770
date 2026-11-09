@@ -115,6 +115,8 @@ an unknown key fails the build, so a typo cannot pass silently.
         [tool.python-sbom]
         build-backend = 'mesonpy'
 
+.. _bundled-wheels:
+
 Bundled wheels
 ==============
 
@@ -134,6 +136,8 @@ Environment variables
 ``PYTHON_SBOM_COMMIT``
     The source revision to record, a full commit hash, for a wheel built from an sdist without
     ``.python-sbom-revision``. It wins over every other source.
+
+.. _source-revision:
 
 The source revision
 ===================

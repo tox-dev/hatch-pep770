@@ -93,6 +93,8 @@ set the build time.
 Property names start with the project's normalized name, such as ``virtualenv:bundled-wheel``, or with ``python:`` for
 values copied from core metadata.
 
+.. _reproducibility:
+
 Reproducibility
 ===============
 

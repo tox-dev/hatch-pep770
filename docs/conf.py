@@ -47,10 +47,8 @@ extensions: Final[list[str]] = [
 master_doc: Final[str] = "index"
 source_suffix: Final[str] = ".rst"
 exclude_patterns: Final[list[str]] = ["changelog.d/*"]
-autosectionlabel_maxdepth: Final[int] = 3
+autosectionlabel_maxdepth: Final[int] = 2
 autosectionlabel_prefix_document: Final[bool] = True
-# every release repeats the same category headings, such as Added and Fixed
-suppress_warnings: Final[list[str]] = ["autosectionlabel.changelog"]
 
 html_theme: Final[str] = "furo"
 html_title: Final[str] = "python-sbom: SBOMs for Python distributions"
