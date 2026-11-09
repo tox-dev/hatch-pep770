@@ -54,6 +54,8 @@ html_theme: Final[str] = "furo"
 html_title: Final[str] = "python-sbom: SBOMs for Python distributions"
 html_last_updated_fmt: Final[str] = _NOW.isoformat()
 html_static_path: Final[list[str]] = ["_static"]
+html_favicon: Final[str] = "_static/favicon.svg"
+html_theme_options: Final[dict[str, str]] = {"light_logo": "logo-light.svg", "dark_logo": "logo-dark.svg"}
 html_css_files: Final[list[str]] = ["changelog-toc.css", "custom.css"]
 # the browser renders each diagram, so it follows furo's light and dark toggle
 mermaid_output_format: Final[str] = "raw"
