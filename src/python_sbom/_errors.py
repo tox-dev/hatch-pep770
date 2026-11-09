@@ -6,7 +6,8 @@ class SbomError(Exception):
 
 
 # validation reports every other error per document, and lets this one through, since it fails every document alike
-class MissingExtraError(SbomError): ...  # simplint: ignore[SMP704] # see above
+class MissingExtraError(SbomError):
+    """Raised when validation needs an optional dependency that is not installed."""
 
 
 __all__ = [
