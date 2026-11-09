@@ -4,17 +4,17 @@
 </defs><path d="M256 28 440 134 440 346 256 452 72 346 72 134Z" fill="url(#yellow)"/>
 <path d="M256 28 440 134 440 207 256 313 72 207 72 134Z" fill="url(#blue)"/>
 <path d="M256 76 398 158 398 322 256 404 114 322 114 158Z" fill="#101E31"/>
-<g transform="translate(82.506 55.738) scale(0.61398)">
+<g transform="translate(83.212 56.174) scale(0.61095)">
 <path d="M192 119H313L362 168V294H192Z" fill="#101E31" stroke="#A8D4FF" stroke-width="11" stroke-linejoin="round"/>
 <path d="M313 119V168H362" fill="none" stroke="#A8D4FF" stroke-width="11" stroke-linejoin="round"/>
 <path d="M220 197H322M220 233H328" stroke="#A8D4FF" stroke-width="13" stroke-linecap="round"/>
 </g>
-<g transform="translate(50.296 68.688) scale(0.73684)">
+<g transform="translate(50.809 70.008) scale(0.73320)">
 <path d="M133 271 201 238 269 271 201 303Z" fill="#FFE36D" stroke="#A8D4FF" stroke-width="10" stroke-linejoin="round"/>
 <path d="M133 271V349L201 383V303Z" fill="#EABF21" stroke="#A8D4FF" stroke-width="10" stroke-linejoin="round"/>
 <path d="M269 271V349L201 383V303Z" fill="#FFD43B" stroke="#A8D4FF" stroke-width="10" stroke-linejoin="round"/>
 </g>
-<g transform="translate(-60.029 -81.713) scale(1.10874)">
+<g transform="translate(-57.967 -79.651) scale(1.10326)">
 <circle cx="334" cy="342" r="51.5" fill="#A8D4FF"/>
 <path d="m307 342 20 20 36-39" fill="none" stroke="#101E31" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
 </g></svg>
