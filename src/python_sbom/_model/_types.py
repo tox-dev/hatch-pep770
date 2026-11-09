@@ -66,12 +66,14 @@ class ExternalReference(TypedDict):
     :ivar type: the CycloneDX reference type, such as ``vcs`` or ``website``
     :ivar url: the link
     :ivar comment: what the link is, such as the Project-URL label it came from
+    :ivar hashes: digests of what the link points at
 
     """
 
     type: str
     url: str
     comment: NotRequired[str]
+    hashes: NotRequired[list[Hash]]
 
 
 class LicenseInfo(TypedDict):

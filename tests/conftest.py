@@ -55,6 +55,7 @@ class Describe(Protocol):
         bundled: list[BundledWheel] | None = None,
         build_scripts: list[BuildScript] | None = None,
         content: ContentProvider | None = None,
+        other_sboms: dict[str, str] | None = None,
     ) -> Document: ...
 
 
@@ -160,6 +161,7 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
         bundled: list[BundledWheel] | None = None,
         build_scripts: list[BuildScript] | None = None,
         content: ContentProvider | None = None,
+        other_sboms: dict[str, str] | None = None,
     ) -> Document:
         tree = WheelTree(
             name="example-1.0-py3-none-any.whl",
@@ -167,6 +169,7 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
             copyright=copyright_line,
             bundled=bundled or [],
             build_scripts=build_scripts or [],
+            other_sboms=other_sboms or {},
         )
         project = project_identity(tree.metadata, settings)
         content = content or ContentProvider()

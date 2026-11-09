@@ -11,6 +11,9 @@ from ._limits import MAX_COMPONENTS, byte_limit
 if TYPE_CHECKING:
     from pathlib import Path
 
+# CycloneDX's recommended suffix, which python-sbom and auditwheel use, and the one maturin's cargo-cyclonedx uses
+_CYCLONEDX: Final[tuple[str, ...]] = (".cdx.json", ".cyclonedx.json")
+
 
 def validate(path: Path, allowed_licenses: frozenset[str] | None, max_components: int = MAX_COMPONENTS) -> list[str]:
     limit: Final[int] = byte_limit(max_components)
@@ -43,9 +46,9 @@ def _is_sbom(name: str) -> bool:
     # every top-level .dist-info counts, so a decoy one sorting first cannot hide the SBOM of another
     match name.split("/"):
         case [file]:
-            return file.endswith(".cdx.json")
+            return file.endswith(_CYCLONEDX)
         case [dist_info, "sboms", file]:
-            return dist_info.endswith(".dist-info") and file.endswith(".cdx.json")
+            return dist_info.endswith(".dist-info") and file.endswith(_CYCLONEDX)
         case _:
             return False
 

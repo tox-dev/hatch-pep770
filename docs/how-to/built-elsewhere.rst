@@ -52,7 +52,8 @@ Run ``embed`` on the repaired wheel, so the SBOM names the file you publish:
     $ auditwheel repair dist/*.whl --wheel-dir wheelhouse
     $ python-sbom embed wheelhouse/*.whl
 
-auditwheel_'s own SBOM, ``auditwheel.cdx.json``, stays in the wheel next to python-sbom's.
+auditwheel_'s own SBOM, ``auditwheel.cdx.json``, stays in the wheel next to python-sbom's, which links to it by its file
+name and SHA-256.
 
 **************************
  Name the source revision

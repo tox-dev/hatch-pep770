@@ -66,6 +66,7 @@ maturin's own SBOM
 `maturin writes a CycloneDX SBOM <https://www.maturin.rs/sbom>`_ of the Rust crates a wheel links, as
 ``<crate>.cyclonedx.json``. :term:`PEP 770` allows several SBOMs per wheel, so python-sbom's ``<name>.cdx.json`` sits
 next to it: maturin's lists the crates, python-sbom's the wheel's files, metadata, build tools and source revision.
+python-sbom's links to maturin's by its file name and SHA-256, so a reader of one finds the other.
 
 ***********************************************
  Pitfall: builds that skip the build interface

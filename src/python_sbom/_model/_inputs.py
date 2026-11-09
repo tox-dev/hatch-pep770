@@ -119,14 +119,15 @@ class Artifact:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class WheelTree:
-    # what a built wheel holds, read from the wheel without unpacking it: its file name, its core metadata and the
-    # wheels it bundles; and what the project adds: the copyright line of its license files and the scripts that built
-    # it
+    # what a built wheel holds, read from the wheel without unpacking it: its file name, its core metadata, the wheels
+    # it bundles and the SHA-256 of each SBOM another tool put next to ours, by its path under the sboms directory; and
+    # what the project adds: the copyright line of its license files and the scripts that built it
     name: str
     metadata: CoreMetadata
     copyright: str | None
     bundled: list[BundledWheel]
     build_scripts: list[BuildScript]
+    other_sboms: dict[str, str]
 
 
 __all__ = [

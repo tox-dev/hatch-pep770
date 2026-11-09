@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Final
 
 from python_sbom import BundledWheelInfo, ContentProvider, ProviderContext
 from python_sbom._generate._embed import embed_sbom
+from python_sbom._validate._artifact import validate
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
@@ -54,6 +55,30 @@ class Table(ContentProvider):
         # the table sits next to the wheel inside the built wheel
         value = context.read(wheel.parent / self._name).decode().strip()
         return BundledWheelInfo(properties=[{"name": f"{context.identity.property_prefix}:table", "value": value}])
+
+
+def test_other_sboms_of_the_wheel_are_linked(tmp_path: Path, write_wheel: WriteWheel) -> None:
+    (root := tmp_path / "project").mkdir()
+    (root / "pyproject.toml").write_text("")
+    cargo = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1}).encode()
+    spdx = b'{"spdxVersion": "SPDX-2.3"}'
+    wheel = write_wheel(
+        tmp_path / "dist" / "pkg-1.0-py3-none-any.whl",
+        {
+            "pkg-1.0.dist-info/METADATA": b"Name: pkg\nVersion: 1.0\n",
+            "pkg-1.0.dist-info/sboms/pkg.cyclonedx.json": cargo,
+            "pkg-1.0.dist-info/sboms/vendor/c:d.spdx.json": spdx,
+        },
+    )
+    # the second run replaces the SBOM the first wrote, which links to neither itself nor its earlier copy
+    for _ in range(2):
+        written = embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+    references = json.loads(zipfile.ZipFile(wheel).read(written))["metadata"]["component"]["externalReferences"]
+    assert [(ref["url"], ref["hashes"]) for ref in references if ref["type"] == "bom"] == [
+        ("pkg.cyclonedx.json", [{"alg": "SHA-256", "content": hashlib.sha256(cargo).hexdigest()}]),
+        ("vendor/c%3Ad.spdx.json", [{"alg": "SHA-256", "content": hashlib.sha256(spdx).hexdigest()}]),
+    ]
+    assert validate(wheel, None) == []
 
 
 def test_identical_bundled_copies_keep_their_own_paths(tmp_path: Path, write_wheel: WriteWheel) -> None:
