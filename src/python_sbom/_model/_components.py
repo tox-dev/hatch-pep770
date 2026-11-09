@@ -1,3 +1,5 @@
+"""Build the components for a distribution, a bundled wheel and a file."""
+
 from __future__ import annotations
 
 import re

@@ -12,13 +12,11 @@ wrote before.
  Embed after the build
 ***********************
 
-Run it from the project root, so it finds ``[tool.python-sbom]``:
+Run it from the project root, so it finds ``[tool.python-sbom]``. For :example:`maturin`, built with ``maturin
+build``:
 
-.. code-block:: console
-
-    $ maturin build --release --out dist
-    $ python-sbom embed dist/*.whl
-    wrote matex-1.0.dist-info/sboms/matex.cdx.json into matex-1.0-py3-none-manylinux_2_17_x86_64.whl
+.. literalinclude:: /examples/maturin/session-maturin-build.console
+    :language: console
 
 *****************************
  Record the real build tools
@@ -47,12 +45,24 @@ or install the build requirements into an environment of their own and point ``-
 
 Run ``embed`` on the repaired wheel, so the SBOM names the file you publish:
 
-.. code-block:: console
+.. tab:: auditwheel
 
-    $ auditwheel repair dist/*.whl --wheel-dir wheelhouse
-    $ python-sbom embed wheelhouse/*.whl
+    cibuildwheel_ builds :example:`auditwheel`, a meson-python project whose extension links ``libuuid``, in a manylinux
+    container, and auditwheel_ copies ``libuuid`` into the wheel:
 
-auditwheel_'s own SBOM, ``auditwheel.cdx.json``, stays in the wheel next to python-sbom's.
+    .. literalinclude:: /examples/auditwheel/session.console
+        :language: console
+
+    auditwheel's own SBOM, ``auditwheel.cdx.json``, stays in the wheel next to python-sbom's, which links to it by its
+    file name and SHA-256. The ``auditwheel.cdx.json`` written here lists the wheel twice under one ``bom-ref``, which
+    CycloneDX forbids, so ``python-sbom validate`` rejects this wheel.
+
+.. tab:: delocate
+
+    On macOS, delocate_ repairs the wheel of :example:`meson-python`:
+
+    .. literalinclude:: /examples/meson-python/session-delocate.console
+        :language: console
 
 **************************
  Name the source revision

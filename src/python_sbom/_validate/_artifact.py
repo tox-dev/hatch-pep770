@@ -1,3 +1,5 @@
+"""Find the SBOMs in a wheel or archive, or read a standalone one, and check each."""
+
 from __future__ import annotations
 
 import zipfile
@@ -40,12 +42,14 @@ def _read(source: IO[bytes], limit: int) -> bytes:
 
 
 def _is_sbom(name: str) -> bool:
+    # CycloneDX's recommended suffix, which python-sbom and auditwheel use, and the one maturin's cargo-cyclonedx uses
+    cyclonedx: Final[tuple[str, ...]] = (".cdx.json", ".cyclonedx.json")
     # every top-level .dist-info counts, so a decoy one sorting first cannot hide the SBOM of another
     match name.split("/"):
         case [file]:
-            return file.endswith(".cdx.json")
+            return file.endswith(cyclonedx)
         case [dist_info, "sboms", file]:
-            return dist_info.endswith(".dist-info") and file.endswith(".cdx.json")
+            return dist_info.endswith(".dist-info") and file.endswith(cyclonedx)
         case _:
             return False
 

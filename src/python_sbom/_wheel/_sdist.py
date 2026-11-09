@@ -1,3 +1,5 @@
+"""Add a file to a built sdist."""
+
 from __future__ import annotations
 
 import gzip

@@ -62,7 +62,7 @@ Each option is optional; an unknown key fails the build, so a typo cannot pass s
 ``build-backend``
     The :term:`build backend` ``python_sbom.backend`` wraps, as ``module`` or ``module:object``, the form
     ``[build-system] build-backend`` takes. Only the wrapper reads it, and it fails the build when the project uses the
-    wrapper without it; :doc:`/how-to/other-backends` shows it.
+    wrapper without it; :doc:`/how-to/backends/other-backends` shows it.
 
     .. code-block:: toml
 

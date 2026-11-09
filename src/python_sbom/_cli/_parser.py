@@ -1,3 +1,5 @@
+"""The argument parser for every subcommand and the options they share."""
+
 from __future__ import annotations
 
 from argparse import ArgumentParser, ArgumentTypeError, _SubParsersAction

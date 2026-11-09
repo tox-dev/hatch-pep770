@@ -6,13 +6,15 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+import pytest
+
 from python_sbom import BundledWheelInfo, ContentProvider, ProviderContext
 from python_sbom._generate._embed import embed_sbom
+from python_sbom._validate._artifact import validate
 
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
-    import pytest
     from conftest import Install, WriteWheel
     from pytest_mock import MockerFixture
 
@@ -54,6 +56,40 @@ class Table(ContentProvider):
         # the table sits next to the wheel inside the built wheel
         value = context.read(wheel.parent / self._name).decode().strip()
         return BundledWheelInfo(properties=[{"name": f"{context.identity.property_prefix}:table", "value": value}])
+
+
+_CARGO: Final[bytes] = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1}).encode()
+_SPDX: Final[bytes] = b'{"spdxVersion": "SPDX-2.3"}'
+
+
+@pytest.fixture
+def linked(tmp_path: Path, write_wheel: WriteWheel) -> tuple[Path, str]:
+    (root := tmp_path / "project").mkdir()
+    (root / "pyproject.toml").write_text("")
+    wheel = write_wheel(
+        tmp_path / "dist" / "pkg-1.0-py3-none-any.whl",
+        {
+            "pkg-1.0.dist-info/METADATA": b"Name: pkg\nVersion: 1.0\n",
+            "pkg-1.0.dist-info/sboms/pkg.cyclonedx.json": _CARGO,
+            "pkg-1.0.dist-info/sboms/vendor/c:d.spdx.json": _SPDX,
+        },
+    )
+    # a second embed replaces the first one's SBOM and links to neither that copy nor itself
+    embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+    return wheel, embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+
+
+def test_other_sboms_of_the_wheel_are_linked(linked: tuple[Path, str]) -> None:
+    wheel, written = linked
+    references = json.loads(zipfile.ZipFile(wheel).read(written))["metadata"]["component"]["externalReferences"]
+    assert [(ref["url"], ref["hashes"]) for ref in references if ref["type"] == "bom"] == [
+        ("pkg.cyclonedx.json", [{"alg": "SHA-256", "content": hashlib.sha256(_CARGO).hexdigest()}]),
+        ("vendor/c%3Ad.spdx.json", [{"alg": "SHA-256", "content": hashlib.sha256(_SPDX).hexdigest()}]),
+    ]
+
+
+def test_linked_sbom_validates(linked: tuple[Path, str]) -> None:
+    assert validate(linked[0], None) == []
 
 
 def test_identical_bundled_copies_keep_their_own_paths(tmp_path: Path, write_wheel: WriteWheel) -> None:

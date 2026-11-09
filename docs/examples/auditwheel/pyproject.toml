@@ -1,0 +1,22 @@
+[build-system]
+build-backend = "mesonpy"
+requires = [ "meson>=1.6", "meson-python>=0.18", "ninja" ]
+
+[project]
+name = "greet"
+version = "1.0"
+description = "says hello"
+license = "MIT"
+requires-python = ">=3.11"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+]
+dependencies = [ "packaging>=24" ]
+
+[tool.python-sbom]
+supplier = { name = "You", url = [ "https://github.com/you" ] }

@@ -6,17 +6,17 @@ python-sbom ships a setuptools_ plugin, registered in setuptools' ``setuptools.f
 point group, the one setuptools-scm_ uses. Add python-sbom to the build requirements, with the ``setuptools`` extra, and
 add a ``[tool.python-sbom]`` table, empty or not:
 
-.. code-block:: toml
-
-    [build-system]
-    build-backend = 'setuptools.build_meta'
-    requires = ['setuptools>=77', 'python-sbom[setuptools]>=0.2']
-
-    [tool.python-sbom]
-    supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+.. literalinclude:: /examples/setuptools/pyproject.toml
+    :language: toml
+    :caption: pyproject.toml
 
 Every :term:`wheel` you build now carries the :term:`SBOM`, and every :term:`sdist` the :term:`source revision`. An
-editable wheel carries none.
+editable wheel carries none. Build one and check it:
+
+.. literalinclude:: /examples/setuptools/session.console
+    :language: console
+
+:example:`setuptools` holds the whole project.
 
 setuptools calls the plugin for every build in an environment where python-sbom is installed, so the table is what turns
 it on: a project without ``[tool.python-sbom]``, or without a ``pyproject.toml``, builds as before.
@@ -30,8 +30,8 @@ The plugin wraps the ``bdist_wheel`` and ``sdist`` commands the project uses, in
 
 setuptools applies ``[tool.setuptools.cmdclass]`` after the plugin runs, so a ``bdist_wheel`` or ``sdist`` named there
 would replace the plugin's and the wheel would get no SBOM. The plugin stops such a build with an error instead. Move
-that command to ``setup.py``'s ``cmdclass``, or wrap the backend instead, as :doc:`/how-to/other-backends` shows with
-``build-backend = 'setuptools.build_meta'``.
+that command to ``setup.py``'s ``cmdclass``, or wrap the backend instead, as :doc:`/how-to/backends/other-backends`
+shows with ``build-backend = 'setuptools.build_meta'``.
 
 ***************************************
  Pitfall: build output in the checkout

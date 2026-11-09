@@ -1,3 +1,5 @@
+"""The names python-sbom derives: SBOM file names, property names, purls and reference types."""
+
 from __future__ import annotations
 
 import re

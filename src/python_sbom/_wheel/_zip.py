@@ -1,3 +1,5 @@
+"""Open zip archives, refusing member names that clash by case, and read members under a size cap."""
+
 from __future__ import annotations
 
 import hashlib

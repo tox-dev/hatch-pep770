@@ -1,3 +1,5 @@
+"""Read what the project tree adds: the copyright notice, the bundled wheels it selects and its build scripts."""
+
 from __future__ import annotations
 
 from pathlib import PurePath

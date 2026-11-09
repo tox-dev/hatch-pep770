@@ -34,7 +34,19 @@ jobs:
           {"env": "docs"},
           {"env": "fix"},
           {"env": "type"},
-          {"env": "pkg_meta"}
+          {"env": "pkg_meta"},
+          {"env": "example-cibuildwheel", "python": "3.15"},
+          {"env": "example-flit_core", "python": "3.15"},
+          {"env": "example-hatchling", "python": "3.15"},
+          {"env": "example-maturin", "python": "3.15"},
+          {"env": "example-meson_python", "python": "3.15"},
+          {"env": "example-pdm_backend", "python": "3.15"},
+          {"env": "example-poetry_core", "python": "3.15"},
+          {"env": "example-scikit_build_core", "python": "3.15"},
+          {"env": "example-setuptools", "python": "3.15"},
+          {"env": "example-uv_build", "python": "3.15"},
+          {"env": "example-zipapp", "python": "3.15"},
+          {"env": "example-delocate", "python": "3.15", "os": "macos-26"}
         ]
   release:
     name: 🏷️ Release dry run

@@ -1,3 +1,5 @@
+"""Decide whether a requirement applies when no extra is selected."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final

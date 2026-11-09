@@ -1,3 +1,5 @@
+"""Build a wheel's SBOM and write it into the wheel."""
+
 from __future__ import annotations
 
 from pathlib import PurePosixPath

@@ -1,0 +1,4 @@
+$ python -m build --wheel
+$ delocate-wheel --wheel-dir wheelhouse dist/*.whl
+$ python-sbom embed wheelhouse/*.whl
+wrote greet-1.0.dist-info/sboms/greet.cdx.json into greet-1.0-cp315-cp315-macosx_11_0_arm64.whl

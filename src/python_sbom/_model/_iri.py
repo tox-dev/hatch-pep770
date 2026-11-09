@@ -1,3 +1,5 @@
+"""Check and percent-encode IRI references, as the CycloneDX schema expects them."""
+
 from __future__ import annotations
 
 import ipaddress

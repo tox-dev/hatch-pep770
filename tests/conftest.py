@@ -167,6 +167,7 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
             copyright=copyright_line,
             bundled=bundled or [],
             build_scripts=build_scripts or [],
+            other_sboms={},
         )
         project = project_identity(tree.metadata, settings)
         content = content or ContentProvider()

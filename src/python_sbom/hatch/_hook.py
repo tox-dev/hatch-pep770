@@ -1,3 +1,5 @@
+"""The hatchling build hook: record the source revision in an sdist and write the SBOM into a wheel."""
+
 from __future__ import annotations
 
 import shutil

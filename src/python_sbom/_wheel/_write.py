@@ -1,3 +1,5 @@
+"""Write the SBOM into a wheel and its RECORD, or append it to an archive."""
+
 from __future__ import annotations
 
 import csv
@@ -47,7 +49,7 @@ def write_sbom(wheel: Path, name: str, content: bytes, epoch: int) -> str:
         # here; both go last, RECORD after the SBOM
         with zipremove.ZipFile(temporary, "a") as archive:
             stale = [info for info in archive.infolist() if info.filename in {record, sbom}]
-            archive.repack(list(map(archive.remove, stale)))  # ty: ignore[unresolved-attribute] # zipremove adds both
+            archive.repack(list(map(archive.remove, stale)))  # ty: ignore[missing-attribute] # zipremove adds both
             archive.writestr(entry, content)
             archive.writestr(record_info, rewritten)
         Path(temporary).chmod(stat.S_IMODE(wheel.stat().st_mode))

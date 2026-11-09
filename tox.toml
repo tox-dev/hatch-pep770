@@ -1,5 +1,7 @@
 requires = [ "tox>=4.64.7", "tox-uv>=1.36.1" ]
 env_list = [ "3.15", "3.14", "3.13", "3.12", "3.11", "3.14t", "3.15t", "docs", "fix", "pkg_meta", "type" ]
+labels.lint = [ "fix", "pkg_meta", "type" ]
+labels.test = [ "3.15", "3.14", "3.13", "3.12", "3.11", "3.14t", "3.15t" ]
 skip_missing_interpreters = true
 
 [env_run_base]
@@ -28,6 +30,9 @@ commands = [
       "--cov-report",
       "html:{env_tmp_dir}{/}htmlcov",
       "tests",
+      # each example builds with a backend of its own, which only its example environment installs
+      "--ignore",
+      "{tox_root}{/}tests{/}examples",
     ], extend = true },
   ],
 ]
@@ -161,3 +166,38 @@ commands = [
   [ "uv", "pip", "tree" ],
   [ "python", "-c", "import sys; print(sys.executable)" ],
 ]
+
+[env_base.example]
+factors = [
+  { backend = [
+    "cibuildwheel",
+    "delocate",
+    "flit_core",
+    "hatchling",
+    "maturin",
+    "meson_python",
+    "pdm_backend",
+    "poetry_core",
+    "scikit_build_core",
+    "setuptools",
+    "uv_build",
+    "zipapp",
+  ] },
+]
+description = "build the {factor:backend} example of the docs and check its documented session"
+dependency_groups = [ "{factor:backend}" ]
+extras = [ "validate" ]
+commands = [
+  [
+    "pytest",
+    "--cov",
+    "{tox_root}{/}tests{/}examples",
+    "--cov-config",
+    "{tox_root}{/}pyproject.toml",
+    "--cov-report",
+    "term-missing:skip-covered",
+    "{tox_root}{/}tests{/}examples{/}{factor:backend}",
+    { replace = "posargs", extend = true },
+  ],
+]
+labels = [ "examples" ]

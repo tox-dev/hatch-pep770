@@ -148,6 +148,7 @@ rst_epilog: Final[str] = """
 """
 intersphinx_mapping: Final[dict[str, tuple[str, None]]] = {"python": ("https://docs.python.org/3.11", None)}
 extlinks: Final[dict[str, tuple[str, str]]] = {
+    "example": ("https://github.com/tox-dev/python-sbom/tree/main/docs/examples/%s", "docs/examples/%s"),
     "pr": ("https://github.com/tox-dev/python-sbom/pull/%s", "#%s"),
     "user": ("https://github.com/%s", "@%s"),
 }

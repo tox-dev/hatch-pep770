@@ -1,3 +1,5 @@
+"""The spdx subcommand: render a CycloneDX SBOM as SPDX 2.3."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol

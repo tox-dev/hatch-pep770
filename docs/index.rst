@@ -86,50 +86,27 @@ python-sbom runs inside your build, so it goes in ``[build-system] requires`` wi
 
 .. tab:: hatchling
 
-    .. code-block:: toml
-
-        [build-system]
-        build-backend = 'hatchling.build'
-        requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.2']
-
-        [tool.hatch.build.hooks.python-sbom]
-
-        [tool.python-sbom]
-        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+    .. literalinclude:: /examples/hatchling/pyproject.toml
+        :language: toml
+        :caption: pyproject.toml
 
 .. tab:: pdm-backend
 
-    .. code-block:: toml
-
-        [build-system]
-        build-backend = 'pdm.backend'
-        requires = ['pdm-backend>=2.4', 'python-sbom[pdm]>=0.2']
-
-        [tool.python-sbom]
-        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+    .. literalinclude:: /examples/pdm-backend/pyproject.toml
+        :language: toml
+        :caption: pyproject.toml
 
 .. tab:: setuptools
 
-    .. code-block:: toml
-
-        [build-system]
-        build-backend = 'setuptools.build_meta'
-        requires = ['setuptools>=77', 'python-sbom[setuptools]>=0.2']
-
-        [tool.python-sbom]
-        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+    .. literalinclude:: /examples/setuptools/pyproject.toml
+        :language: toml
+        :caption: pyproject.toml
 
 .. tab:: any other backend
 
-    .. code-block:: toml
-
-        [build-system]
-        build-backend = 'python_sbom.backend'
-        requires = ['meson-python>=0.18', 'meson>=1.6', 'ninja', 'python-sbom>=0.2']
-
-        [tool.python-sbom]
-        build-backend = 'mesonpy'
-        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+    .. literalinclude:: /examples/meson-python/pyproject.toml
+        :language: toml
+        :caption: pyproject.toml
 
 Every wheel you build from then on carries the SBOM. :doc:`/how-to/index` covers each backend in detail.
 

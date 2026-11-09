@@ -1,0 +1,5 @@
+$ maturin build --release --out dist
+$ python-sbom embed dist/*.whl
+wrote greet-1.0.dist-info/sboms/greet.cdx.json into greet-1.0-py3-none-manylinux_2_34_x86_64.whl
+$ python-sbom validate dist/
+SBOM in greet-1.0-py3-none-manylinux_2_34_x86_64.whl is valid

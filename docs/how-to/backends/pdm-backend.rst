@@ -5,17 +5,17 @@
 python-sbom ships a pdm-backend_ :term:`build hook`, registered in pdm-backend's ``pdm.build.hook`` entry point group.
 Add python-sbom to the build requirements, with the ``pdm`` extra, and add a ``[tool.python-sbom]`` table, empty or not:
 
-.. code-block:: toml
-
-    [build-system]
-    build-backend = 'pdm.backend'
-    requires = ['pdm-backend>=2.4', 'python-sbom[pdm]>=0.2']
-
-    [tool.python-sbom]
-    supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
+.. literalinclude:: /examples/pdm-backend/pyproject.toml
+    :language: toml
+    :caption: pyproject.toml
 
 Every :term:`wheel` you build now carries the :term:`SBOM`, and every :term:`sdist` the :term:`source revision`. An
-editable wheel carries none.
+editable wheel carries none. Build one and check it:
+
+.. literalinclude:: /examples/pdm-backend/session.console
+    :language: console
+
+:example:`pdm-backend` holds the whole project.
 
 pdm-backend loads every hook installed in the build environment, so the table is what turns this one on: a project
 without ``[tool.python-sbom]`` builds as before even when python-sbom is installed.

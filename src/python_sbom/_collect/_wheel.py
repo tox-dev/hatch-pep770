@@ -1,9 +1,12 @@
+"""Read a built wheel's metadata, bundled wheels and other SBOMs, with what the project tree adds, into a WheelTree."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
 from python_sbom._errors import SbomError
 from python_sbom._model._inputs import WheelTree
+from python_sbom._model._names import sbom_file_name
 from python_sbom._wheel._zip import read_wheel_metadata
 
 from ._source import copyright_notice, file_sha256, hash_build_scripts, selected_wheels
@@ -19,13 +22,21 @@ if TYPE_CHECKING:
 def read_wheel(
     artifact: ArtifactReader, root: Path, settings: Settings, build_scripts: Iterable[PurePosixPath]
 ) -> WheelTree:
-    _, metadata = read_wheel_metadata(artifact.archive, str(artifact.path))
+    wheel, metadata = read_wheel_metadata(artifact.archive, str(artifact.path))
+    sboms = f"{wheel.dist_info_dir}/sboms/"
+    ours = f"{sboms}{sbom_file_name(metadata.name)}"
     return WheelTree(
         name=artifact.path.name,
         metadata=metadata,
         copyright=copyright_notice(root, metadata.values("license_files")),
         bundled=artifact.bundled_wheels(_shipped_copies(root, settings, artifact)),
         build_scripts=hash_build_scripts(root, build_scripts),
+        # maturin and auditwheel write SBOMs of their own here; ours links to them so a reader can find them
+        other_sboms={
+            name.removeprefix(sboms): artifact.digest(name)
+            for name in sorted(artifact.members)
+            if name.startswith(sboms) and not name.endswith("/") and name != ours
+        },
     )
 
 

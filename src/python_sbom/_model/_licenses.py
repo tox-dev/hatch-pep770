@@ -1,3 +1,5 @@
+"""Turn core metadata's license fields into CycloneDX licenses."""
+
 from __future__ import annotations
 
 import re

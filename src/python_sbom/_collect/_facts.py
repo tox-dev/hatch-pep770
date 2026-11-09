@@ -1,3 +1,5 @@
+"""Gather the build facts: timestamp, source revision, interpreter and the distributions in the build environment."""
+
 from __future__ import annotations
 
 import json

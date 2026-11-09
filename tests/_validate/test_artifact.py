@@ -47,6 +47,24 @@ def test_every_sbom_is_checked(tmp_path: Path, write_wheel: WriteWheel, describe
     ]
 
 
+def test_cargo_cyclonedx_sbom_is_checked(tmp_path: Path, write_wheel: WriteWheel) -> None:
+    # maturin names the SBOM of a wheel's Rust crates the way cargo-cyclonedx does
+    repeated = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "version": 1,
+        "components": [
+            {"type": "library", "name": "a", "bom-ref": "a"},
+            {"type": "library", "name": "b", "bom-ref": "a"},
+        ],
+    }
+    wheel = write_wheel(
+        tmp_path / "example-1.0-py3-none-any.whl",
+        {**_METADATA, "example-1.0.dist-info/sboms/example.cyclonedx.json": json.dumps(repeated).encode()},
+    )
+    assert validate(wheel, None) == ["example-1.0.dist-info/sboms/example.cyclonedx.json: bom-ref values repeat: a"]
+
+
 def test_sbom_of_every_dist_info_is_checked(tmp_path: Path, write_wheel: WriteWheel, describe: Describe) -> None:
     # a decoy .dist-info sorting first must not hide the SBOM of the wheel's own one
     broken = json.loads(dumps(describe()))

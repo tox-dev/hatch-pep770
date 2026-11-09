@@ -106,7 +106,7 @@ test = [
   "spdx-tools>=0.8.5",
 ]
 type = [
-  "ty>=0.0.84",
+  "ty>=0.0.100",
   { include-group = "bench" },
   { include-group = "docs" },
   { include-group = "test" },
@@ -139,8 +139,28 @@ build = [
   "packageurl-python>=0.11.1",
   "zipremove>=0.10",
 ]
+cibuildwheel = [ { include-group = "example" }, "cibuildwheel>=4.3.5" ]
+delocate = [
+  { include-group = "example" },
+  "delocate>=0.13",
+  "meson>=1.12.1",
+  "meson-python>=0.22.1",
+  "ninja>=1.13.2",
+]
+example = [
+  "build>=1.6.1",
+  "covdefaults>=2.3",
+  "pytest>=9.1.1",
+  "pytest-cov>=7.1",
+]
+flit-core = [ { include-group = "example" }, "flit-core>=3.12" ]
+hatchling = [ { include-group = "example" }, "hatchling>=1.28" ]
 lint = [ "pre-commit-uv>=4.3" ]
+maturin = [ { include-group = "example" }, "maturin>=1.15,<2" ]
+meson-python = [ { include-group = "example" }, "meson>=1.12.1", "meson-python>=0.22.1", "ninja>=1.13.2" ]
+pdm-backend = [ { include-group = "example" }, "pdm-backend>=2.4" ]
 pkg-meta = [ "check-wheel-contents>=0.6.3", "twine>=7", "uv>=0.12.22" ]
+poetry-core = [ { include-group = "example" }, "poetry-core>=2.5" ]
 release-news = [
   "release-creator>=4.4",
   "towncrier>=26.9",
@@ -153,6 +173,10 @@ release-prepare = [
   "release-creator>=4.4",
   "towncrier>=26.9",
 ]
+scikit-build-core = [ { include-group = "example" }, "cmake>=4.4.4", "ninja>=1.13.2", "scikit-build-core>=1.1" ]
+setuptools = [ { include-group = "example" }, "setuptools>=77" ]
+uv-build = [ { include-group = "example" }, "uv-build>=0.13.6" ]
+zipapp = [ { include-group = "example" }, "hatchling>=1.28" ]
 
 [tool.hatch]
 version.source = "vcs"
@@ -199,6 +223,10 @@ lint.per-file-ignores."bench/**/*.py" = [
   "start-process-with-partial-path",      # Fixtures run git from PATH, as a project build does
   "subprocess-without-shell-equals-true", # Commands are fixed argument lists the harness builds
   "suspicious-subprocess-import",         # Fixtures and cold cases run git, uv and Python processes
+]
+lint.per-file-ignores."docs/examples/**/*.py" = [
+  "implicit-namespace-package", # Each example is a project of its own, with a src layout
+  "print",                      # The examples are command-line programs that print their greeting
 ]
 lint.per-file-ignores."tests/**/*.py" = [
   "assert",                               # Tests use assertions
@@ -302,3 +330,6 @@ packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z
 # simplint 0.7.1, the pre-commit hook, needs a seven-day cutoff exception.
 # expires 2026-11-13
 packages.simplint.uploaded-prior-to = 2026-11-06T21:30:00Z
+# ty 0.0.100 renamed unresolved-attribute to missing-attribute, needs a seven-day cutoff exception.
+# expires 2026-11-16
+packages.ty.uploaded-prior-to = 2026-11-09T20:30:00Z

@@ -1,3 +1,5 @@
+"""The embed subcommand: write the SBOM into wheels another build backend built."""
+
 from __future__ import annotations
 
 import sys

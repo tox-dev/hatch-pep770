@@ -1,3 +1,5 @@
+"""The CycloneDX 1.6 types python-sbom writes, as typed dictionaries."""
+
 from __future__ import annotations
 
 from typing import NotRequired, TypedDict
@@ -66,12 +68,14 @@ class ExternalReference(TypedDict):
     :ivar type: the CycloneDX reference type, such as ``vcs`` or ``website``
     :ivar url: the link
     :ivar comment: what the link is, such as the Project-URL label it came from
+    :ivar hashes: digests of what the link points at
 
     """
 
     type: str
     url: str
     comment: NotRequired[str]
+    hashes: NotRequired[list[Hash]]
 
 
 class LicenseInfo(TypedDict):

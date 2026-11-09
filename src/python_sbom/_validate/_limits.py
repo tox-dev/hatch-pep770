@@ -1,3 +1,5 @@
+"""The size limits that keep a hostile SBOM from exhausting memory or time."""
+
 from __future__ import annotations
 
 from typing import Final

@@ -1,3 +1,5 @@
+"""Turn RECORD rows into the hashed files an SBOM lists, with CycloneDX algorithm names and hex digests."""
+
 from __future__ import annotations
 
 import base64

@@ -1,7 +1,11 @@
+"""Describe a wheel: its declared dependencies, the wheels it bundles and the other SBOMs it carries."""
+
 from __future__ import annotations
 
+from itertools import starmap
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
+from urllib.parse import quote
 
 from packaging.requirements import Requirement
 
@@ -16,7 +20,7 @@ if TYPE_CHECKING:
     from ._content import BundledWheelInfo
     from ._identity import ProjectIdentity
     from ._inputs import Settings, WheelTree
-    from ._types import Component
+    from ._types import Component, ExternalReference
 
 
 def wheel_artifact(
@@ -33,6 +37,7 @@ def wheel_artifact(
         *root["externalReferences"],
         {"type": "distribution", "url": pypi_url(name, version)},
         {"type": "attestation", "url": f"https://pypi.org/integrity/{name}/{version}/{tree.name}/provenance"},
+        *starmap(_other_sbom, tree.other_sboms.items()),
     ]
     return Artifact(
         root=root,
@@ -54,6 +59,17 @@ def wheel_artifact(
         license_file=next(iter(metadata.values("license_files")), None),
         copyright=tree.copyright,
     )
+
+
+def _other_sbom(path: str, digest: str) -> ExternalReference:
+    # relative to this SBOM, which sits in the same directory; quoting keeps a colon in the name from reading as a
+    # scheme
+    return {
+        "type": "bom",
+        "url": quote(path),
+        "comment": "another file in this wheel's sboms directory",
+        "hashes": [{"alg": "SHA-256", "content": digest}],
+    }
 
 
 def _declared_dependency(text: str, requirement: Requirement, property_prefix: str) -> Component:

@@ -1,3 +1,5 @@
+"""Parse a distribution's core metadata, unvalidated, and read its fields as the distribution wrote them."""
+
 from __future__ import annotations
 
 import re

@@ -1,3 +1,5 @@
+"""Render a CycloneDX document as an SPDX 2.3 document."""
+
 from __future__ import annotations
 
 import hashlib

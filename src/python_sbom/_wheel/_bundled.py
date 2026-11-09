@@ -1,3 +1,5 @@
+"""Read the wheels a wheel or archive bundles, each verified against its RECORD, with the libraries it vendors."""
+
 from __future__ import annotations
 
 from collections import Counter

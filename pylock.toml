@@ -12,16 +12,29 @@ extras = [
 dependency-groups = [
     "bench",
     "build",
+    "cibuildwheel",
+    "delocate",
     "dev",
     "docs",
+    "example",
+    "flit-core",
+    "hatchling",
     "lint",
+    "maturin",
+    "meson-python",
+    "pdm-backend",
     "pkg-meta",
+    "poetry-core",
     "project-runtime",
     "release-news",
     "release-notes",
     "release-prepare",
+    "scikit-build-core",
+    "setuptools",
     "test",
     "type",
+    "uv-build",
+    "zipapp",
 ]
 default-groups = [
     "project-runtime",
@@ -80,6 +93,30 @@ size = 13929
 
 [packages.wheels.hashes]
 sha256 = "fc6786402dc3fcb2de3cabd5fe455a2db534b371124f1f21de8731783dec828b"
+
+[[packages]]
+name = "altgraph"
+version = "0.17.5"
+marker = "\"delocate\" in dependency_groups"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "altgraph-0.17.5.tar.gz"
+upload-time = 2025-11-21T20:35:50.583042+00:00
+url = "https://files.pythonhosted.org/packages/7e/f8/97fdf103f38fed6792a1601dbc16cc8aac56e7459a9fff08c812d8ae177a/altgraph-0.17.5.tar.gz"
+size = 48428
+
+[packages.sdist.hashes]
+sha256 = "c87b395dd12fabde9c99573a9749d67da8d29ef9de0125c7f536699b4a9bc9e7"
+
+[[packages.wheels]]
+name = "altgraph-0.17.5-py2.py3-none-any.whl"
+upload-time = 2025-11-21T20:35:49.444851+00:00
+url = "https://files.pythonhosted.org/packages/a9/ba/000a1996d4308bc65120167c21241a3b205464a2e0b58deda26ae8ac21d1/altgraph-0.17.5-py2.py3-none-any.whl"
+size = 21228
+
+[packages.wheels.hashes]
+sha256 = "f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597"
 
 [[packages]]
 name = "annotated-types"
@@ -155,6 +192,31 @@ size = 10196845
 
 [packages.wheels.hashes]
 sha256 = "e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35"
+
+[[packages]]
+name = "bashlex"
+version = "0.18"
+marker = "\"cibuildwheel\" in dependency_groups"
+requires-python = "!=3.0,!=3.1,!=3.2,!=3.3,!=3.4,>=2.7"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "bashlex-0.18.tar.gz"
+upload-time = 2023-01-18T15:21:26.402367+00:00
+url = "https://files.pythonhosted.org/packages/76/60/aae0bb54f9af5e0128ba90eb83d8d0d506ee8f0475c4fdda3deeda20b1d2/bashlex-0.18.tar.gz"
+size = 68742
+
+[packages.sdist.hashes]
+sha256 = "5bb03a01c6d5676338c36fd1028009c8ad07e7d61d8a1ce3f513b7fff52796ee"
+
+[[packages.wheels]]
+name = "bashlex-0.18-py2.py3-none-any.whl"
+upload-time = 2023-01-18T15:21:24.167105+00:00
+url = "https://files.pythonhosted.org/packages/f4/be/6985abb1011fda8a523cfe21ed9629e397d6e06fb5bae99750402b25c95b/bashlex-0.18-py2.py3-none-any.whl"
+size = 69539
+
+[packages.wheels.hashes]
+sha256 = "91d73a23a3e51711919c1c899083890cdecffc91d8c088942725ac13e9dcfffa"
 
 [[packages]]
 name = "beartype"
@@ -235,9 +297,63 @@ size = 26577
 sha256 = "ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9"
 
 [[packages]]
+name = "bracex"
+version = "3.2"
+marker = "\"cibuildwheel\" in dependency_groups"
+requires-python = ">=3.11"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "bracex-3.2.tar.gz"
+upload-time = 2026-10-22T00:28:49.508990+00:00
+url = "https://files.pythonhosted.org/packages/fb/37/adf8dd2cde958c2d086bdd87fc36b532fd824bf38f10be6348d65da0c8f9/bracex-3.2.tar.gz"
+size = 29771
+
+[packages.sdist.hashes]
+sha256 = "0a3d40bfae4caae4d3bfd0ea715874799fab711c38fd4012cc35343e815405cd"
+
+[[packages.wheels]]
+name = "bracex-3.2-py3-none-any.whl"
+upload-time = 2026-10-22T00:28:48.233434+00:00
+url = "https://files.pythonhosted.org/packages/42/65/8030b03de8137d1aab7dd6ecfecdba2fc22fc849fa35959b024f62293a99/bracex-3.2-py3-none-any.whl"
+size = 12019
+
+[packages.wheels.hashes]
+sha256 = "8f3e908a452f66707e1d6d91b3d7d7d4c649d248df18537c0dc710aeb9c30d87"
+
+[[packages]]
+name = "build"
+version = "1.6.1"
+marker = "\"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
+requires-python = ">=3.10"
+dependencies = [
+    { name = "packaging" },
+    { name = "pyproject-hooks" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "build-1.6.1.tar.gz"
+upload-time = 2026-09-10T07:56:00.417084+00:00
+url = "https://files.pythonhosted.org/packages/bd/67/4898a44ea4f3f8e213b0954ec0aa0a16971d62a6212d6ea3931e97115b99/build-1.6.1.tar.gz"
+size = 113427
+
+[packages.sdist.hashes]
+sha256 = "51cc11666391ab6f092070437ac747002ff46f3e4113a3622177ee6b488bfc53"
+
+[[packages.wheels]]
+name = "build-1.6.1-py3-none-any.whl"
+upload-time = 2026-09-10T07:55:59.148398+00:00
+url = "https://files.pythonhosted.org/packages/ad/9b/9fb3585dabcd73a1b2a6267f63f62649347c9e6d072c9fde365b105abb2c/build-1.6.1-py3-none-any.whl"
+size = 31179
+
+[packages.wheels.hashes]
+sha256 = "ecd351a4be9d35a9eaaba244a7687143c9c7d4aea6ac964e7e7ddab20cbcf4e7"
+
+[[packages]]
 name = "certifi"
 version = "2026.10.23"
-marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"cibuildwheel\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.7"
 index = "https://pypi.org/simple/"
 
@@ -388,6 +504,42 @@ size = 27541
 sha256 = "5ae39c8c434b972f0740d04610759168590713175aab584b012b1b84f6771874"
 
 [[packages]]
+name = "cibuildwheel"
+version = "4.3.5"
+marker = "\"cibuildwheel\" in dependency_groups"
+requires-python = ">=3.11"
+dependencies = [
+    { name = "bashlex" },
+    { name = "bracex" },
+    { name = "build" },
+    { name = "certifi" },
+    { name = "dependency-groups" },
+    { name = "filelock" },
+    { name = "humanize" },
+    { name = "packaging" },
+    { name = "platformdirs" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "cibuildwheel-4.3.5.tar.gz"
+upload-time = 2026-10-27T19:01:55.682659+00:00
+url = "https://files.pythonhosted.org/packages/97/08/284f916363482d28ba98cf4517283f89ec5c3bd8acfa43b1049b9a5ed486/cibuildwheel-4.3.5.tar.gz"
+size = 464371
+
+[packages.sdist.hashes]
+sha256 = "43c30292b9ec8d08a8eb3873436e64d4d1434c5dcbc855fb0afbfc69732048f1"
+
+[[packages.wheels]]
+name = "cibuildwheel-4.3.5-py3-none-any.whl"
+upload-time = 2026-10-27T19:01:53.729105+00:00
+url = "https://files.pythonhosted.org/packages/c9/ad/ebdaf81b0f29b86906a6c4ad0253796204853111fdd3a1d041d7b1bf92d0/cibuildwheel-4.3.5-py3-none-any.whl"
+size = 170368
+
+[packages.wheels.hashes]
+sha256 = "2297362cb7a0a12cd681788197811e1f3d700bd31f6decaab051837c90d4e3ba"
+
+[[packages]]
 name = "click"
 version = "8.5.0"
 marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"validate\" in extras"
@@ -413,9 +565,34 @@ size = 125251
 sha256 = "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360"
 
 [[packages]]
+name = "cmake"
+version = "4.4.4"
+marker = "\"scikit-build-core\" in dependency_groups"
+requires-python = ">=3.8"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "cmake-4.4.4.tar.gz"
+upload-time = 2026-10-04T09:10:05.134128+00:00
+url = "https://files.pythonhosted.org/packages/14/2a/88d51f5fc74358edb89afedeb8154db0d9c0bbd256747bf28de472e4fa5c/cmake-4.4.4.tar.gz"
+size = 13287563
+
+[packages.sdist.hashes]
+sha256 = "f337d18e33b116cabae9a7a8ff423fc0bc3f389da0acefeb724e1397128dcc34"
+
+[[packages.wheels]]
+name = "cmake-4.4.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
+upload-time = 2026-10-04T09:09:24.551288+00:00
+url = "https://files.pythonhosted.org/packages/7e/d5/664ea06d01864f25d6067f09fa218404e4d588edd5e495135ac91429fecb/cmake-4.4.4-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
+size = 30245729
+
+[packages.wheels.hashes]
+sha256 = "f773a0544c66370408f451acd487c2c643b0dfebb48c5d64f3638bc1bb820238"
+
+[[packages]]
 name = "covdefaults"
 version = "2.3.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.7"
 dependencies = [
     { name = "coverage" },
@@ -443,7 +620,7 @@ sha256 = "2832961f6ffcfe4b57c338bc3418a3526f495c26fb9c54565409c5532f7c41be"
 [[packages]]
 name = "coverage"
 version = "7.17.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.11"
 index = "https://pypi.org/simple/"
 
@@ -575,6 +752,64 @@ size = 4780973
 sha256 = "1981f1db4630889b9ef7803fadef12b056f428cb6b85c27ba57b774793b6093c"
 
 [[packages]]
+name = "delocate"
+version = "0.13.0"
+marker = "\"delocate\" in dependency_groups"
+requires-python = ">=3.9"
+dependencies = [
+    { name = "macholib" },
+    { name = "packaging" },
+    { name = "typing-extensions" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "delocate-0.13.0.tar.gz"
+upload-time = 2025-01-30T06:43:43.632641+00:00
+url = "https://files.pythonhosted.org/packages/2d/21/f1679803b2582632e7b9fdd83e675d5fc661513433c0f661938414978bc7/delocate-0.13.0.tar.gz"
+size = 240774
+
+[packages.sdist.hashes]
+sha256 = "a93e67a9f56ee01a3f7096a042231d4ac37fecac873cd5ea34ea2b4f43a8fa13"
+
+[[packages.wheels]]
+name = "delocate-0.13.0-py3-none-any.whl"
+upload-time = 2025-01-30T06:43:41.113220+00:00
+url = "https://files.pythonhosted.org/packages/2b/dd/437e601fa9d2b6bf8507256daf52196a226c3b340261f4cde8fac8e853ea/delocate-0.13.0-py3-none-any.whl"
+size = 238040
+
+[packages.wheels.hashes]
+sha256 = "11f7596f88984c33f76b27fe2eea7637d1ce369a9e0b6737bbc706b6426e862c"
+
+[[packages]]
+name = "dependency-groups"
+version = "1.3.2"
+marker = "\"cibuildwheel\" in dependency_groups"
+requires-python = ">=3.9"
+dependencies = [
+    { name = "packaging" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "dependency_groups-1.3.2.tar.gz"
+upload-time = 2026-08-22T02:43:30.137764+00:00
+url = "https://files.pythonhosted.org/packages/b5/16/65e61d8e837e0d70a99a0d4dd76e2af53357c3a03ed1db8ad9b5786d7f25/dependency_groups-1.3.2.tar.gz"
+size = 13309
+
+[packages.sdist.hashes]
+sha256 = "c81831f43828dbc3987ee247eb198241a0152b8e7ceab10977cc3808eb388ac7"
+
+[[packages.wheels]]
+name = "dependency_groups-1.3.2-py3-none-any.whl"
+upload-time = 2026-08-22T02:43:28.853754+00:00
+url = "https://files.pythonhosted.org/packages/a1/e4/da5f2f176050efcfb9222a76a3e81c41f69f775be8e563b76ca4292a134f/dependency_groups-1.3.2-py3-none-any.whl"
+size = 9802
+
+[packages.wheels.hashes]
+sha256 = "8c337f7b92445823b0d0ea507f611390c58dcd2112be00aebcd738a2ca7a1c64"
+
+[[packages]]
 name = "distlib"
 version = "0.4.4"
 marker = "\"dev\" in dependency_groups or \"lint\" in dependency_groups"
@@ -626,7 +861,7 @@ sha256 = "25d013af9bf23bc1c7b2b093dff4208166c53a94786c9e447808335ef1185fea"
 [[packages]]
 name = "filelock"
 version = "4.2.5"
-marker = "\"dev\" in dependency_groups or \"lint\" in dependency_groups"
+marker = "\"cibuildwheel\" in dependency_groups or \"dev\" in dependency_groups or \"lint\" in dependency_groups"
 requires-python = ">=3.11"
 index = "https://pypi.org/simple/"
 
@@ -651,7 +886,7 @@ sha256 = "46ce42d27e5cdde09ee7197349663e97cb106679bd9e75db3a09679fbc7aa1a8"
 [[packages]]
 name = "flit-core"
 version = "4.2.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"flit-core\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
@@ -765,7 +1000,7 @@ sha256 = "b49677dbdc597460cc22d01b27ab3696f5e16a21ecf2700fb01bc28e1f2a04a7"
 [[packages]]
 name = "hatchling"
 version = "1.33.0"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"hatchling\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"zipapp\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.10"
 dependencies = [
     { name = "packaging" },
@@ -793,6 +1028,31 @@ size = 78750
 
 [packages.wheels.hashes]
 sha256 = "415290b84f464d2884303fca8974d38e7b85579069fab02a15db0828fbb1446d"
+
+[[packages]]
+name = "humanize"
+version = "4.16.0"
+marker = "\"cibuildwheel\" in dependency_groups"
+requires-python = ">=3.10"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "humanize-4.16.0.tar.gz"
+upload-time = 2026-06-30T16:17:29.859993+00:00
+url = "https://files.pythonhosted.org/packages/0a/ea/13a1ef3c12d12662905801495283530251918b70d62d368f1d2e0272c70d/humanize-4.16.0.tar.gz"
+size = 89515
+
+[packages.sdist.hashes]
+sha256 = "7dc2244a2f84a4bfb1d36c37bac80cd78e35cdc5c119206d87b018e1445f3a3f"
+
+[[packages.wheels]]
+name = "humanize-4.16.0-py3-none-any.whl"
+upload-time = 2026-06-30T16:17:28.360556+00:00
+url = "https://files.pythonhosted.org/packages/b0/aa/0b7365d30fed43e7a3449aba1fe20a0a7174d9cf13e282af4e69ac825441/humanize-4.16.0-py3-none-any.whl"
+size = 137209
+
+[packages.wheels.hashes]
+sha256 = "353eb2f34c09d098b2880eee8bef21832eae6d174f48c5762fff7e5fcb74d01d"
 
 [[packages]]
 name = "id"
@@ -900,7 +1160,7 @@ sha256 = "ea0c9a0384df69ed86a943a15cde37d0360b82491b3910dc2215e202e62b5b02"
 [[packages]]
 name = "iniconfig"
 version = "2.3.1"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1167,6 +1427,33 @@ size = 120615
 sha256 = "421788fdcadb41f049d2dc934ce666626265aeccefddd25e162a26f23bcbf8a4"
 
 [[packages]]
+name = "macholib"
+version = "1.16.4"
+marker = "\"delocate\" in dependency_groups"
+dependencies = [
+    { name = "altgraph" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "macholib-1.16.4.tar.gz"
+upload-time = 2025-11-22T08:28:38.373493+00:00
+url = "https://files.pythonhosted.org/packages/10/2f/97589876ea967487978071c9042518d28b958d87b17dceb7cdc1d881f963/macholib-1.16.4.tar.gz"
+size = 59427
+
+[packages.sdist.hashes]
+sha256 = "f408c93ab2e995cd2c46e34fe328b130404be143469e41bc366c807448979362"
+
+[[packages.wheels]]
+name = "macholib-1.16.4-py2.py3-none-any.whl"
+upload-time = 2025-11-22T08:28:36.939302+00:00
+url = "https://files.pythonhosted.org/packages/c7/d1/a9f36f8ecdf0fb7c9b1e78c8d7af12b8c8754e74851ac7b94a8305540fc7/macholib-1.16.4-py2.py3-none-any.whl"
+size = 38117
+
+[packages.wheels.hashes]
+sha256 = "da1a3fa8266e30f0ce7e97c6a54eefaae8edd1e5f86f3eb8b95457cae90265ea"
+
+[[packages]]
 name = "markdown-it-py"
 version = "4.2.0"
 marker = "\"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups"
@@ -1218,6 +1505,31 @@ size = 23111
 
 [packages.wheels.hashes]
 sha256 = "925f929d6b59a8b3f8b8c6ac363cd0af7eecc81efb3071770b3c6717c450a369"
+
+[[packages]]
+name = "maturin"
+version = "1.16.0"
+marker = "\"maturin\" in dependency_groups"
+requires-python = ">=3.7"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "maturin-1.16.0.tar.gz"
+upload-time = 2026-10-29T14:09:43.096461+00:00
+url = "https://files.pythonhosted.org/packages/bd/71/eb078174335ff30bde1be2ad54fb6256db4b160eb3efa81163fa30f8c814/maturin-1.16.0.tar.gz"
+size = 396641
+
+[packages.sdist.hashes]
+sha256 = "13e69ca12542999d8c5467131de72a49bb76e4c284b9a45c5783df7c0fcb3a8a"
+
+[[packages.wheels]]
+name = "maturin-1.16.0-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.musllinux_1_1_x86_64.whl"
+upload-time = 2026-10-29T14:09:16.110052+00:00
+url = "https://files.pythonhosted.org/packages/0a/dc/e77f490557cb5e045a75c3d18a7965425ac576235c970dfff4d903eb2c74/maturin-1.16.0-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.musllinux_1_1_x86_64.whl"
+size = 10763361
+
+[packages.wheels.hashes]
+sha256 = "837db2f4d93d4899c3ac393fb3cc9eebf35b6002336e5d574f4a4fb6c49fe283"
 
 [[packages]]
 name = "mdformat"
@@ -1332,6 +1644,61 @@ size = 9979
 sha256 = "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8"
 
 [[packages]]
+name = "meson"
+version = "1.12.1"
+marker = "\"delocate\" in dependency_groups or \"meson-python\" in dependency_groups"
+requires-python = ">=3.10"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "meson-1.12.1.tar.gz"
+upload-time = 2026-09-22T22:58:28.875366+00:00
+url = "https://files.pythonhosted.org/packages/f9/c9/8c9983f4f3d9c4e22fd76bcf8cd053e4472aefae45fd044669b6daa34b53/meson-1.12.1.tar.gz"
+size = 2524665
+
+[packages.sdist.hashes]
+sha256 = "ab0a6ca09f8ef70c564c8241fb5a23957886a0b53fb58412b5e07eaf07dba743"
+
+[[packages.wheels]]
+name = "meson-1.12.1-py3-none-any.whl"
+upload-time = 2026-09-22T22:58:26.047814+00:00
+url = "https://files.pythonhosted.org/packages/57/99/36cd25f9598eef70db97577440a70a360af505f6f01c2338a18d1556079c/meson-1.12.1-py3-none-any.whl"
+size = 1108668
+
+[packages.wheels.hashes]
+sha256 = "930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02"
+
+[[packages]]
+name = "meson-python"
+version = "0.22.1"
+marker = "\"delocate\" in dependency_groups or \"meson-python\" in dependency_groups"
+requires-python = ">=3.10"
+dependencies = [
+    { name = "meson" },
+    { name = "packaging" },
+    { name = "pyproject-metadata" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "meson_python-0.22.1.tar.gz"
+upload-time = 2026-10-01T23:17:15.251548+00:00
+url = "https://files.pythonhosted.org/packages/b4/40/343ae23722d5d66a7b94b752d1b194202640995296379333b274b1860871/meson_python-0.22.1.tar.gz"
+size = 121887
+
+[packages.sdist.hashes]
+sha256 = "52c88628b0e5671592dc2306613fb5f6f3615fd24def059b9894f143b7f9a139"
+
+[[packages.wheels]]
+name = "meson_python-0.22.1-py3-none-any.whl"
+upload-time = 2026-10-01T23:17:13.760319+00:00
+url = "https://files.pythonhosted.org/packages/96/62/0c1cf20fe158b0e623e78acbf5fb6de5f1410a408f65f727e4090497627b/meson_python-0.22.1-py3-none-any.whl"
+size = 31271
+
+[packages.wheels.hashes]
+sha256 = "258fde948cf45aab5df23fcc9e17a9050ee73d4e1002fe6cf86519f61c414778"
+
+[[packages]]
 name = "more-itertools"
 version = "11.2.1"
 marker = "\"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups"
@@ -1380,6 +1747,31 @@ size = 832161
 
 [packages.wheels.hashes]
 sha256 = "70f5ac8626e899a4bab0ef74ca2f5bd602f49c7b739e6e5026b4afc6d63dac42"
+
+[[packages]]
+name = "ninja"
+version = "1.13.2"
+marker = "\"delocate\" in dependency_groups or \"meson-python\" in dependency_groups or \"scikit-build-core\" in dependency_groups"
+requires-python = ">=3.8"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "ninja-1.13.2.tar.gz"
+upload-time = 2026-08-30T15:49:51.897613+00:00
+url = "https://files.pythonhosted.org/packages/ac/92/410b7917d16ab54c04b05cc32b9284803671d91cf79d33be6009c28d4ea8/ninja-1.13.2.tar.gz"
+size = 243739
+
+[packages.sdist.hashes]
+sha256 = "525bfa3fc88aa30a4467df270fd5be6f9fcae8061d54d4df74ea1dc5abd5a975"
+
+[[packages.wheels]]
+name = "ninja-1.13.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
+upload-time = 2026-08-30T15:49:34.530024+00:00
+url = "https://files.pythonhosted.org/packages/6e/53/ebfed7b689c338dd8ebeec9c0730c8d56821292f14e2536e5f3ef1a05744/ninja-1.13.2-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl"
+size = 183365
+
+[packages.wheels.hashes]
+sha256 = "65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c"
 
 [[packages]]
 name = "nodeenv"
@@ -1434,7 +1826,7 @@ sha256 = "31a85c2717bc41dd818f3c62908685ff9eebcb68588213745b14a6ee9e7df7c9"
 [[packages]]
 name = "packaging"
 version = "26.3"
-marker = "\"hatch\" in extras or \"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"lint\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"project-runtime\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"hatch\" in extras or \"bench\" in dependency_groups or \"build\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"lint\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"poetry-core\" in dependency_groups or \"project-runtime\" in dependency_groups or \"release-news\" in dependency_groups or \"release-notes\" in dependency_groups or \"release-prepare\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1459,7 +1851,7 @@ sha256 = "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
 [[packages]]
 name = "pathspec"
 version = "1.1.1"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"hatchling\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"zipapp\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1484,7 +1876,7 @@ sha256 = "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
 [[packages]]
 name = "pdm-backend"
 version = "2.5.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"pdm\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"pdm\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1509,7 +1901,7 @@ sha256 = "5b8746b567a16a1fd506ce66ee28e89d46374526f52238aa1b96cc2c08245c63"
 [[packages]]
 name = "platformdirs"
 version = "4.14.0"
-marker = "\"dev\" in dependency_groups or \"lint\" in dependency_groups"
+marker = "\"cibuildwheel\" in dependency_groups or \"dev\" in dependency_groups or \"lint\" in dependency_groups"
 requires-python = ">=3.11"
 index = "https://pypi.org/simple/"
 
@@ -1534,7 +1926,7 @@ sha256 = "1dadfc59a8a5d7565b3d9270ae8fa71c065595352c4277b41c11ee6c222c4b91"
 [[packages]]
 name = "pluggy"
 version = "1.7.0"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"hatch\" in extras or \"bench\" in dependency_groups or \"build\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -1579,6 +1971,31 @@ size = 49567
 
 [packages.wheels.hashes]
 sha256 = "096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce"
+
+[[packages]]
+name = "poetry-core"
+version = "2.5.0"
+marker = "\"poetry-core\" in dependency_groups"
+requires-python = "<4.0,>=3.10"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "poetry_core-2.5.0.tar.gz"
+upload-time = 2026-09-19T17:47:10.230654+00:00
+url = "https://files.pythonhosted.org/packages/42/b5/50f1fda26c4fe5b1d6ce5cdf0391bdfa1ca12fdcb8ad68344d5cf678fc90/poetry_core-2.5.0.tar.gz"
+size = 455721
+
+[packages.sdist.hashes]
+sha256 = "81d04c9253b19d0604718268d781867c8f7b2128e5b25bbf1e84141eec6b89c4"
+
+[[packages.wheels]]
+name = "poetry_core-2.5.0-py3-none-any.whl"
+upload-time = 2026-09-19T17:47:08.728607+00:00
+url = "https://files.pythonhosted.org/packages/b7/25/7ed0a2ea4fe12f7fd0394387b5debbcd6fdbd06e5ac9daab96ba11471da8/poetry_core-2.5.0-py3-none-any.whl"
+size = 413562
+
+[packages.wheels.hashes]
+sha256 = "98ee465b66f7e14bb9fbe68fb5e00d0cff184f036993ec94610ae4b5612f3add"
 
 [[packages]]
 name = "pre-commit"
@@ -1778,7 +2195,7 @@ sha256 = "5299296ff5cafcb69851fd652de8f9268a0bb036bcbedbfcaa94cf743baf3986"
 [[packages]]
 name = "pygments"
 version = "2.21.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -1854,9 +2271,62 @@ size = 144430
 sha256 = "79196bc4a11e3c926dd4c6b14c80136c6b37f884fe913cbc57037f37636e9841"
 
 [[packages]]
+name = "pyproject-hooks"
+version = "1.3.3"
+marker = "\"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
+requires-python = ">=3.8"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "pyproject_hooks-1.3.3.tar.gz"
+upload-time = 2026-09-16T08:58:03.999217+00:00
+url = "https://files.pythonhosted.org/packages/6d/5d/f2ddeef4a855a102aaae5e97826a0260007522ab504421b75addfdb1517c/pyproject_hooks-1.3.3.tar.gz"
+size = 21013
+
+[packages.sdist.hashes]
+sha256 = "defda19b854fa0d3bd4f76ea4ddcba8abd7dcfcdd585a6690ade050744fc5f43"
+
+[[packages.wheels]]
+name = "pyproject_hooks-1.3.3-py3-none-any.whl"
+upload-time = 2026-09-16T08:58:02.960279+00:00
+url = "https://files.pythonhosted.org/packages/85/11/044d1ae1b4ec0d7af88ee5bc91e081be1022533032b906a7bdabdbb60977/pyproject_hooks-1.3.3-py3-none-any.whl"
+size = 10724
+
+[packages.wheels.hashes]
+sha256 = "5fc53fdac9f7bd63fbcdc868fb5f90b4784d78a53a3d3388cd738b807441a20b"
+
+[[packages]]
+name = "pyproject-metadata"
+version = "0.12.1"
+marker = "\"delocate\" in dependency_groups or \"meson-python\" in dependency_groups"
+requires-python = ">=3.8"
+dependencies = [
+    { name = "packaging" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "pyproject_metadata-0.12.1.tar.gz"
+upload-time = 2026-07-04T02:19:32.029773+00:00
+url = "https://files.pythonhosted.org/packages/4f/76/1cae539918a7b1746d624c2f01560b793c22cd8c081157505bb9bbf0e34d/pyproject_metadata-0.12.1.tar.gz"
+size = 48457
+
+[packages.sdist.hashes]
+sha256 = "8809a4df6fe08279b39a8890669506ed3158e0617855ac9aff098fcbe772ae4c"
+
+[[packages.wheels]]
+name = "pyproject_metadata-0.12.1-py3-none-any.whl"
+upload-time = 2026-07-04T02:19:30.657500+00:00
+url = "https://files.pythonhosted.org/packages/b9/8e/d883718e872abc214ba053f60f7e6edc2abd5ffbd1544beb01a9c92ddd3c/pyproject_metadata-0.12.1-py3-none-any.whl"
+size = 23452
+
+[packages.wheels.hashes]
+sha256 = "f7162d580a96386a8eb096da06215f981f547d1490f03055ef99e323bc2da427"
+
+[[packages]]
 name = "pytest"
 version = "9.2.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.10"
 dependencies = [
     { name = "iniconfig" },
@@ -1887,7 +2357,7 @@ sha256 = "07acdcf88ec174f907dc01af70bf52d49b014bbab03faeeade31c96b18c2e588"
 [[packages]]
 name = "pytest-cov"
 version = "7.1.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"bench\" in dependency_groups or \"cibuildwheel\" in dependency_groups or \"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"example\" in dependency_groups or \"flit-core\" in dependency_groups or \"hatchling\" in dependency_groups or \"maturin\" in dependency_groups or \"meson-python\" in dependency_groups or \"pdm-backend\" in dependency_groups or \"poetry-core\" in dependency_groups or \"scikit-build-core\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"uv-build\" in dependency_groups or \"zipapp\" in dependency_groups"
 requires-python = ">=3.9"
 dependencies = [
     { name = "coverage" },
@@ -2216,6 +2686,35 @@ size = 7676
 sha256 = "647ba99caddc2cc1e55a51e4360689115551bf4476d90e8162cf8c345fe233c7"
 
 [[packages]]
+name = "scikit-build-core"
+version = "1.1.1"
+marker = "\"scikit-build-core\" in dependency_groups"
+requires-python = ">=3.9"
+dependencies = [
+    { name = "packaging" },
+    { name = "pathspec" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "scikit_build_core-1.1.1.tar.gz"
+upload-time = 2026-10-02T19:18:37.596431+00:00
+url = "https://files.pythonhosted.org/packages/b2/1a/8c00b19c0a1e7acf890676af2efa430339d38e59fa9437f2aab8517af3f4/scikit_build_core-1.1.1.tar.gz"
+size = 516192
+
+[packages.sdist.hashes]
+sha256 = "e347a59193c878ac56a363e57506938652a6dd8c965790cb1cbc6bc7e8d5abad"
+
+[[packages.wheels]]
+name = "scikit_build_core-1.1.1-py3-none-any.whl"
+upload-time = 2026-10-02T19:18:36.087754+00:00
+url = "https://files.pythonhosted.org/packages/01/1b/83913d6d5c6a7f8ad5bf5d67b2d57ab09475f1bb9dd0c7a3f44067d59b90/scikit_build_core-1.1.1-py3-none-any.whl"
+size = 293450
+
+[packages.wheels.hashes]
+sha256 = "6f6d6cf600e2e9639fd258ecd11cfc19bd189354b968916a519c6793e7e26237"
+
+[[packages]]
 name = "secretstorage"
 version = "3.5.0"
 marker = "\"dev\" in dependency_groups or \"pkg-meta\" in dependency_groups"
@@ -2272,7 +2771,7 @@ sha256 = "de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177"
 [[packages]]
 name = "setuptools"
 version = "84.2.1"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"setuptools\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"setuptools\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"setuptools\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -2804,7 +3303,7 @@ sha256 = "6e2cb0eef194e10c27ec0023bfeb25badbbb5868244cf5bc5bdc04e4464bf331"
 [[packages]]
 name = "tomlkit"
 version = "0.15.2"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"hatchling\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"zipapp\" in dependency_groups or \"hatch\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -2858,7 +3357,7 @@ sha256 = "ae4d223e6aadaff98d29b7f09e58d9c9ccf4cd3b455a2d2e0486d432cd8bf660"
 [[packages]]
 name = "trove-classifiers"
 version = "2026.9.21.13"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"hatch\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"hatchling\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"zipapp\" in dependency_groups or \"hatch\" in extras"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
@@ -2917,33 +3416,33 @@ sha256 = "b854164df26db268af05f49aa5c0344b10e27a494343ff05b1e0bad3b135f5a7"
 
 [[packages]]
 name = "ty"
-version = "0.0.95"
+version = "0.0.100"
 marker = "\"dev\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.8"
 index = "https://pypi.org/simple/"
 
 [packages.sdist]
-name = "ty-0.0.95.tar.gz"
-upload-time = 2026-10-29T19:21:51.955948+00:00
-url = "https://files.pythonhosted.org/packages/39/08/d63954788578b9189dbf85081d8cbdba9a32a9a6a29729129a0da09cd3a0/ty-0.0.95.tar.gz"
-size = 8115525
+name = "ty-0.0.100.tar.gz"
+upload-time = 2026-11-09T20:16:27.534294+00:00
+url = "https://files.pythonhosted.org/packages/2a/b4/ac430b910566e28b1cd01faf7ee07ca38bcd7585b30fce8fd25dfc104edc/ty-0.0.100.tar.gz"
+size = 8238916
 
 [packages.sdist.hashes]
-sha256 = "a480853a74d43074b2d4b28025d406b9d7223f7fe9f3a6c2adec3eacdbf14ca0"
+sha256 = "ca75081ead663c077e40b90c38b6e9f039b6d168051e02918a8a1d7ecc4fa0dd"
 
 [[packages.wheels]]
-name = "ty-0.0.95-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-upload-time = 2026-10-29T19:21:30.801674+00:00
-url = "https://files.pythonhosted.org/packages/90/64/636308717989afa2fe765604ae2a76189f470d566e5e58da4482b625d64e/ty-0.0.95-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-size = 16312046
+name = "ty-0.0.100-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+upload-time = 2026-11-09T20:16:05.195593+00:00
+url = "https://files.pythonhosted.org/packages/b8/56/02b46b2a5f78f6edbd29afde54fce4461dd6462f901974deac0c9c1a987b/ty-0.0.100-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+size = 16749475
 
 [packages.wheels.hashes]
-sha256 = "6d47be2db5db80cd70c582b240a71dd8e9be215ce9288298c863c7c3611ef02b"
+sha256 = "e23076fd67dc5c740a5cd292f3bbc10b82127dd01df3cb559e12b3144ceef72d"
 
 [[packages]]
 name = "typing-extensions"
 version = "4.16.0"
-marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"type\" in dependency_groups"
+marker = "\"delocate\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"pkg-meta\" in dependency_groups or \"type\" in dependency_groups"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -3067,6 +3566,31 @@ size = 17333810
 
 [packages.wheels.hashes]
 sha256 = "22759b8895e1103578de6fb4cd27e94b4399d021023378d29f01333717751fba"
+
+[[packages]]
+name = "uv-build"
+version = "0.13.6"
+marker = "\"uv-build\" in dependency_groups"
+requires-python = ">=3.8"
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "uv_build-0.13.6.tar.gz"
+upload-time = 2026-10-27T00:45:23.129719+00:00
+url = "https://files.pythonhosted.org/packages/8f/98/8b9e028aa5d00f4c6f48183f3a2d9d343cd3adeb21bbd6dcc24916cd1538/uv_build-0.13.6.tar.gz"
+size = 470673
+
+[packages.sdist.hashes]
+sha256 = "8a03355d73117d136dbf6a34e20429755598a73d752dc6ae3aa5894942b6fd4b"
+
+[[packages.wheels]]
+name = "uv_build-0.13.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+upload-time = 2026-10-27T00:45:09.462059+00:00
+url = "https://files.pythonhosted.org/packages/de/43/b2fb76e750ad2b0e3d229f96e066c62bd237db4f85f542b15476345ab82d/uv_build-0.13.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+size = 1336304
+
+[packages.wheels.hashes]
+sha256 = "b23bbf1393acb47c1bd434f79daa91c158a14a504894485b5a9948f68d63170b"
 
 [[packages]]
 name = "vcs-versioning"
@@ -3256,6 +3780,6 @@ platforms = [
 
 [tool.nab.validation]
 version = 1
-all-inputs-sha256 = "4dafd95d61798da174d4b26af09530beecfc187b4e057d2b1b5341bf64a2c284"
-selection-inputs-sha256 = "33c6780a0dd69f7f771ac2b8d2e37670c4eb5032e8bfaf5ea560df206ba95955"
-contents-sha256 = "6dea5954bbdb8926ab3752c0a47e66dc572d3176889d239108a220092b0a4bc1"
+all-inputs-sha256 = "8ef75757f8e1b5983439523925f4e1274fa3dd3df4383ba69c15d13a73ea28fe"
+selection-inputs-sha256 = "c471b6f745f74f253a2c2ba7095b5b07a49f5b770f1a9ff8b71a6eb8704a9431"
+contents-sha256 = "ef98574fb95a6767aed70351a3b1ab64e68e6d5c01614aaa8e57a1800ede1cd7"

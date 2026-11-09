@@ -1,0 +1,23 @@
+[build-system]
+build-backend = "python_sbom.backend"
+requires = [ "python-sbom>=0.3", "uv-build>=0.9" ]
+
+[project]
+name = "greet"
+version = "1.0"
+description = "says hello"
+license = "MIT"
+requires-python = ">=3.11"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
+]
+dependencies = [ "packaging>=24" ]
+
+[tool.python-sbom]
+build-backend = "uv_build"
+supplier = { name = "You", url = [ "https://github.com/you" ] }

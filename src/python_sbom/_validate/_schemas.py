@@ -1,3 +1,5 @@
+"""Validate against the CycloneDX 1.6 JSON schema and check the SPDX rendering."""
+
 from __future__ import annotations
 
 import json

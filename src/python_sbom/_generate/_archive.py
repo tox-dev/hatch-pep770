@@ -1,3 +1,5 @@
+"""Build an archive's SBOM, write it beside the archive or to a given file, and optionally append it to the archive."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
