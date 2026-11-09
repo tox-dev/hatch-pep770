@@ -1,5 +1,0 @@
-/* Center each diagram and let a wide one scroll on its own. */
-.mermaid {
-  text-align: center;
-  overflow-x: auto;
-}

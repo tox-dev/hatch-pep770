@@ -40,7 +40,9 @@ extensions: Final[list[str]] = [
     "sphinx.ext.inheritance_diagram",
     "sphinx_argparse_cli",
     "sphinx_autodoc_typehints",
+    "sphinx_copybutton",
     "sphinx_design",
+    "sphinx_inline_tabs",
     "sphinxcontrib.mermaid",
 ]
 
@@ -55,15 +57,53 @@ html_title: Final[str] = "python-sbom: SBOMs for Python distributions"
 html_last_updated_fmt: Final[str] = _NOW.isoformat()
 html_static_path: Final[list[str]] = ["_static"]
 html_favicon: Final[str] = "_static/favicon.svg"
-html_theme_options: Final[dict[str, str]] = {"light_logo": "logo-light.svg", "dark_logo": "logo-dark.svg"}
-html_css_files: Final[list[str]] = ["changelog-toc.css", "custom.css"]
+html_theme_options: Final[dict[str, str | bool | dict[str, str]]] = {
+    "source_repository": "https://github.com/tox-dev/python-sbom",
+    "source_branch": "main",
+    "source_directory": "docs/",
+    "light_logo": "logo-horizontal-light.svg",
+    "dark_logo": "logo-horizontal-dark.svg",
+    "sidebar_hide_name": True,
+    "light_css_variables": {
+        "color-brand-primary": "#2b6599",
+        "color-brand-content": "#2b6599",
+        "color-brand-visited": "#2b6599",
+        "font-stack": "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
+        "font-stack--monospace": "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+        # top-level entries take the text color, so only the branch holding the current page shows the brand color
+        "color-sidebar-link-text--top-level": "#1f2937",
+        # Furo's grays read washed out in the small sidebar and contents text; its dark palette sets both already
+        "color-foreground-secondary": "#3b3f46",
+        "color-foreground-muted": "#4a4f57",
+        # a near-black on off-white reads at 15:1 without the glare of pure black on white
+        "color-foreground-primary": "#1e2329",
+        "color-background-primary": "#fcfcfb",
+        "color-foreground-border": "#63676f",
+    },
+    "dark_css_variables": {
+        # the logo's yellow, toned down a step so links and the current page do not glare on the navy
+        "color-brand-primary": "#f0c94a",
+        "color-brand-content": "#f0c94a",
+        "color-brand-visited": "#f0c94a",
+        "color-background-primary": "#0b1626",
+        "color-background-secondary": "#0f1e33",
+        "color-background-hover": "#14273f",
+        "color-background-border": "#1f3654",
+        "color-sidebar-link-text--top-level": "#d6dde8",
+        "color-foreground-border": "#8a96a8",
+    },
+}
+html_css_files: Final[list[str]] = ["changelog-toc.css", "python-sbom.css"]
+# copying a snippet takes the command alone, not the console prompt or its output
+copybutton_exclude: Final[str] = ".linenos, .gp, .go"
 # the browser renders each diagram, so it follows furo's light and dark toggle
 mermaid_output_format: Final[str] = "raw"
 mermaid_light_theme: Final[str] = "neutral"
 # the default fixed 500px height pads a wide diagram with empty bands
 mermaid_height: Final[str] = "auto"
-pygments_style: Final[str] = "sphinx"
-pygments_dark_style: Final[str] = "monokai"
+# both pass WCAG AA (4.5:1) for every token color against their own background
+pygments_style: Final[str] = "xcode"
+pygments_dark_style: Final[str] = "github-dark"
 
 autoclass_content: Final[str] = "both"
 inheritance_alias: Final[dict[str, str]] = _inheritance_aliases()

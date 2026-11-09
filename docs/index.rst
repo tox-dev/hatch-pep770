@@ -2,122 +2,181 @@
  python-sbom
 #############
 
+.. raw:: html
+
+    <section class="hero">
+      <img class="hero-logo only-light" src="_static/logo-light.svg" alt="">
+      <img class="hero-logo only-dark" src="_static/logo-dark.svg" alt="">
+      <p class="hero-title">Every wheel you ship, <span>with its SBOM inside</span>.</p>
+      <p class="hero-tagline">A build plugin that writes a CycloneDX SBOM into each wheel your build backend makes,
+      where PEP 770 tells installers and scanners to look for it.</p>
+      <div class="hero-actions">
+        <a class="primary" href="tutorials/first-sbom.html">Get started</a>
+        <a class="secondary" href="how-to/index.html">How-to guides</a>
+        <a class="secondary" href="https://github.com/tox-dev/python-sbom">GitHub</a>
+      </div>
+    </section>
+
 python-sbom writes a `CycloneDX <https://cyclonedx.org/>`_ 1.6 SBOM into every wheel you build, at
 ``<name>-<version>.dist-info/sboms/<name>.cdx.json``. That is where `PEP 770 <https://peps.python.org/pep-0770/>`_ tells
-installers to keep SBOMs, so they land in the environment next to the installed package, where scanners look for them:
-
-.. code-block:: toml
-
-    [build-system]
-    build-backend = 'hatchling.build'
-    requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.2']
-
-    [tool.hatch.build.hooks.python-sbom]
+installers to keep SBOMs, so they land in the environment next to the installed package, where scanners look for them.
 
 General-purpose scanners read the dependencies a package declares or the packages an environment has installed. They
 cannot see a wheel your project ships as a data file, and they cannot say how the wheel was built. The SBOM python-sbom
-writes records both: the wheels you bundle, with their hashes, licenses and vendored packages, and the Python version
-and packages of the build environment. A third party can use that record to rebuild the wheel and compare the bytes. The
-:doc:`changelog` lists the changes in each version.
+writes records both. The :doc:`changelog` lists the changes in each version.
 
-**************
- Installation
-**************
+.. grid:: 1 1 2 2
+    :gutter: 3
 
-python-sbom runs inside your build, so it goes in ``[build-system] requires``, with the extra for your backend, rather
-than into an environment of yours. It needs Python 3.11 or later. :doc:`/reference/backends` names the extra for each
-backend; the command line, for wheels built elsewhere and for checking SBOMs, installs as a tool:
+    .. grid-item-card:: Every build backend
+        :class-card: feature
+        :link: /reference/backends
+        :link-type: doc
 
-.. code-block:: bash
+        A plugin for hatchling, pdm-backend and setuptools, and a wrapper backend for meson-python, maturin and the
+        rest.
 
-    pipx install 'python-sbom[validate]'
+    .. grid-item-card:: How the wheel was built
+        :class-card: feature
+        :link: reproducibility
+        :link-type: ref
 
-*******************
- Learn python-sbom
-*******************
+        The source commit, the interpreter and every build tool down to its files, so a third party can rebuild the
+        wheel and compare the bytes.
 
-.. grid:: 1 2 2 2
-    :gutter: 2
+    .. grid-item-card:: What the wheel bundles
+        :class-card: feature
+        :link: bundled-wheels
+        :link-type: ref
 
-    .. grid-item-card::
+        Each wheel a project ships as data, with its hashes, license, files and the packages it vendors.
 
-        **New to python-sbom?**
+    .. grid-item-card:: Checked before upload
+        :class-card: feature
+        :link: /how-to/validate
+        :link-type: doc
 
-        The :doc:`/tutorials/index` build a first package with an SBOM, read it, and check it.
+        ``python-sbom validate`` checks every SBOM against the CycloneDX schema in CI, and ``spdx`` renders it as SPDX
+        2.3.
 
-    .. grid-item-card::
+A build, the SBOM it wrote, and the check a CI job runs before publishing:
 
-        **Have a specific task?**
+.. code-block:: console
 
-        Each of the :doc:`/how-to/index` sets python-sbom up for one backend or handles one kind of artifact.
+    $ uv build
+    Successfully built dist/greet-1.0.tar.gz
+    Successfully built dist/greet-1.0-py3-none-any.whl
+    $ unzip -Z1 dist/greet-1.0-py3-none-any.whl | grep sboms
+    greet-1.0.dist-info/sboms/greet.cdx.json
+    $ python-sbom validate dist/ --allow-license MIT
+    SBOM in greet-1.0-py3-none-any.whl is valid
 
-    .. grid-item-card::
+*********
+ Install
+*********
 
-        **Looking up an option?**
+python-sbom runs inside your build, so it goes in ``[build-system] requires`` with the extra for your backend, and a
+``[tool.python-sbom]`` table names you as the supplier. It needs Python 3.11 or later.
 
-        The :doc:`/reference/index` lists the backends, the configuration, the command line and the Python API.
+.. tab:: hatchling
 
-    .. grid-item-card::
+    .. code-block:: toml
 
-        **Want to know how it works?**
+        [build-system]
+        build-backend = 'hatchling.build'
+        requires = ['hatchling>=1.28', 'python-sbom[hatch]>=0.2']
 
-        :doc:`/concepts/index` says why each backend gets its integration, what the SBOM records, and how the code is
-        laid out.
+        [tool.hatch.build.hooks.python-sbom]
 
-**********
- Features
-**********
+        [tool.python-sbom]
+        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-.. grid:: 1 2 2 3
-    :gutter: 2
+.. tab:: pdm-backend
 
-    .. grid-item-card::
-        **Every build backend**
+    .. code-block:: toml
 
-        A plugin for hatchling, pdm-backend and setuptools, and a wrapper backend for the rest.
+        [build-system]
+        build-backend = 'pdm.backend'
+        requires = ['pdm-backend>=2.4', 'python-sbom[pdm]>=0.2']
 
-        - :doc:`/how-to/hatchling`
-        - :doc:`/how-to/pdm-backend`
-        - :doc:`/how-to/setuptools`
-        - :doc:`/how-to/other-backends`
+        [tool.python-sbom]
+        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-    .. grid-item-card::
-        **Wheels built elsewhere**
+.. tab:: setuptools
 
-        Describe a wheel after ``maturin build``, ``auditwheel repair`` or ``delocate``.
+    .. code-block:: toml
 
-        - :doc:`/how-to/built-elsewhere`
+        [build-system]
+        build-backend = 'setuptools.build_meta'
+        requires = ['setuptools>=77', 'python-sbom[setuptools]>=0.2']
 
-    .. grid-item-card::
-        **Bundled wheels**
+        [tool.python-sbom]
+        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-        Each wheel a project ships as data gets its hashes, license, files and vendored packages.
+.. tab:: any other backend
 
-        - :ref:`bundled-wheels`
-        - :doc:`/how-to/content-provider`
+    .. code-block:: toml
 
-    .. grid-item-card::
-        **Reproducible builds**
+        [build-system]
+        build-backend = 'python_sbom.backend'
+        requires = ['meson-python>=0.18', 'meson>=1.6', 'ninja', 'python-sbom>=0.2']
 
-        The source revision and the build tools, down to their files, so a third party can rebuild the wheel.
+        [tool.python-sbom]
+        build-backend = 'mesonpy'
+        supplier = { name = 'tox-dev', url = ['https://github.com/tox-dev'] }
 
-        - :ref:`reproducibility`
-        - :ref:`source-revision`
+Every wheel you build from then on carries the SBOM. :doc:`/how-to/index` covers each backend in detail.
 
-    .. grid-item-card::
-        **Zipapps and other archives**
+The command line, which describes wheels built elsewhere and checks SBOMs, installs as a tool:
 
-        The same SBOM for a ``.pyz`` or another zip the project publishes.
+.. tab:: uv
 
-        - :doc:`/how-to/archive`
+    .. code-block:: bash
 
-    .. grid-item-card::
-        **Checks and SPDX**
+        uv tool install 'python-sbom[validate]'
+        python-sbom --help
 
-        Validate SBOMs in CI against the CycloneDX schema, and render them as SPDX 2.3.
+.. tab:: pipx
 
-        - :doc:`/how-to/validate`
-        - :doc:`/how-to/spdx`
+    .. code-block:: bash
+
+        pipx install 'python-sbom[validate]'
+        python-sbom --help
+
+******************
+ Where to go next
+******************
+
+.. grid:: 1 1 2 2
+    :gutter: 3
+
+    .. grid-item-card:: New to python-sbom?
+        :class-card: feature
+        :link: /tutorials/first-sbom
+        :link-type: doc
+
+        The tutorial builds a first package with an SBOM, reads it, and checks it.
+
+    .. grid-item-card:: Have a specific task?
+        :class-card: feature
+        :link: /how-to/index
+        :link-type: doc
+
+        Each guide sets python-sbom up for one backend or handles one kind of artifact.
+
+    .. grid-item-card:: Looking up an option?
+        :class-card: feature
+        :link: /reference/index
+        :link-type: doc
+
+        The backends, the configuration, the command line and the Python API.
+
+    .. grid-item-card:: Want to know how it works?
+        :class-card: feature
+        :link: /concepts/index
+        :link-type: doc
+
+        Why each backend gets its integration, what the SBOM records, and how the code is laid out.
 
 .. toctree::
     :hidden:

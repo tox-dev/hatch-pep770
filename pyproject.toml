@@ -119,7 +119,9 @@ docs = [
   "sphinx>=9.0.4",
   "sphinx-argparse-cli>=1.23",
   "sphinx-autodoc-typehints>=3.17",
+  "sphinx-copybutton>=0.5.2",
   "sphinx-design>=0.7",
+  "sphinx-inline-tabs>=2025.12.21.14",
   "sphinxcontrib-mermaid>=2.1.1",
 ]
 bench = [

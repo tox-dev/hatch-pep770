@@ -2538,6 +2538,34 @@ size = 22496
 sha256 = "eb09aedbabfb650607e9b4b68c9d240b90b1e1be221d6ad71d61c52e29f7932b"
 
 [[packages]]
+name = "sphinx-copybutton"
+version = "0.5.2"
+marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.7"
+dependencies = [
+    { name = "sphinx" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "sphinx-copybutton-0.5.2.tar.gz"
+upload-time = 2023-04-14T08:10:22.998763+00:00
+url = "https://files.pythonhosted.org/packages/fc/2b/a964715e7f5295f77509e59309959f4125122d648f86b4fe7d70ca1d882c/sphinx-copybutton-0.5.2.tar.gz"
+size = 23039
+
+[packages.sdist.hashes]
+sha256 = "4cf17c82fb9646d1bc9ca92ac280813a3b605d8c421225fd9913154103ee1fbd"
+
+[[packages.wheels]]
+name = "sphinx_copybutton-0.5.2-py3-none-any.whl"
+upload-time = 2023-04-14T08:10:20.844249+00:00
+url = "https://files.pythonhosted.org/packages/9e/48/1ea60e74949eecb12cdd6ac43987f9fd331156388dcc2319b45e2ebb81bf/sphinx_copybutton-0.5.2-py3-none-any.whl"
+size = 13343
+
+[packages.wheels.hashes]
+sha256 = "fb543fd386d917746c9a2c50360c7905b605726b9355cd26e9974857afeae06e"
+
+[[packages]]
 name = "sphinx-design"
 version = "0.7.0"
 marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"type\" in dependency_groups"
@@ -2564,6 +2592,34 @@ size = 2220350
 
 [packages.wheels.hashes]
 sha256 = "f82bf179951d58f55dca78ab3706aeafa496b741a91b1911d371441127d64282"
+
+[[packages]]
+name = "sphinx-inline-tabs"
+version = "2025.12.21.14"
+marker = "\"dev\" in dependency_groups or \"docs\" in dependency_groups or \"type\" in dependency_groups"
+requires-python = ">=3.8"
+dependencies = [
+    { name = "sphinx" },
+]
+index = "https://pypi.org/simple/"
+
+[packages.sdist]
+name = "sphinx_inline_tabs-2025.12.21.14.tar.gz"
+upload-time = 2025-12-21T13:30:51.071093+00:00
+url = "https://files.pythonhosted.org/packages/76/6a/f39bde46a79b80a9983233d99b773bd24b468bdd9c1e87acb46ff69af441/sphinx_inline_tabs-2025.12.21.14.tar.gz"
+size = 45572
+
+[packages.sdist.hashes]
+sha256 = "c71a75800326e613fb4e410eed92a0934214741326aca9897c18018b9f968cb6"
+
+[[packages.wheels]]
+name = "sphinx_inline_tabs-2025.12.21.14-py3-none-any.whl"
+upload-time = 2025-12-21T13:30:50.142535+00:00
+url = "https://files.pythonhosted.org/packages/02/2b/e64e7de34663cff1df029ba4f05a86124315bd9eba3d3b78e64904bea7e0/sphinx_inline_tabs-2025.12.21.14-py3-none-any.whl"
+size = 7082
+
+[packages.wheels.hashes]
+sha256 = "e685c782b58d4e01490bcc4e2367cf7135ec28e7283a05e89095394e4ca6e81a"
 
 [[packages]]
 name = "sphinxcontrib-applehelp"
@@ -3200,6 +3256,6 @@ platforms = [
 
 [tool.nab.validation]
 version = 1
-all-inputs-sha256 = "a7a6d9acf4693d1f9625940243de4d1ab7f3783aa21d4a1810f214d44a40cfbd"
-selection-inputs-sha256 = "08d5a86c1d91fae37a1430d4ffd6169ded6b732883d7ae803a6dc97dbdd9d8ae"
-contents-sha256 = "d840f4ca97d2d556ce0075680be1bbbbeac508d8859659f8852bf985c756afeb"
+all-inputs-sha256 = "4dafd95d61798da174d4b26af09530beecfc187b4e057d2b1b5341bf64a2c284"
+selection-inputs-sha256 = "33c6780a0dd69f7f771ac2b8d2e37670c4eb5032e8bfaf5ea560df206ba95955"
+contents-sha256 = "6dea5954bbdb8926ab3752c0a47e66dc572d3176889d239108a220092b0a4bc1"

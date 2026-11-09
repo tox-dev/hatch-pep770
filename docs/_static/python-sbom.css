@@ -1,0 +1,167 @@
+:root {
+  --sbom-accent: #2b6599;
+  --sbom-accent-contrast: #ffffff;
+  --sbom-radius: 0.6rem;
+}
+
+body[data-theme="dark"] {
+  --sbom-accent: #f0c94a;
+  --sbom-accent-contrast: #062d59;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:not([data-theme="light"]) {
+    --sbom-accent: #f0c94a;
+    --sbom-accent-contrast: #062d59;
+  }
+}
+
+/* Furo fixes the reading column at 46em; the backend tables and the API reference need more room. */
+.content {
+  width: min(100%, 60em);
+}
+
+/* both are flex items, which by default never shrink below their widest child, so one long line in a code block would
+   widen the whole page; letting them shrink keeps that line scrolling inside its own block */
+.main,
+.content {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+article h1 {
+  font-weight: 750;
+  font-size: clamp(1.7rem, 4.5vw, 2.5rem);
+  overflow-wrap: anywhere;
+}
+
+article h2 {
+  margin-top: 2.2rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--color-background-border);
+}
+
+/* the hero carries the landing page's headline; keep the page title for screen readers and the browser tab */
+section#python-sbom > h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* line sphinx-design grids up with the text column instead of indenting them by the gutter */
+article .sd-container-fluid {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+article .sd-container-fluid > .sd-row {
+  margin-left: calc(-0.5 * var(--sd-gutter-x));
+  margin-right: calc(-0.5 * var(--sd-gutter-x));
+}
+
+/* console output lines stay readable; the theme's own code colors would otherwise gray them out */
+.highlight .go {
+  color: var(--color-foreground-secondary) !important;
+}
+
+.highlight,
+div[class^="highlight-"] pre {
+  border-radius: var(--sbom-radius);
+}
+
+/* Center each diagram and let a wide one scroll on its own. */
+.mermaid {
+  text-align: center;
+  overflow-x: auto;
+}
+
+/* landing page */
+
+/* the page's view, edit and theme icons sit in the top-right corner; start the hero below them */
+.hero {
+  margin: 3.6rem 0 2rem;
+  padding: 2.4rem 2rem;
+  border-radius: calc(var(--sbom-radius) * 2);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(55, 118, 171, 0.22), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(255, 212, 59, 0.16), transparent 50%),
+    var(--color-background-secondary);
+  border: 1px solid var(--color-background-border);
+}
+
+.hero-logo {
+  float: right;
+  width: clamp(4.5rem, 14vw, 8.5rem);
+  margin: 0 0 0.5rem 1.2rem;
+}
+
+.hero-title {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.hero-title span {
+  color: var(--sbom-accent);
+}
+
+.hero-tagline {
+  margin: 0.9rem 0 1.4rem;
+  max-width: 40em;
+  font-size: 1.15rem;
+  color: var(--color-foreground-secondary);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.hero-actions a {
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid var(--sbom-accent);
+}
+
+.hero-actions a.primary {
+  background: var(--sbom-accent);
+  color: var(--sbom-accent-contrast);
+}
+
+.hero-actions a.secondary {
+  color: var(--sbom-accent);
+}
+
+.hero-actions a:hover {
+  filter: brightness(1.1);
+}
+
+.sd-card.feature {
+  border-radius: var(--sbom-radius);
+  border-color: var(--color-background-border);
+  background: var(--color-background-secondary);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.sd-card.feature:hover {
+  transform: translateY(-2px);
+  border-color: var(--sbom-accent);
+}
+
+.sd-card.feature .sd-card-title {
+  font-size: 1.05rem;
+}
