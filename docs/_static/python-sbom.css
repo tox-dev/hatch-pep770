@@ -16,9 +16,30 @@ body[data-theme="dark"] {
   }
 }
 
-/* Furo fixes the reading column at 46em; the backend tables and the API reference need more room. */
-.content {
-  width: min(100%, 60em);
+/* Furo fixes the reading column and gives each side drawer half of what is left, which leaves empty bands beside the
+   page on a wide window. Instead the page fills the window up to 120rem, and past that the drawers absorb the extra
+   width in equal halves, so the layout stays centered while their backgrounds still reach the window's edges. Below
+   63em and 82em Furo turns the drawers into slide-outs whose width it sets itself, so these rules stop there. */
+@media (min-width: 63em) {
+  .sidebar-drawer {
+    min-width: 0;
+    width: calc(max(0px, (100vw - 120rem) / 2) + 16rem);
+  }
+
+  .sidebar-container {
+    width: 16rem;
+  }
+
+  .content {
+    flex: 1 1 0;
+    width: auto;
+  }
+}
+
+@media (min-width: 82em) {
+  .toc-drawer {
+    width: calc(max(0px, (100vw - 120rem) / 2) + 15em);
+  }
 }
 
 /* both are flex items, which by default never shrink below their widest child, so one long line in a code block would
