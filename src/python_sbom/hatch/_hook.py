@@ -12,7 +12,7 @@ from hatchling.builders.utils import get_reproducible_timestamp
 from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 
 from python_sbom._collect._content import resolve_provider
-from python_sbom._collect._revision import REVISION_FILE, default_revision
+from python_sbom._collect._revision import REVISION_FILE, default_revision, revision_record
 from python_sbom._collect._settings import settings_from_table
 from python_sbom._errors import SbomError
 
@@ -64,17 +64,15 @@ class SbomBuildHook(BuildHookInterface):
             return
         # once per build, before it writes the artifact into a checkout that may not ignore it; a value kept for the
         # process would name an older commit in the next build after a commit
-        self._revision = revision = default_revision(Path(self.root))
-        # a dirty checkout has no commit that reproduces the sdist, so a wheel built from it names none
-        if self.target_name != "sdist" or revision is None or revision.dirty:
+        self._revision = default_revision(Path(self.root))
+        if self.target_name != "sdist" or (record := revision_record(self._revision)) is None:
             return
         # outside the project, so the build leaves nothing behind in it
         directory = tempfile.mkdtemp()
         # hatchling reads the file only while it writes the sdist, and skips finalize when the build fails, so the
         # directory then goes with the hook, at the latest when the interpreter exits
         self._remove_revision_file = weakref.finalize(self, shutil.rmtree, directory)
-        # bytes, so the sdist holds the same LF line on every OS
-        (written := Path(directory) / REVISION_FILE).write_bytes(f"node: {revision.commit}\n".encode())
+        (written := Path(directory) / REVISION_FILE).write_bytes(record)
         build_data["force_include"][str(written)] = REVISION_FILE
 
     def finalize(

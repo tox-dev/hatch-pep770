@@ -85,9 +85,18 @@ def _commit_revision(commit: str, origin: str) -> Revision:
     return Revision(commit=commit, dirty=False)
 
 
+def revision_record(revision: Revision | None) -> bytes | None:
+    # a dirty checkout has no commit that reproduces the sdist, so a wheel built from it names none; bytes, so the
+    # sdist holds the same LF line on every OS
+    if revision is None or revision.dirty:
+        return None
+    return f"node: {revision.commit}\n".encode()
+
+
 __all__ = [
     "REVISION_FILE",
     "RevisionReader",
     "default_revision",
     "revision_reader",
+    "revision_record",
 ]

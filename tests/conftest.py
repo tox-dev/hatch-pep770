@@ -139,7 +139,14 @@ def facts() -> BuildFacts:
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(supplier=None, repository=None, default_branch="main", bundled_wheels=(), content_provider=None)
+    return Settings(
+        supplier=None,
+        repository=None,
+        default_branch="main",
+        bundled_wheels=(),
+        content_provider=None,
+        build_backend=None,
+    )
 
 
 @pytest.fixture

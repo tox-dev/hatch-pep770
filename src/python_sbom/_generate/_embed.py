@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from python_sbom._model._content import ContentProvider
-    from python_sbom._model._inputs import BuildFacts, Settings
+    from python_sbom._model._inputs import BuildFacts, Revision, Settings
 
 
 def embed_sbom(
@@ -68,7 +68,17 @@ def embed_into(  # ruff: ignore[too-many-arguments] # what the hook and the comm
     )
 
 
+def embed_built(wheel: Path, root: Path, revision: Revision | None, *, default_epoch: int | None = None) -> str:
+    # a backend plugin reads the revision before the build writes into the checkout, which could make it look dirty,
+    # and runs in the build's own environment, so the SBOM records the tools that built the wheel
+    settings = settings_from_pyproject(root)
+    content, scripts = resolve_provider(None, settings, root)
+    facts = collect_facts(root, lambda _root: revision, default_epoch=default_epoch)
+    return embed_into(wheel, root, settings=settings, content=content, build_scripts=scripts, facts=facts)
+
+
 __all__ = [
+    "embed_built",
     "embed_into",
     "embed_sbom",
 ]
