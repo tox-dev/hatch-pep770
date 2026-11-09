@@ -6,6 +6,8 @@ import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+import pytest
+
 from python_sbom import BundledWheelInfo, ContentProvider, ProviderContext
 from python_sbom._generate._embed import embed_sbom
 from python_sbom._validate._artifact import validate
@@ -13,7 +15,6 @@ from python_sbom._validate._artifact import validate
 if TYPE_CHECKING:
     from pathlib import PurePosixPath
 
-    import pytest
     from conftest import Install, WriteWheel
     from pytest_mock import MockerFixture
 
@@ -57,28 +58,38 @@ class Table(ContentProvider):
         return BundledWheelInfo(properties=[{"name": f"{context.identity.property_prefix}:table", "value": value}])
 
 
-def test_other_sboms_of_the_wheel_are_linked(tmp_path: Path, write_wheel: WriteWheel) -> None:
+_CARGO: Final[bytes] = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1}).encode()
+_SPDX: Final[bytes] = b'{"spdxVersion": "SPDX-2.3"}'
+
+
+@pytest.fixture
+def linked(tmp_path: Path, write_wheel: WriteWheel) -> tuple[Path, str]:
     (root := tmp_path / "project").mkdir()
     (root / "pyproject.toml").write_text("")
-    cargo = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1}).encode()
-    spdx = b'{"spdxVersion": "SPDX-2.3"}'
     wheel = write_wheel(
         tmp_path / "dist" / "pkg-1.0-py3-none-any.whl",
         {
             "pkg-1.0.dist-info/METADATA": b"Name: pkg\nVersion: 1.0\n",
-            "pkg-1.0.dist-info/sboms/pkg.cyclonedx.json": cargo,
-            "pkg-1.0.dist-info/sboms/vendor/c:d.spdx.json": spdx,
+            "pkg-1.0.dist-info/sboms/pkg.cyclonedx.json": _CARGO,
+            "pkg-1.0.dist-info/sboms/vendor/c:d.spdx.json": _SPDX,
         },
     )
-    # the second run replaces the SBOM the first wrote, which links to neither itself nor its earlier copy
-    for _ in range(2):
-        written = embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+    # the second run replaces the SBOM the first wrote, and links to neither
+    embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+    return wheel, embed_sbom(wheel, root, provider=None, commit=None, build_env=[str(root)])
+
+
+def test_other_sboms_of_the_wheel_are_linked(linked: tuple[Path, str]) -> None:
+    wheel, written = linked
     references = json.loads(zipfile.ZipFile(wheel).read(written))["metadata"]["component"]["externalReferences"]
     assert [(ref["url"], ref["hashes"]) for ref in references if ref["type"] == "bom"] == [
-        ("pkg.cyclonedx.json", [{"alg": "SHA-256", "content": hashlib.sha256(cargo).hexdigest()}]),
-        ("vendor/c%3Ad.spdx.json", [{"alg": "SHA-256", "content": hashlib.sha256(spdx).hexdigest()}]),
+        ("pkg.cyclonedx.json", [{"alg": "SHA-256", "content": hashlib.sha256(_CARGO).hexdigest()}]),
+        ("vendor/c%3Ad.spdx.json", [{"alg": "SHA-256", "content": hashlib.sha256(_SPDX).hexdigest()}]),
     ]
-    assert validate(wheel, None) == []
+
+
+def test_linked_sbom_validates(linked: tuple[Path, str]) -> None:
+    assert validate(linked[0], None) == []
 
 
 def test_identical_bundled_copies_keep_their_own_paths(tmp_path: Path, write_wheel: WriteWheel) -> None:
