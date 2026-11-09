@@ -1484,7 +1484,7 @@ sha256 = "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
 [[packages]]
 name = "pdm-backend"
 version = "2.5.0"
-marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"pdm\" in extras"
+marker = "\"bench\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"pdm\" in extras"
 requires-python = ">=3.9"
 index = "https://pypi.org/simple/"
 
@@ -2272,7 +2272,7 @@ sha256 = "de78a3b8e0feda74cabc54aab2da702113e33ac9d9eb9d2389bcf1f58b7d9177"
 [[packages]]
 name = "setuptools"
 version = "84.2.1"
-marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"setuptools\" in extras"
+marker = "\"bench\" in dependency_groups or \"build\" in dependency_groups or \"dev\" in dependency_groups or \"docs\" in dependency_groups or \"test\" in dependency_groups or \"type\" in dependency_groups or \"setuptools\" in extras"
 requires-python = ">=3.10"
 index = "https://pypi.org/simple/"
 
@@ -3172,6 +3172,6 @@ platforms = [
 
 [tool.nab.validation]
 version = 1
-all-inputs-sha256 = "094bf17d3c490e247a292920874efe18da3a393e3ecc378316de679911da468d"
-selection-inputs-sha256 = "ad4fdf90cab37b9439622f4e9dd81f0852ed02fe424987b2f0a713a860e68d3b"
-contents-sha256 = "d3f13586c1c4a839f46b8df04f6e5a29a3780dd92b72288d8d89ed0d82a4a4e6"
+all-inputs-sha256 = "7f1d9852c53bf99d0bd21fe4b2fa9901e5535bf2c548bbeb6e6766abce34df13"
+selection-inputs-sha256 = "fd0a3eebacae5dc1398881d7575e197fdaf111de0851bb4580f95f0550dacbf1"
+contents-sha256 = "25a3e308d3d587cf8b53605e5b29c78f801be4e0cb07f46178f2cd0b246ab44f"

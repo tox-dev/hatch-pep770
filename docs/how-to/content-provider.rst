@@ -1,11 +1,12 @@
-Extend it
-=========
+Add what your project knows
+===========================
 
 The options cover what every project shares. A project that knows more than its metadata says adds it through a content
-provider, and the same provider serves the wheel's SBOM and the SBOM of any other archive the project publishes.
+provider, and the same provider serves the wheel's SBOM and the SBOM of any other archive the project publishes, through
+every integration.
 
-Add content with a provider
----------------------------
+Write a provider
+----------------
 
 A :class:`~python_sbom.ContentProvider` has two methods. Each receives a :class:`~python_sbom.ProviderContext`: the
 project directory, its :class:`~python_sbom.Settings`, its :class:`~python_sbom.ProjectIdentity` with the prefix of its
@@ -23,8 +24,8 @@ it adds.
   included, a dependency names one that no component has, a ``bom-ref`` gets a second dependency entry (the root's
   included, which python-sbom writes), or a root property uses the project's own prefix.
 
-Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and the
-hook, ``python-sbom embed`` and ``python-sbom archive`` all load it. When the provider's class lives in the project, the
+Name the provider in the ``content-provider`` option, as ``module:attribute`` importable from the project root, and every
+plugin, the wrapper backend, ``python-sbom embed`` and ``python-sbom archive`` load it. When the provider's class lives in the project, the
 SBOM lists its module among the build tools, hashed, because it shapes the document a rebuild has to reproduce:
 
 .. code-block:: python
@@ -51,7 +52,7 @@ environments under ``src/seeder/embed``. A ``BUNDLE_SUPPORT`` table in that pack
 ``BUNDLE_FOLDER`` assignment, decides which Python versions receive each wheel. The project's options name the supplier
 and the wheels, and enable hatchling's custom hook, which loads ``hatch_build.py`` from the project root:
 
-.. literalinclude:: ../tests/_seeder/pyproject.toml
+.. literalinclude:: ../../tests/_seeder/pyproject.toml
     :language: toml
     :start-at: [tool.hatch]
 
@@ -62,7 +63,7 @@ script also imports the base class. The provider reads the table next to each wh
 without importing the package, and names the project's supplier as the wheels' supplier, since the seeder bundles only
 that supplier's wheels. The test suite builds this project:
 
-.. literalinclude:: ../tests/_seeder/hatch_build.py
+.. literalinclude:: ../../tests/_seeder/hatch_build.py
     :language: python
 
 The SBOM lists ``hatch_build.py`` among the build tools, hashed. The bundled pip wheel's component then carries these
@@ -83,31 +84,8 @@ properties first, in this order, followed by those from its own metadata:
 A bundled wheel is named by its path inside the artifact, so the wheel's SBOM and an archive's give it the same
 ``bom-ref``.
 
-A hook subclass serves only the hatchling build: ``python-sbom embed`` and ``python-sbom archive`` load the provider the
-``content-provider`` option or their ``--content-provider`` names, and build a class without arguments. A project that
+A hook subclass serves only the hatchling build: the other integrations, ``python-sbom embed`` and ``python-sbom
+archive`` load the provider the ``content-provider`` option or ``--content-provider`` names, and build a class without
+arguments. A project that
 wants the same provider in every SBOM it publishes gives the provider a constructor without arguments, or a module-level
 instance, and names it in the option instead of overriding the hook.
-
-Describe another archive
-------------------------
-
-A project may also publish a zipapp, such as virtualenv's ``virtualenv.pyz``, which holds virtualenv's own
-``.dist-info`` at its top level, the wheels it seeds, and its dependencies unpacked under ``__virtualenv__/``.
-``python-sbom archive`` describes such an archive the way the hook describes a wheel: the archive's own files, the
-project's distribution, each wheel it bundles as a ``.whl`` member, and each one unpacked into a directory with a
-``.dist-info``. The content provider the option names hears of every bundled wheel, and its context reads the archive's
-files:
-
-.. code-block:: console
-
-    $ python-sbom archive virtualenv.pyz --build-script tasks/make_zipapp.py --embed
-    wrote virtualenv.pyz.cdx.json
-    wrote virtualenv.pyz.cdx.json into virtualenv.pyz
-
-The document takes its options, source revision and toolchain the way the wheel's does, so both name the project alike.
-Its build time comes from ``SOURCE_DATE_EPOCH``, or the current time without it; set ``SOURCE_DATE_EPOCH`` for both
-builds to give them one time. ``--embed`` adds the document to the archive's top level, where ``python-sbom validate
-virtualenv.pyz`` finds it. It goes in deflated at level 9 whatever the archive's other members use, since a zipapp may
-store them all and the SBOM, megabytes of JSON, would then add its full size. The entry carries a fixed time and Unix
-attributes and the other members keep their bytes, so adding it to one archive gives the same bytes on every system with
-the same zlib.

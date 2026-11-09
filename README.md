@@ -12,40 +12,52 @@ build, where [PEP 770](https://peps.python.org/pep-0770/) tells installers to ke
 the runtime dependencies it declares, any wheels it bundles, and the build toolchain, and a rebuild with the same inputs
 reproduces it byte for byte.
 
-## Install
-
-A hatchling project names `python-sbom[hatch]` in its build requirements, as shown below. To embed an SBOM into a wheel
-another backend built, install the command line into the environment that built the wheel, since the SBOM lists that
-environment's packages as the build tools (or point `--build-env` at it):
-
-```console
-python -m pip install python-sbom
-```
-
-To convert and validate SBOMs in CI, a separate tool environment is fine:
-
-```console
-pipx install 'python-sbom[validate]'
-```
-
 ## Use
 
-With [hatchling](https://hatch.pypa.io/latest/), add the hook to the build requirements and enable it:
+python-sbom works with every build backend. Pick the integration for yours:
+
+| Backend                                                                  | Add to `[build-system] requires` | Turn it on                                                                        |
+| ------------------------------------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------- |
+| [hatchling](https://hatch.pypa.io/latest/)                               | `python-sbom[hatch]`             | `[tool.hatch.build.hooks.python-sbom]`                                            |
+| [pdm-backend](https://backend.pdm-project.org/)                          | `python-sbom[pdm]`               | `[tool.python-sbom]`                                                              |
+| [setuptools](https://setuptools.pypa.io/)                                | `python-sbom[setuptools]`        | `[tool.python-sbom]`                                                              |
+| any other, such as meson-python, maturin, scikit-build-core or flit-core | `python-sbom`                    | `build-backend = "python_sbom.backend"`, and your backend in `[tool.python-sbom]` |
+
+With hatchling:
 
 ```toml
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling>=1.28", "python-sbom[hatch]>=0.1"]
+requires = ["hatchling>=1.28", "python-sbom[hatch]>=0.2"]
 
 [tool.hatch.build.hooks.python-sbom]
 ```
 
-With another build backend, such as meson-python, embed the SBOM after the build:
+With meson-python, or any backend without a plugin, python-sbom wraps it:
+
+```toml
+[build-system]
+build-backend = "python_sbom.backend"
+requires = ["meson-python>=0.18", "python-sbom>=0.2"]
+
+[tool.python-sbom]
+build-backend = "mesonpy"
+```
+
+For a wheel built outside the build interface, such as with `maturin build`, or renamed after it by `auditwheel repair`,
+embed the SBOM afterwards:
 
 ```console
 python-sbom embed dist/*.whl
 ```
 
-Describe another zip archive the project publishes, such as a zipapp, with `python-sbom archive`. The
-[documentation](https://python-sbom.readthedocs.io) covers the options, adding project knowledge through a content
-provider, rendering an SBOM as SPDX and validating it.
+To convert and validate SBOMs in CI, install the command line in a tool environment of its own:
+
+```console
+pipx install 'python-sbom[validate]'
+python-sbom validate dist/
+```
+
+The [documentation](https://python-sbom.readthedocs.io) starts with a tutorial, then has a guide per backend, the
+options and commands, and how the SBOM is built. It also covers describing a zipapp, adding project knowledge through a
+content provider, and rendering an SBOM as SPDX.

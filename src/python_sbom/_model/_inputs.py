@@ -60,7 +60,7 @@ class Settings:
         uncommitted changes
     :param bundled_wheels: glob patterns, relative to the project directory, of wheels the project ships as data files
     :param content_provider: ``module:attribute`` of the content provider, or ``None``
-    :param build_backend: the build backend :mod:`python_sbom.backend` wraps, as ``module`` or ``module:object``, or
+    :param build_backend: the build backend ``python_sbom.backend`` wraps, as ``module`` or ``module:object``, or
         ``None``
 
     """

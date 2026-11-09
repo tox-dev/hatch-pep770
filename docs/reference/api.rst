@@ -1,20 +1,30 @@
 Python API
 ==========
 
-The Python API is what a project needs to add its own knowledge to the SBOM: the hatchling build hook and the content
-provider it calls, with the types those take and return. Everything else, from embedding to validation, runs through the
-:doc:`cli`. The core is importable from ``python_sbom`` without hatchling; the hook lives in ``python_sbom.hatch``.
+The Python API is what a build backend loads and what a project needs to add its own knowledge to the SBOM: the backend
+integrations and the content provider they call, with the types those take and return. Everything else, from embedding
+to validation, runs through the :doc:`cli`. The core is importable from ``python_sbom`` without any build backend; each
+integration lives in a module of its own and imports only its backend.
 
 .. py:data:: python_sbom.__version__
     :type: str
 
     The installed version of python-sbom.
 
-Hatchling build hook
+Backend integrations
 --------------------
 
 .. autoclass:: python_sbom.hatch.SbomBuildHook
     :members: content_provider
+
+.. autoclass:: python_sbom.pdm.SbomBuildHook
+    :members: pdm_build_hook_enabled, pdm_build_initialize, pdm_build_update_files, pdm_build_finalize
+
+.. autofunction:: python_sbom.setuptools.finalize_distribution_options
+
+.. autofunction:: python_sbom.backend.build_wheel
+
+.. autofunction:: python_sbom.backend.build_sdist
 
 Content provider
 ----------------

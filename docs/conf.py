@@ -77,6 +77,12 @@ nitpick_ignore: Final[list[tuple[str, str]]] = [
     ("py:class", "hatchling.builders.hooks.plugin.interface.BuildHookInterface"),
     ("py:class", "hatchling.metadata.core.ProjectMetadata"),
     ("py:class", "hatchling.bridge.app.Application"),
+    # neither pdm-backend nor setuptools publishes these in a Sphinx inventory
+    ("py:class", "pdm.backend.hooks.base.Context"),
+    ("py:class", "Context"),
+    ("py:class", "setuptools.dist.Distribution"),
+    ("py:class", "Distribution"),
+    ("py:class", "ConfigSettings"),
 ]
 
 

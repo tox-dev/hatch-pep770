@@ -1,75 +1,5 @@
-How it works
-============
-
-Architecture
-------------
-
-Each concern has its own subpackage, and only the adapters know a build system or the command line. The hatchling hook
-and the ``embed`` and ``archive`` commands gather the options, the build scripts and the build facts (time, revision,
-toolchain), and hand them, with a :class:`~python_sbom.ContentProvider`, to the pipeline for their artifact. Each
-pipeline opens its artifact once, reads it, gives the provider a :class:`~python_sbom.ProviderContext` that reads from
-the same open artifact, and maps what it read to components; one function of the model then adds what every artifact
-of the project shares: supplier, source links, revision, tools, dependencies and formulation.
-
-The diagram follows the imports between the subpackages: a solid arrow points at what a package imports when it loads, a
-dotted arrow labeled *lazy* at what it imports only once a function needs it, and a dotted arrow labeled *types* at
-what it imports only for type annotations. The command line loads each command's module, and what it imports, only when
-that command runs.
-
-.. mermaid::
-
-    flowchart TB
-        subgraph adapters[Adapters]
-            hook[hatch<br/>hatchling build hook]
-            cli[_cli<br/>embed, archive, spdx, validate]
-        end
-        api[python_sbom<br/>provider API, __main__]
-        generate[_generate<br/>wheel and archive pipelines]
-        collect[_collect<br/>settings, facts, revision, project tree, wheels, archives, providers]
-        validate[_validate<br/>limits, schema, references, licenses]
-        formats[_formats<br/>CycloneDX JSON, SPDX 2.3]
-        wheel[_wheel<br/>artifact reader, zip reads and writes, RECORD, bundled wheel checks]
-        model[_model<br/>inputs, types, identity, graph rules, document building]
-        errors[_errors<br/>SbomError]
-        version[version]
-        hook --> collect
-        hook -. lazy .-> generate
-        hook -. types .-> model
-        cli --> generate
-        cli --> validate
-        cli --> formats
-        cli --> version
-        cli -. types .-> model
-        api --> cli
-        api --> model
-        generate --> collect
-        generate --> formats
-        generate --> wheel
-        generate --> model
-        collect --> wheel
-        collect --> model
-        validate --> formats
-        validate --> wheel
-        validate --> model
-        formats --> model
-        formats --> version
-        model --> errors
-        wheel --> model
-        classDef edge fill:#cfe4ff,stroke:#1f6feb,color:#0b1f3a;
-        classDef core fill:#d8f3dc,stroke:#2d6a4f,color:#081c15;
-        class hook,cli,collect,api edge;
-        class generate,validate,formats,wheel,model,errors,version core;
-
-Every package raises :class:`~python_sbom.SbomError`, which the command line reports without a traceback; the diagram
-draws only the model's import of it, since the model imports nothing else of the package. Only the hook imports
-hatchling, so the provider API and the command line work without it.
-
-The one extension point is the :class:`~python_sbom.ContentProvider`, which every entry point loads from the
-``content-provider`` option. A hatchling custom hook can override
-:meth:`~python_sbom.hatch.SbomBuildHook.content_provider` to build the provider itself.
-
 What the SBOM records
----------------------
+=====================
 
 The document's root component is the project, described from the wheel's ``METADATA``: name, version, summary, license
 expression, maintainers, project URLs, classifiers and keywords. Links to the PyPI release, the wheel's attestation and,
@@ -97,8 +27,8 @@ Reproducibility
 ---------------
 
 The document holds nothing about the build machine. Its timestamp comes from ``SOURCE_DATE_EPOCH``. When that is unset,
-a reproducible hatchling build uses hatchling's fixed 2020-02-02, the time it stamps on the wheel's entries, and any
-other build uses the current time. Its serial number derives from the content, so identical documents share one and any
+a reproducible hatchling build uses hatchling's fixed 2020-02-02 and a pdm-backend build pdm-backend's fixed
+2016-01-01, the times they stamp on the wheel's entries, and any other build uses the current time. Its serial number derives from the content, so identical documents share one and any
 difference gets a new one.
 
 The build tools are listed down to their files, so a rebuild can check it installed the same bytes. Only what is the
@@ -127,4 +57,4 @@ Limitations
   build tool record does not match the real build.
 - The SPDX rendering leaves out per-file hashes and the build record, which SPDX 2.3 cannot hold.
 - A tool that renames the wheel after the build, such as ``auditwheel repair``, leaves the attestation link pointing at
-  the old file name until ``python-sbom embed`` runs on the renamed wheel.
+  the old file name until ``python-sbom embed`` runs on the renamed wheel; :doc:`backends` says why.
