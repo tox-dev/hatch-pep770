@@ -132,6 +132,6 @@ That is the check a CI job runs before publishing; :doc:`/how-to/validate` shows
 ************
 
 - Your project uses another :term:`build backend`? Pick its guide: :doc:`/how-to/pdm-backend`, :doc:`/how-to/setuptools`
-  or :doc:`/how-to/other-backends`.
+  or :doc:`/how-to/other-backends`; a Rust extension built with maturin: :doc:`/how-to/maturin`.
 - Your project bundles wheels or knows more than its metadata says: :doc:`/how-to/content-provider`.
 - Every option python-sbom reads: :doc:`/reference/configuration`.

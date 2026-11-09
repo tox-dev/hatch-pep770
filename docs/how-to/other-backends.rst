@@ -42,7 +42,7 @@ Use the module name from your current ``[build-system] build-backend``:
       - Its sdist step needs a git_ or Mercurial checkout, as without the wrapper.
     - - maturin_
       - ``maturin``
-      - maturin writes its own SBOM of the Rust crates next to python-sbom's; see below.
+      - maturin writes its own SBOM of the Rust crates next to python-sbom's; :doc:`/how-to/maturin` covers both.
     - - scikit-build-core_
       - ``scikit_build_core.build``
       - A project built with hatchling_ and scikit-build-core's hatch plugin uses :doc:`/how-to/hatchling` instead.
@@ -59,14 +59,6 @@ Use the module name from your current ``[build-system] build-backend``:
     - - pdm-backend_, setuptools_
       - ``pdm.backend``, ``setuptools.build_meta``
       - Use :doc:`/how-to/pdm-backend` or :doc:`/how-to/setuptools` instead; wrap them only when the plugin cannot act.
-
-maturin's own SBOM
-==================
-
-`maturin writes a CycloneDX SBOM <https://www.maturin.rs/sbom>`_ of the Rust crates a wheel links, as
-``<crate>.cyclonedx.json``. :term:`PEP 770` allows several SBOMs per wheel, so python-sbom's ``<name>.cdx.json`` sits
-next to it: maturin's lists the crates, python-sbom's the wheel's files, metadata, build tools and source revision.
-python-sbom's links to maturin's by its file name and SHA-256, so a reader of one finds the other.
 
 ***********************************************
  Pitfall: builds that skip the build interface
