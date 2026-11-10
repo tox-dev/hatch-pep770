@@ -3,6 +3,19 @@ Changelog
 
 .. towncrier release notes start
 
+.. _release-0-3-1:
+
+0.3.1 (2026-11-10)
+------------------
+
+.. _release-0-3-1-fixed:
+
+Fixed
+~~~~~
+
+- A wheel built from an sdist no longer warns that git cannot read the source revision when the sdist names the commit,
+  as when uv builds it under the empty ``.git`` file it keeps in its cache (:pr:`10`) by :user:`gaborbernat`.
+
 .. _release-0-3-0:
 
 0.3.0 (2026-11-09)
