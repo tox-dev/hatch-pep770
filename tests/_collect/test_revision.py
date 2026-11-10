@@ -141,21 +141,35 @@ def test_git_revision_without_git(checkout: Path, monkeypatch: pytest.MonkeyPatc
     assert default_revision(checkout) is None
 
 
-@pytest.mark.parametrize(
-    "git_file",
-    [
+@pytest.fixture(
+    params=[
         # a worktree copied without the main checkout, as into a container
         pytest.param("gitdir: {root}/missing\n", id="missing-gitdir"),
         # the marker uv leaves in an unpacked sdist it builds from
         pytest.param("", id="empty"),
+    ]
+)
+def unreadable_checkout(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
+    (tmp_path / ".git").write_text(request.param.format(root=tmp_path.as_posix()), encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+    return tmp_path
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        pytest.param(REVISION_FILE, id="revision-file"),
+        pytest.param(".git_archival.txt", id="archival"),
     ],
 )
-def test_git_failure_warns_and_falls_back(tmp_path: Path, git_file: str) -> None:
-    (tmp_path / ".git").write_text(git_file.format(root=tmp_path.as_posix()), encoding="utf-8")
-    (tmp_path / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
-    (tmp_path / ".git_archival.txt").write_text(f"node: {'f' * 40}\n", encoding="utf-8")
+def test_git_failure_falls_back_quietly(unreadable_checkout: Path, record: str) -> None:
+    (unreadable_checkout / record).write_text(f"node: {'f' * 40}\n", encoding="utf-8")
+    assert default_revision(unreadable_checkout) == Revision(commit="f" * 40, dirty=False)
+
+
+def test_git_failure_warns_without_fallback(unreadable_checkout: Path) -> None:
     with pytest.warns(UserWarning, match="git cannot read the source revision in .*: fatal: "):
-        assert default_revision(tmp_path) == Revision(commit="f" * 40, dirty=False)
+        assert default_revision(unreadable_checkout) is None
 
 
 def test_git_status_failure_leaves_revision_unknown(checkout: Path, git: Git) -> None:

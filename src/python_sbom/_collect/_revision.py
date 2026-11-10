@@ -36,17 +36,16 @@ def default_revision(root: Path, /) -> Revision | None:
     # the variable exists for builds from an sdist, so it wins over whatever checkout the sdist was unpacked into
     if commit := os.environ.get("PYTHON_SBOM_COMMIT"):
         return _commit_revision(commit, "PYTHON_SBOM_COMMIT")
-    if (found := _git_revision(root)) is not None:
-        return found
-    # the sdist build wrote it from the revision it resolved, so it is at least as exact as an archival file
-    if (recorded := root / REVISION_FILE).is_file():
-        return _commit_revision(recorded.read_text(encoding="utf-8").strip().removeprefix("node: "), REVISION_FILE)
-    archival = root / ".git_archival.txt"
-    if archival.is_file() and (
-        match := re.search(rf"^node: ({_COMMIT.pattern})$", archival.read_text(encoding="utf-8"), re.MULTILINE)
-    ):
-        return Revision(commit=match[1], dirty=False)
-    return None
+    try:
+        if (found := _git_revision(root)) is not None:
+            return found
+    except subprocess.CalledProcessError as error:
+        # uv unpacks an sdist under an empty .git file that git rejects, and the sdist's record then names the commit,
+        # so a git failure is worth a warning only when nothing else does
+        if (recorded := _recorded_revision(root)) is None:
+            warnings.warn(f"git cannot read the source revision in {root}: {error.stderr.strip()}", stacklevel=2)
+        return recorded
+    return _recorded_revision(root)
 
 
 def _git_revision(root: Path, /) -> Revision | None:
@@ -62,9 +61,9 @@ def _git_revision(root: Path, /) -> Revision | None:
         # untracked files count, since the build packages every file .gitignore lets through
         changes = _git(git, root, "status", "--porcelain", "--", ".")
     except subprocess.CalledProcessError as error:
-        if error.returncode != 1:  # 1: the project is untracked, or the checkout has no commit yet
-            warnings.warn(f"git cannot read the source revision in {root}: {error.stderr.strip()}", stacklevel=2)
-        return None
+        if error.returncode == 1:  # the project is untracked, or the checkout has no commit yet
+            return None
+        raise
     return Revision(commit=commit, dirty=bool(changes))
 
 
@@ -77,6 +76,18 @@ def _git(git: str, root: Path, *arguments: str) -> str:
         capture_output=True,
         encoding="utf-8",
     ).stdout.strip()
+
+
+def _recorded_revision(root: Path, /) -> Revision | None:
+    # the sdist build wrote it from the revision it resolved, so it is at least as exact as an archival file
+    if (recorded := root / REVISION_FILE).is_file():
+        return _commit_revision(recorded.read_text(encoding="utf-8").strip().removeprefix("node: "), REVISION_FILE)
+    archival = root / ".git_archival.txt"
+    if archival.is_file() and (
+        match := re.search(rf"^node: ({_COMMIT.pattern})$", archival.read_text(encoding="utf-8"), re.MULTILINE)
+    ):
+        return Revision(commit=match[1], dirty=False)
+    return None
 
 
 def _commit_revision(commit: str, origin: str) -> Revision:

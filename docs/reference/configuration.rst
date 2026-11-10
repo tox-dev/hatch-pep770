@@ -110,8 +110,9 @@ The SBOM names the commit the wheel was built from. It takes the first source th
 
 A commit must be a full hash of 40 or 64 hex characters. A checkout with changes, including untracked files that are not
 ignored, gets a ``<project>:vcs-dirty`` property, and the link to the revision says so; its sdist records no revision.
-When git cannot read the checkout, the build warns and moves on to the next source. git runs with ``core.fsmonitor``
-off, so a repository's configuration runs no command.
+When git cannot read the checkout, the build moves on to the next source, and warns with git's error only when none of
+them names the commit. uv unpacks an sdist under an empty ``.git`` file that git rejects, so this keeps its builds
+quiet. git runs with ``core.fsmonitor`` off, so a repository's configuration runs no command.
 
 *******************
  Validation limits
