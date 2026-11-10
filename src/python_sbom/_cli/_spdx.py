@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._formats._json import dumps, is_document, load_json
 from python_sbom._formats._spdx import render_spdx
 from python_sbom._validate._limits import MAX_COMPONENTS, byte_limit

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._inputs import BundledWheel, RecordRow
 from python_sbom._wheel._bundled import read_bundled_wheels
 

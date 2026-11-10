@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 import python_sbom
-from python_sbom import ContentProvider
+from python_sbom import ContentProvider, SbomError
 from python_sbom._collect._content import resolve_provider
-from python_sbom._errors import SbomError
 
 if TYPE_CHECKING:
     from python_sbom import Settings

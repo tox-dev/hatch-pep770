@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from python_sbom import SbomError
 from python_sbom._collect._revision import REVISION_FILE, default_revision, revision_reader
-from python_sbom._errors import SbomError
 from python_sbom._model._inputs import Revision
 
 if TYPE_CHECKING:

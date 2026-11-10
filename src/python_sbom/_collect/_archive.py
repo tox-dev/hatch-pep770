@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._archive import bundled_members
 from python_sbom._model._inputs import ArchiveTree, RecordRow
 from python_sbom._model._metadata import parse_metadata

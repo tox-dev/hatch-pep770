@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._formats._json import dumps
 from python_sbom._validate._artifact import validate
 

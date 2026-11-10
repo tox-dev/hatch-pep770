@@ -6,7 +6,7 @@ import pkgutil
 import sys
 from typing import TYPE_CHECKING
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 
 from ._parser import build_parser
 

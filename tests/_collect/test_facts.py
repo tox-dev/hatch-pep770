@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from python_sbom import SbomError
 from python_sbom._collect._facts import collect_facts
-from python_sbom._errors import SbomError
 from python_sbom._model._inputs import Interpreter, RecordRow, Revision
 
 if TYPE_CHECKING:

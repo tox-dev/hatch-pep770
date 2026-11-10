@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any, TypeAlias
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 
 if TYPE_CHECKING:
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated

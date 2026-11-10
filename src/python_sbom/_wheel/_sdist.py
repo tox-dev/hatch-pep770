@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import Final
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 
 
 def add_to_sdist(sdist: Path, name: str, content: bytes) -> None:

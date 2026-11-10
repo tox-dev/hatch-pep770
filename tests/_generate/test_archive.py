@@ -9,10 +9,9 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
-from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
+from python_sbom import BundledWheelInfo, ContentProvider, Contributions, ProviderContext, SbomError
 from python_sbom._collect._facts import collect_facts
 from python_sbom._collect._revision import revision_reader
-from python_sbom._errors import SbomError
 from python_sbom._generate._archive import describe_archive
 from python_sbom._model._inputs import Revision
 from python_sbom._validate._artifact import validate

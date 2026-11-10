@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomllib
 from typing import TYPE_CHECKING, TypeAlias
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._inputs import Settings
 
 if TYPE_CHECKING:

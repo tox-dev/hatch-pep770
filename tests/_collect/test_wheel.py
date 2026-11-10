@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Final
 
 import pytest
 
+from python_sbom import SbomError
 from python_sbom._collect._wheel import read_wheel
-from python_sbom._errors import SbomError
 from python_sbom._model._inputs import BuildScript, WheelTree
 from python_sbom._wheel._reader import open_artifact
 

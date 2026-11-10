@@ -9,7 +9,7 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Final
 from urllib.parse import urlsplit
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 
 from ._graph import reference_problems, walk_components
 from ._names import SBOM_FILE, SBOM_REPOSITORY, sbom_property

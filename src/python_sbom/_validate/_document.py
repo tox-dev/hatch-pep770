@@ -7,7 +7,7 @@ import re
 from importlib.util import find_spec
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._errors import MissingExtraError, SbomError
+from python_sbom import MissingExtraError, SbomError
 from python_sbom._formats._json import Json, has_path, is_document, load_json
 from python_sbom._formats._spdx import render_spdx
 from python_sbom._model._graph import artifact_contents, reference_problems, repeated, walk_components

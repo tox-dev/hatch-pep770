@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Final
 
 from installer.records import RecordEntry
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 
 from ._inputs import RecordRow
 

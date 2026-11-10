@@ -36,6 +36,7 @@ _PUBLIC: Final[set[str]] = {
     "IdentityMethod",
     "License",
     "LicenseInfo",
+    "MissingExtraError",
     "OrganizationalEntity",
     "ProjectIdentity",
     "Property",

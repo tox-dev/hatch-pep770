@@ -102,3 +102,5 @@ every key.
 ********
 
 .. autoexception:: python_sbom.SbomError
+
+.. autoexception:: python_sbom.MissingExtraError

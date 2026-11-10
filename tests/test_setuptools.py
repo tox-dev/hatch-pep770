@@ -9,7 +9,7 @@ import pytest
 from setuptools import build_meta
 from setuptools.dist import Distribution
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._validate._artifact import validate
 from python_sbom.setuptools import finalize_distribution_options
 

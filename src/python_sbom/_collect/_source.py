@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Final
 
-from python_sbom._errors import SbomError
+from python_sbom import SbomError
 from python_sbom._model._inputs import BuildScript
 from python_sbom._wheel._zip import sha256_hex
 
