@@ -16,7 +16,7 @@ jobs:
   test:
     name: 🧪 test
     if: github.event_name != 'schedule' || github.repository == 'tox-dev/python-sbom'
-    uses: tox-dev/github-workflows/.github/workflows/check.yaml@0c4cffd63033d38196319524d101caae1eef925b # 6.7.2
+    uses: tox-dev/github-workflows/.github/workflows/check.yaml@81a3fc661be49ecdc4ea4af99a69fa3879b3d7a1 # 6.8.1
     permissions:
       contents: read
     with:
@@ -60,12 +60,12 @@ jobs:
     # the release's own build, with the hashed build requirements the lock pins, so a pull request that would fail it
     # fails here instead of after the release is tagged
     name: 🏗️ Release build
-    uses: tox-dev/github-workflows/.github/workflows/validate-python-release.yaml@0c4cffd63033d38196319524d101caae1eef925b # 6.7.2
+    uses: tox-dev/github-workflows/.github/workflows/validate-python-release.yaml@81a3fc661be49ecdc4ea4af99a69fa3879b3d7a1 # 6.8.1
     permissions:
       contents: read
   hooks:
     name: 🧹 Hooks under the cooldown
-    uses: tox-dev/github-workflows/.github/workflows/cooled-hooks.yaml@4dfe685cec83f9ace2d4412cd28f5adee4c5506f # 6.7.3
+    uses: tox-dev/github-workflows/.github/workflows/cooled-hooks.yaml@81a3fc661be49ecdc4ea4af99a69fa3879b3d7a1 # 6.8.1
     permissions:
       contents: read
   gate:
@@ -76,6 +76,6 @@ jobs:
     permissions: {}
     steps:
       - name: 🚦 Require all needed jobs to pass
-        uses: tox-dev/github-workflows/required-checks@0c4cffd63033d38196319524d101caae1eef925b # 6.7.2
+        uses: tox-dev/github-workflows/required-checks@6.8.1
         with:
           needs: ${{ toJSON(needs) }}
