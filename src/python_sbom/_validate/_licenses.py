@@ -13,12 +13,15 @@ from license_expression import (
     get_license_index,
 )
 
-from python_sbom._model._graph import shipped_libraries
+from python_sbom._model._graph import shipped_libraries  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
     from license_expression import LicenseExpression
 
-    from python_sbom._model._types import Component, License
+    from python_sbom._model._types import (  # simplint: ignore[private-import-path]  # avoid root export
+        Component,
+        License,
+    )
 
 # the SPDX ids alone, without the aliases get_spdx_licensing() adds: those rename ids (LicenseRef-Apache becomes
 # Apache-2.0, Net-SNMP becomes LicenseRef-scancode-net-snmp), so a policy would judge an id other than the one declared;

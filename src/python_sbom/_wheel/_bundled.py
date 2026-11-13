@@ -11,9 +11,15 @@ from installer.sources import WheelFile
 from packaging.requirements import InvalidRequirement, Requirement
 
 from python_sbom import SbomError
-from python_sbom._model._inputs import BundledWheel, RecordRow
-from python_sbom._model._metadata import CoreMetadata, parse_metadata
-from python_sbom._model._record import record_rows
+from python_sbom._model._inputs import (  # simplint: ignore[private-import-path]  # avoid root export
+    BundledWheel,
+    RecordRow,
+)
+from python_sbom._model._metadata import (  # simplint: ignore[private-import-path]  # avoid root export
+    CoreMetadata,
+    parse_metadata,
+)
+from python_sbom._model._record import record_rows  # simplint: ignore[private-import-path]  # avoid root export
 
 from ._zip import open_archive, read_member, read_wheel_metadata, sha256_hex
 

@@ -1,4 +1,4 @@
-"""The command line's entry point: parse the arguments and run the chosen subcommand."""
+"""Run the command line."""  # simplint: ignore[entrypoint-module-name]  # console target
 
 from __future__ import annotations
 

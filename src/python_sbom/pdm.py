@@ -7,12 +7,12 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._collect._revision import REVISION_FILE, default_revision, revision_record
+from ._collect import REVISION_FILE, default_revision, revision_record
 
 if TYPE_CHECKING:
     from pdm.backend.hooks import Context
 
-    from ._model._inputs import Revision
+    from ._model import Revision
 
 
 class SbomBuildHook:
@@ -70,7 +70,7 @@ class SbomBuildHook:
         # what a wheel needs loads only when one is built, so an sdist build stays light
         from pdm.backend.wheel import ZIPINFO_DATE_TIME  # ruff: ignore[import-outside-top-level] # see above
 
-        from ._generate._embed import embed_built  # ruff: ignore[import-outside-top-level] # see above
+        from ._generate import embed_built  # ruff: ignore[import-outside-top-level] # see above
 
         # pdm-backend dates every zip entry at a fixed time when SOURCE_DATE_EPOCH is unset, so the SBOM agrees
         embed_built(Path(artifact), context.root, self._revision, default_epoch=calendar.timegm(ZIPINFO_DATE_TIME))

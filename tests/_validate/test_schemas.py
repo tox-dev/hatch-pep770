@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from conftest import Describe
 
     from python_sbom import Component
-    from python_sbom._formats._json import Json
-    from python_sbom._formats._spdx import Spdx
+    from python_sbom._formats._json import Json  # simplint: ignore[private-import-path]  # test uses internal model
+    from python_sbom._formats._spdx import Spdx  # simplint: ignore[private-import-path]  # test uses internal model
 
 
 @pytest.mark.parametrize(

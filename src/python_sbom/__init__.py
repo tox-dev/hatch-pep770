@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from ._errors import MissingExtraError, SbomError
-from ._model._content import BundledWheelInfo, ContentProvider, Contributions, ProviderContext
-from ._model._identity import ProjectIdentity
-from ._model._inputs import Settings
-from ._model._types import (
+from ._model import (
+    BundledWheelInfo,
     Component,
     Contact,
+    ContentProvider,
+    Contributions,
     Dependency,
     Evidence,
     ExternalReference,
@@ -18,7 +18,10 @@ from ._model._types import (
     License,
     LicenseInfo,
     OrganizationalEntity,
+    ProjectIdentity,
     Property,
+    ProviderContext,
+    Settings,
 )
 from .version import __version__
 

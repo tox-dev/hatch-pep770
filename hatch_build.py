@@ -13,11 +13,11 @@ if TYPE_CHECKING:
     from python_sbom.hatch import SbomBuildHook
 
 
-class SelfSbomHook(BuildHookInterface):  # simplint: ignore[SMP409] # hatchling loads it from this script
+class SelfSbomHook(BuildHookInterface):  # simplint: ignore[unused-definition] # hatchling loads it from this script
     def initialize(
         self,
         version: str,
-        build_data: dict[str, Any],  # simplint: ignore[SMP602] # hatchling's signature
+        build_data: dict[str, Any],  # simplint: ignore[imprecise-annotation] # hatchling's signature
     ) -> None:
         self._hook.initialize(version, build_data)
 
@@ -39,7 +39,7 @@ class SelfSbomHook(BuildHookInterface):  # simplint: ignore[SMP409] # hatchling 
     def finalize(
         self,
         version: str,
-        build_data: dict[str, Any],  # simplint: ignore[SMP602] # hatchling's signature
+        build_data: dict[str, Any],  # simplint: ignore[imprecise-annotation] # hatchling's signature
         artifact_path: str,
     ) -> None:
         self._hook.finalize(version, build_data, artifact_path)

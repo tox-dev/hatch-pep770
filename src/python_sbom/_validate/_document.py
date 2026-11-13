@@ -8,17 +8,30 @@ from importlib.util import find_spec
 from typing import TYPE_CHECKING, Final
 
 from python_sbom import MissingExtraError, SbomError
-from python_sbom._formats._json import Json, has_path, is_document, load_json
-from python_sbom._formats._spdx import render_spdx
-from python_sbom._model._graph import artifact_contents, reference_problems, repeated, walk_components
-from python_sbom._model._names import SBOM_FILE
+from python_sbom._formats._json import (  # simplint: ignore[private-import-path]  # avoid root export
+    Json,
+    has_path,
+    is_document,
+    load_json,
+)
+from python_sbom._formats._spdx import render_spdx  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._graph import (  # simplint: ignore[private-import-path]  # avoid root export
+    artifact_contents,
+    reference_problems,
+    repeated,
+    walk_components,
+)
+from python_sbom._model._names import SBOM_FILE  # simplint: ignore[private-import-path]  # avoid root export
 
 from ._limits import MAX_COMPONENTS, MAX_TEXT, byte_limit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from python_sbom._model._types import Component, Document
+    from python_sbom._model._types import (  # simplint: ignore[private-import-path]  # avoid root export
+        Component,
+        Document,
+    )
 
 # the schema leaves these optional, yet every document python-sbom writes carries them and the checks below read them
 _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
@@ -29,7 +42,17 @@ _REQUIRED: Final[tuple[tuple[str, ...], ...]] = (
     ("components",),
     ("dependencies",),
 )
-_SERIAL: Final[re.Pattern[str]] = re.compile(r"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_SERIAL: Final[re.Pattern[str]] = re.compile(
+    r"""
+    urn:uuid:       # UUID namespace
+    [0-9a-f]{8}-    # time low
+    [0-9a-f]{4}-    # time middle
+    [0-9a-f]{4}-    # time high and version
+    [0-9a-f]{4}-    # variant and clock sequence
+    [0-9a-f]{12}    # node
+    """,
+    re.VERBOSE,
+)
 # the modules of the validate extra
 _EXTRA: Final[tuple[str, ...]] = ("jsonschema_rs", "license_expression", "spdx_tools")
 # the schema validator recurses once per level and crashes the process past a few thousand levels on a small thread

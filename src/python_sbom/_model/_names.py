@@ -74,8 +74,11 @@ def tool_ref(ref: str) -> str:
     return f"tool:{ref}"
 
 
+_REFERENCE_TYPE_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^a-z]")
+
+
 def reference_type(label: str) -> str:
-    return _URL_LABEL_TO_REFERENCE_TYPE.get(re.sub(r"[^a-z]", "", label.lower()), "other")
+    return _URL_LABEL_TO_REFERENCE_TYPE.get(_REFERENCE_TYPE_PATTERN.sub("", label.lower()), "other")
 
 
 __all__ = [

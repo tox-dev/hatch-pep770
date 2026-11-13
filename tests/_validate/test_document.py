@@ -18,9 +18,11 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from python_sbom import Component, License
-    from python_sbom._formats._json import Json
-    from python_sbom._model._inputs import BuildFacts
-    from python_sbom._model._types import Document
+    from python_sbom._formats._json import Json  # simplint: ignore[private-import-path]  # test uses internal model
+    from python_sbom._model._inputs import (  # simplint: ignore[private-import-path]  # test uses internal model
+        BuildFacts,
+    )
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # test uses internal model
 
 # what auditwheel writes: CycloneDX 1.4 conventions, a legacy tools array, no timestamp
 _FOREIGN: Final[bytes] = json.dumps({

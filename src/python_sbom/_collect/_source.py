@@ -6,14 +6,14 @@ from pathlib import PurePath
 from typing import TYPE_CHECKING, Final
 
 from python_sbom import SbomError
-from python_sbom._model._inputs import BuildScript
-from python_sbom._wheel._zip import sha256_hex
+from python_sbom._model._inputs import BuildScript  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._wheel._zip import sha256_hex  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from pathlib import Path, PurePosixPath
 
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # avoid root export
 
 
 def copyright_notice(root: Path, license_files: list[str]) -> str | None:

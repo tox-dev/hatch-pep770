@@ -23,8 +23,15 @@ if TYPE_CHECKING:
     from conftest import Describe
 
     from python_sbom import Component, Dependency, Property
-    from python_sbom._model._inputs import BuildFacts, Settings
-    from python_sbom._model._types import Body, Formula, OrganizationalEntity
+    from python_sbom._model._inputs import (  # simplint: ignore[private-import-path]  # test uses internal model
+        BuildFacts,
+        Settings,
+    )
+    from python_sbom._model._types import (  # simplint: ignore[private-import-path]  # test uses internal model
+        Body,
+        Formula,
+        OrganizationalEntity,
+    )
 
 _INTERPRETER: Final[str] = "tool:pkg:generic/cpython@3.15.0"
 

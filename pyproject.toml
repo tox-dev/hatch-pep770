@@ -217,6 +217,7 @@ lint.ignore = [
   "undocumented-public-init",                  # undocumented-public-api (simplint SMP903) covers the public API instead
   "undocumented-public-method",                # undocumented-public-api (simplint SMP903) covers the public API instead
   "undocumented-public-nested-class",          # undocumented-public-api (simplint SMP903) covers the public API instead
+  "unnecessary-regular-expression-compile",    # conflicts with simplint inline-regex
 ]
 lint.per-file-ignores."bench/**/*.py" = [
   "import-private-name",                  # Benchmarks time the private entry points the public API wraps
@@ -327,7 +328,7 @@ matrix.platforms = [ "linux_x86_64" ]
 # release-creator 4.4.0 needs a seven-day cutoff exception.
 # expires 2026-11-17
 packages.release-creator.uploaded-prior-to = 2026-11-02T21:45:00Z
-# simplint 0.7.1, the pre-commit hook, needs a seven-day cutoff exception.
+# simplint 0.11.0 needs a seven-day cutoff exception.
 # expires 2026-11-13
 packages.simplint.uploaded-prior-to = 2026-11-06T21:30:00Z
 # ty 0.0.100 renamed unresolved-attribute to missing-attribute, needs a seven-day cutoff exception.

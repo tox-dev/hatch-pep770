@@ -5,28 +5,43 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from python_sbom import SbomError
-from python_sbom._collect._archive import read_archive
-from python_sbom._collect._content import resolve_provider
-from python_sbom._collect._facts import collect_facts
-from python_sbom._collect._revision import revision_reader
-from python_sbom._collect._settings import settings_from_pyproject
-from python_sbom._collect._source import copyright_notice, hash_build_scripts
-from python_sbom._formats._json import dumps
-from python_sbom._model._archive import archive_artifact, bundled_paths
-from python_sbom._model._bom import assemble, checked_contributions
-from python_sbom._model._content import ProviderContext
-from python_sbom._model._identity import project_identity
-from python_sbom._model._names import archive_sbom_file_name
-from python_sbom._wheel._reader import open_artifact
-from python_sbom._wheel._write import append_member
+from python_sbom._collect._archive import read_archive  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._collect._content import resolve_provider  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._collect._facts import collect_facts  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._collect._revision import revision_reader  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._collect._settings import (  # simplint: ignore[private-import-path]  # avoid root export
+    settings_from_pyproject,
+)
+from python_sbom._collect._source import (  # simplint: ignore[private-import-path]  # avoid root export
+    copyright_notice,
+    hash_build_scripts,
+)
+from python_sbom._formats._json import dumps  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._archive import (  # simplint: ignore[private-import-path]  # avoid root export
+    archive_artifact,
+    bundled_paths,
+)
+from python_sbom._model._bom import (  # simplint: ignore[private-import-path]  # avoid root export
+    assemble,
+    checked_contributions,
+)
+from python_sbom._model._content import ProviderContext  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._identity import project_identity  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._names import (  # simplint: ignore[private-import-path]  # avoid root export
+    archive_sbom_file_name,
+)
+from python_sbom._wheel._reader import open_artifact  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._wheel._write import append_member  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path, PurePosixPath
 
-    from python_sbom._model._content import ContentProvider
-    from python_sbom._model._inputs import BuildFacts
-    from python_sbom._model._types import Document
+    from python_sbom._model._content import (  # simplint: ignore[private-import-path]  # avoid root export
+        ContentProvider,
+    )
+    from python_sbom._model._inputs import BuildFacts  # simplint: ignore[private-import-path]  # avoid root export
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # avoid root export
 
 
 def archive_sbom(  # ruff: ignore[too-many-arguments] # every command-line option reaches the build

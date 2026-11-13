@@ -8,12 +8,17 @@ import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
-from python_sbom._model._graph import walk_components
-from python_sbom._model._names import SBOM_FILE, SBOM_REPOSITORY, property_prefix, sbom_property
+from python_sbom._model._graph import walk_components  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._names import (  # simplint: ignore[private-import-path]  # avoid root export
+    SBOM_FILE,
+    SBOM_REPOSITORY,
+    property_prefix,
+    sbom_property,
+)
 from python_sbom.version import __version__
 
 if TYPE_CHECKING:
-    from python_sbom._model._types import (
+    from python_sbom._model._types import (  # simplint: ignore[private-import-path]  # avoid root export
         Component,
         Document,
         ExternalReference,
@@ -39,6 +44,7 @@ _HASH_ALGORITHMS: Final[dict[str, str]] = {
     "BLAKE3": "BLAKE3",
 }
 _LICENSE_REF: Final[re.Pattern[str]] = re.compile(r"LicenseRef-[A-Za-z0-9.-]+")
+_SPDX_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9.]+")
 
 
 class _LegacyTool(TypedDict):
@@ -223,7 +229,7 @@ def _package(component: Component, project: str) -> _Package:
 def _spdx_id(bom_ref: str) -> str:
     # the readable part drops every other character, so refs that differ only in those share it; only the full digest,
     # not a prefix of it, keeps their ids apart
-    readable: Final[str] = re.sub(r"[^A-Za-z0-9.]+", "-", bom_ref).strip("-")
+    readable: Final[str] = _SPDX_ID_PATTERN.sub("-", bom_ref).strip("-")
     return f"SPDXRef-{readable}-{hashlib.sha256(bom_ref.encode()).hexdigest()}"
 
 

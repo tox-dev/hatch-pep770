@@ -16,7 +16,10 @@ from python_sbom._model._names import purl
 
 if TYPE_CHECKING:
     from python_sbom import Component, Property
-    from python_sbom._model._types import License, OrganizationalEntity
+    from python_sbom._model._types import (  # simplint: ignore[private-import-path]  # test uses internal model
+        License,
+        OrganizationalEntity,
+    )
 
 _WHEEL: Final[str] = "src/example/wheels/pip-1.0-py3-none-any.whl"
 

@@ -25,8 +25,8 @@ if TYPE_CHECKING:
     from jsonschema_rs import ValidationError
     from spdx_tools.spdx.model import Document, SpdxNoAssertion, SpdxNone
 
-    from python_sbom._formats._json import Json
-    from python_sbom._formats._spdx import Spdx
+    from python_sbom._formats._json import Json  # simplint: ignore[private-import-path]  # avoid root export
+    from python_sbom._formats._spdx import Spdx  # simplint: ignore[private-import-path]  # avoid root export
 
 
 def schema_error(document: Json) -> str | None:

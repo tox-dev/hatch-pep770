@@ -7,7 +7,10 @@ from typing import TYPE_CHECKING, Final
 from packaging.markers import Marker, UndefinedComparison
 
 if TYPE_CHECKING:
-    from packaging._parser import MarkerAtom, MarkerList  # see _extra_verdict
+    from packaging._parser import (  # simplint: ignore[private-import-path]  # no public marker AST
+        MarkerAtom,
+        MarkerList,
+    )
     from packaging.requirements import Requirement
 
 

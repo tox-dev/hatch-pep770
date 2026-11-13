@@ -6,7 +6,7 @@ import tomllib
 from typing import TYPE_CHECKING, TypeAlias
 
 from python_sbom import SbomError
-from python_sbom._model._inputs import Settings
+from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
-    from python_sbom._model._types import OrganizationalEntity
+    from python_sbom._model._types import (  # simplint: ignore[private-import-path]  # avoid root export
+        OrganizationalEntity,
+    )
 
 #: a value of a TOML table, as :mod:`tomllib` or hatchling hand it over
 Toml: TypeAlias = "str | int | float | bool | datetime | date | time | list[Toml] | dict[str, Toml]"

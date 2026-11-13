@@ -5,16 +5,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Final
 
 from python_sbom import SbomError
-from python_sbom._model._archive import bundled_members
-from python_sbom._model._inputs import ArchiveTree, RecordRow
-from python_sbom._model._metadata import parse_metadata
-from python_sbom._model._names import archive_sbom_file_name
+from python_sbom._model._archive import bundled_members  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._inputs import (  # simplint: ignore[private-import-path]  # avoid root export
+    ArchiveTree,
+    RecordRow,
+)
+from python_sbom._model._metadata import parse_metadata  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._names import (  # simplint: ignore[private-import-path]  # avoid root export
+    archive_sbom_file_name,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Container
 
-    from python_sbom._model._metadata import CoreMetadata
-    from python_sbom._wheel._reader import ArtifactReader
+    from python_sbom._model._metadata import CoreMetadata  # simplint: ignore[private-import-path]  # avoid root export
+    from python_sbom._wheel._reader import ArtifactReader  # simplint: ignore[private-import-path]  # avoid root export
 
 
 def read_archive(artifact: ArtifactReader) -> ArchiveTree:

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
     from conftest import WriteWheel
 
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # test uses internal model
 
 _PIP: Final[dict[str, bytes]] = {"pip/__init__.py": b"", "pip-1.0.dist-info/METADATA": b"Name: pip\nVersion: 1.0\n"}
 _NATIVE: Final[dict[str, bytes]] = {

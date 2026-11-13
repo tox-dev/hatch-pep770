@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from ._metadata import CoreMetadata
     from ._types import License
 
+_SPDX_LICENSE_PATTERN: Final[re.Pattern[str]] = re.compile(r"[A-Za-z0-9.-]+")
+
 
 def licenses(metadata: CoreMetadata) -> list[License]:
     # a License-Expression is taken as declared; otherwise each License field and License classifier name is declared,
@@ -52,7 +54,7 @@ def _spdx_license(name: str) -> str | None:
     except InvalidLicenseExpression:
         return None
     # a CycloneDX license id holds one entry of the SPDX license list, never an expression or a LicenseRef
-    return canonical if re.fullmatch(r"[A-Za-z0-9.-]+", canonical) and not canonical.startswith("LicenseRef-") else None
+    return canonical if _SPDX_LICENSE_PATTERN.fullmatch(canonical) and not canonical.startswith("LicenseRef-") else None
 
 
 __all__ = [

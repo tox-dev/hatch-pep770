@@ -10,7 +10,14 @@ from urllib.parse import quote
 
 # RFC 3986 appendix B: splits any text into scheme, authority, path, query and fragment
 _PARTS: Final[re.Pattern[str]] = re.compile(
-    r"(?:([^:/?#]+):)?(?://([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?", re.DOTALL
+    r"""
+    (?:(?P<scheme>[^:/?#]+):)?           # scheme and colon
+    (?://(?P<authority>[^/?#]*))?        # authority after two slashes
+    (?P<path>[^?#]*)                     # path
+    (?:\?(?P<query>[^#]*))?              # query after a question mark
+    (?:\#(?P<fragment>.*))?              # fragment after a hash
+    """,
+    re.DOTALL | re.VERBOSE,
 )
 _SCHEME: Final[re.Pattern[str]] = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*")
 # what may follow the host: nothing, or a colon and the port's digits
@@ -38,7 +45,7 @@ def iri_reference(text: str) -> str | None:
     # keeps what the text points at; a scheme, IP literal or port no encoding mends, as in the scp-style
     # git@github.com:org/repo.git, leaves None; the pattern matches any text, every part of it optional
     match: Final = cast("re.Match[str]", _PARTS.fullmatch(text))
-    scheme, authority, path, query, fragment = match.groups()
+    scheme, authority, path, query, fragment = match.group("scheme", "authority", "path", "query", "fragment")
     if scheme is not None and not _SCHEME.fullmatch(scheme):
         return None
     parts: Final[list[str]] = [] if scheme is None else [f"{scheme}:"]

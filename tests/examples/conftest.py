@@ -15,11 +15,12 @@ from typing import TYPE_CHECKING, Final, Protocol
 import pytest
 
 if TYPE_CHECKING:
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # test uses internal model
 
 _EXAMPLES: Final[Path] = Path(__file__).parents[2] / "docs" / "examples"
 # a wheel's interpreter, ABI and platform tags depend on where the example runs, while the docs show one platform's
 _TAGS: Final[re.Pattern[str]] = re.compile(r"-[^-\s/]+-[^-\s/]+-[^-\s/]+\.whl\b")
+_PROMPT: Final[re.Pattern[str]] = re.compile(r"^\$ ", re.MULTILINE)
 # a frontend's isolated environment would install python-sbom from PyPI; the environment the test runs in holds the
 # checkout's
 _ADDED: Final[dict[tuple[str, ...], list[str]]] = {
@@ -47,7 +48,7 @@ def played(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFact
     shutil.copytree(_EXAMPLES / example, directory)
     expected: Final[list[tuple[str, list[str]]]] = []
     output: Final[list[tuple[str, list[str]]]] = []
-    for block in re.split(r"^\$ ", (_EXAMPLES / example / session).read_text(encoding="utf-8"), flags=re.MULTILINE)[1:]:
+    for block in _PROMPT.split((_EXAMPLES / example / session).read_text(encoding="utf-8"))[1:]:
         command, *lines = block.splitlines()
         expected.append((command, [_TAGS.sub("-TAGS.whl", line) for line in lines]))
         output.append((command, [_TAGS.sub("-TAGS.whl", line) for line in _run(command, directory)]))
