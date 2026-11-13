@@ -55,6 +55,11 @@ def test_hatch_api() -> None:
     assert set(python_sbom.hatch.__all__) == {"SbomBuildHook"}
 
 
+@pytest.mark.parametrize("name", sorted(_PUBLIC - {"__version__"}), ids=str)
+def test_public_types_only_reach_public_types(name: str) -> None:
+    assert reached(getattr(python_sbom, name)) - exported() == set()
+
+
 def reached(start: _Hint) -> set[_Hint]:
     # every python_sbom type a hint of a public name leads to, through fields, members and nested hints; a private type
     # ends the walk there, so the leak is what gets reported even when its own hints do not resolve
@@ -79,6 +84,21 @@ def reached(start: _Hint) -> set[_Hint]:
     return {item for item in found if _ours(item)}
 
 
+def _ours(item: _Hint) -> bool:
+    return getattr(item, "__module__", "").startswith("python_sbom")
+
+
+def _names() -> dict[str, _Hint]:
+    # the annotations name types the modules import only for type checking, so every module's names resolve them
+    modules = [
+        pathlib,
+        collections.abc,
+        typing,
+        *(importlib.import_module(found.name) for found in pkgutil.walk_packages(python_sbom.__path__, "python_sbom.")),
+    ]
+    return dict(member for module in modules for member in inspect.getmembers(module))
+
+
 def _members(cls: type) -> Iterator[_Hint]:
     # read the class dictionaries, since attribute access hides a property's getter and unwraps class and static methods
     for owner in inspect.getmro(cls):
@@ -96,13 +116,8 @@ def _members(cls: type) -> Iterator[_Hint]:
                     yield value
 
 
-def _ours(item: _Hint) -> bool:
-    return getattr(item, "__module__", "").startswith("python_sbom")
-
-
-@pytest.mark.parametrize("name", sorted(_PUBLIC - {"__version__"}), ids=str)
-def test_public_types_only_reach_public_types(name: str) -> None:
-    assert reached(getattr(python_sbom, name)) - exported() == set()
+def exported() -> set[_Hint]:
+    return {getattr(python_sbom, name) for name in _PUBLIC} | {python_sbom.hatch.SbomBuildHook}
 
 
 def test_hook_only_reaches_public_types() -> None:
@@ -135,18 +150,3 @@ def test_closure_reports_private_type_with_unresolved_hints(monkeypatch: pytest.
 
     monkeypatch.setattr(Settings, "leak", property(leak), raising=False)
     assert reached(Settings) - exported() == {CoreMetadata}
-
-
-def exported() -> set[_Hint]:
-    return {getattr(python_sbom, name) for name in _PUBLIC} | {python_sbom.hatch.SbomBuildHook}
-
-
-def _names() -> dict[str, _Hint]:
-    # the annotations name types the modules import only for type checking, so every module's names resolve them
-    modules = [
-        pathlib,
-        collections.abc,
-        typing,
-        *(importlib.import_module(found.name) for found in pkgutil.walk_packages(python_sbom.__path__, "python_sbom.")),
-    ]
-    return dict(member for module in modules for member in inspect.getmembers(module))

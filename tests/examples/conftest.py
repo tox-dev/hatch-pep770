@@ -29,15 +29,6 @@ _ADDED: Final[MappingProxyType[tuple[str, ...], list[str]]] = MappingProxyType({
 })
 
 
-@dataclass(frozen=True, slots=True, kw_only=True)
-class Played:
-    # an example project of the docs, copied and taken through one of its documented sessions: each command with the
-    # lines the docs show under it, and with the lines it printed
-    directory: Path
-    expected: list[tuple[str, list[str]]]
-    output: list[tuple[str, list[str]]]
-
-
 class ReadSbom(Protocol):
     def __call__(self, wheel: Path) -> Document: ...
 
@@ -71,6 +62,15 @@ def _run(command: str, directory: Path) -> list[str]:
     assert result.returncode == 0, f"{command} failed:\n{result.stdout}{result.stderr}"
     # the docs show what python-sbom prints and leave out what the build tools around it print
     return result.stdout.splitlines() if name == "python-sbom" else []
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Played:
+    # an example project of the docs, copied and taken through one of its documented sessions: each command with the
+    # lines the docs show under it, and with the lines it printed
+    directory: Path
+    expected: list[tuple[str, list[str]]]
+    output: list[tuple[str, list[str]]]
 
 
 @pytest.fixture
