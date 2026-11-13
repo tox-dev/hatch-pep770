@@ -217,7 +217,6 @@ lint.ignore = [
   "undocumented-public-init",                  # undocumented-public-api (simplint SMP903) covers the public API instead
   "undocumented-public-method",                # undocumented-public-api (simplint SMP903) covers the public API instead
   "undocumented-public-nested-class",          # undocumented-public-api (simplint SMP903) covers the public API instead
-  "unnecessary-regular-expression-compile",    # conflicts with simplint inline-regex
 ]
 lint.per-file-ignores."bench/**/*.py" = [
   "import-private-name",                  # Benchmarks time the private entry points the public API wraps

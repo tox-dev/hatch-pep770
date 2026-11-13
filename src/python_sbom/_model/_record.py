@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import binascii
 from itertools import starmap
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from installer.records import RecordEntry
@@ -17,13 +18,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 # the algorithms a wheel RECORD may name, as CycloneDX spells them
-_ALGORITHMS: Final[dict[str, str]] = {
+_ALGORITHMS: Final[MappingProxyType[str, str]] = MappingProxyType({
     "md5": "MD5",
     "sha1": "SHA-1",
     "sha256": "SHA-256",
     "sha384": "SHA-384",
     "sha512": "SHA-512",
-}
+})
 
 
 def record_rows(rows: Iterable[tuple[str, str, str]], where: str) -> list[RecordRow]:

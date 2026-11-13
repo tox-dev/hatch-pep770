@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from datetime import UTC, datetime
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, NotRequired, TypedDict
 
 from python_sbom._model._graph import walk_components  # simplint: ignore[private-import-path]  # avoid root export
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
     )
 
 # SPDX 2.3 JSON names every CycloneDX 1.6 hash algorithm, but by names of its own
-_HASH_ALGORITHMS: Final[dict[str, str]] = {
+_HASH_ALGORITHMS: Final[MappingProxyType[str, str]] = MappingProxyType({
     "MD5": "MD5",
     "SHA-1": "SHA1",
     "SHA-256": "SHA256",
@@ -42,7 +43,7 @@ _HASH_ALGORITHMS: Final[dict[str, str]] = {
     "BLAKE2b-384": "BLAKE2b-384",
     "BLAKE2b-512": "BLAKE2b-512",
     "BLAKE3": "BLAKE3",
-}
+})
 _LICENSE_REF: Final[re.Pattern[str]] = re.compile(r"LicenseRef-[A-Za-z0-9.-]+")
 _SPDX_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^A-Za-z0-9.]+")
 

@@ -58,6 +58,10 @@ def test_bundled_wheel(tmp_path: Path, write_wheel: WriteWheel) -> None:
     ]
 
 
+def _bundled(data: bytes, path: str) -> BundledWheel:
+    return read_bundled_wheels([path], lambda _: BytesIO(data))[0]
+
+
 @pytest.mark.parametrize(
     ("files", "message"),
     [
@@ -262,10 +266,6 @@ def test_vendor_manifest_needs_exact_pins(
     wheel = write_wheel(tmp_path / "pip-1.0-py3-none-any.whl", {**_PIP, "pip/_vendor/vendor.txt": manifest})
     with pytest.raises(SbomError, match=message):
         _bundled(wheel.read_bytes(), "pip-1.0-py3-none-any.whl")
-
-
-def _bundled(data: bytes, path: str) -> BundledWheel:
-    return read_bundled_wheels([path], lambda _: BytesIO(data))[0]
 
 
 def test_bundled_wheels_come_in_the_order_given(tmp_path: Path, write_wheel: WriteWheel) -> None:

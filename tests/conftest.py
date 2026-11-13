@@ -185,15 +185,6 @@ def describe(settings: Settings, facts: BuildFacts) -> Describe:
     return describe
 
 
-@pytest.fixture
-def context_for(settings: Settings) -> ContextFor:
-    def context(root: Path, artifact: Path) -> ProviderContext:
-        identity = project_identity(parse_metadata("Name: Example\nVersion: 1.0\n"), settings)
-        return ProviderContext(root=root, settings=settings, identity=identity, read=artifact_read(artifact))
-
-    return context
-
-
 def artifact_read(artifact: Path) -> Callable[[PurePosixPath], bytes]:
     # opens the artifact for each read, as a test context outlives no build that would hold it open
     def read(path: PurePosixPath) -> bytes:
@@ -201,3 +192,12 @@ def artifact_read(artifact: Path) -> Callable[[PurePosixPath], bytes]:
             return opened.provider_read(path)
 
     return read
+
+
+@pytest.fixture
+def context_for(settings: Settings) -> ContextFor:
+    def context(root: Path, artifact: Path) -> ProviderContext:
+        identity = project_identity(parse_metadata("Name: Example\nVersion: 1.0\n"), settings)
+        return ProviderContext(root=root, settings=settings, identity=identity, read=artifact_read(artifact))
+
+    return context

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from types import MappingProxyType
 from typing import Final
 
 from packageurl import PackageURL
@@ -15,7 +16,7 @@ SBOM_REPOSITORY: Final[str] = "sbom:repository"
 # the label normalization and mapping cyclonedx-py applies to Project-URL entries, so the same metadata yields the same
 # reference types whichever generator produced the document, plus the well-known labels of PEP 753 it lacks; funding
 # labels have no CycloneDX type and fall to "other"
-_URL_LABEL_TO_REFERENCE_TYPE: Final[dict[str, str]] = {
+_URL_LABEL_TO_REFERENCE_TYPE: Final[MappingProxyType[str, str]] = MappingProxyType({
     "bugtracker": "issue-tracker",
     "issuetracker": "issue-tracker",
     "issues": "issue-tracker",
@@ -38,7 +39,7 @@ _URL_LABEL_TO_REFERENCE_TYPE: Final[dict[str, str]] = {
     "repository": "vcs",
     "github": "vcs",
     "chat": "chat",
-}
+})
 
 
 def sbom_property(project: str, key: str) -> str:

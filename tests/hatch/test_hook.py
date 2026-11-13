@@ -44,10 +44,6 @@ class Break(BuildHookInterface):
 """
 
 
-def sbom_of(wheel: Path, name: str = _SBOM) -> Document:
-    return json.loads(zipfile.ZipFile(wheel).read(name))
-
-
 def test_wheel_carries_valid_sbom(project: Path, build_wheel: BuildWheel) -> None:
     assert validate(build_wheel(project), frozenset({"MIT"})) == []
 
@@ -69,6 +65,10 @@ def test_sbom_lists_dependencies_a_later_hook_adds(retagged_wheel: Path) -> None
         "packaging",
         "late-dependency",
     ]
+
+
+def sbom_of(wheel: Path, name: str = _SBOM) -> Document:
+    return json.loads(zipfile.ZipFile(wheel).read(name))
 
 
 def test_sbom_names_the_retagged_wheel(retagged_wheel: Path) -> None:

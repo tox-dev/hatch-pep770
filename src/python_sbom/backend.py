@@ -65,6 +65,24 @@ def _wrapped() -> _Backend:
     return _load(Path.cwd())
 
 
+@cache
+def _load(root: Path) -> _Backend:
+    # PEP 517 runs every hook from the project directory, which holds the pyproject.toml naming the backend
+    if (reference := settings_from_pyproject(root).build_backend) is None:
+        msg = (
+            f"{root / 'pyproject.toml'} sets build-backend = 'python_sbom.backend' but names no backend to wrap; set"
+            " build-backend in [tool.python-sbom], such as 'mesonpy'"
+        )
+        raise SbomError(msg)
+    module, _, attribute = reference.partition(":")
+    if module == __name__:
+        msg = f"[tool.python-sbom] build-backend names {reference}, which would wrap itself"
+        raise SbomError(msg)
+    loaded = importlib.import_module(module)
+    # PEP 517 requires every backend to define the two mandatory hooks
+    return cast("_Backend", reduce(getattr, attribute.split("."), loaded) if attribute else loaded)
+
+
 def build_sdist(sdist_directory: str, config_settings: ConfigSettings = None) -> str:
     """
     Build an sdist with the wrapped backend, then record the source revision in it.
@@ -89,24 +107,6 @@ def __getattr__(name: str) -> _Hook:
         return cast("_Hook", getattr(backend, name))
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)
-
-
-@cache
-def _load(root: Path) -> _Backend:
-    # PEP 517 runs every hook from the project directory, which holds the pyproject.toml naming the backend
-    if (reference := settings_from_pyproject(root).build_backend) is None:
-        msg = (
-            f"{root / 'pyproject.toml'} sets build-backend = 'python_sbom.backend' but names no backend to wrap; set"
-            " build-backend in [tool.python-sbom], such as 'mesonpy'"
-        )
-        raise SbomError(msg)
-    module, _, attribute = reference.partition(":")
-    if module == __name__:
-        msg = f"[tool.python-sbom] build-backend names {reference}, which would wrap itself"
-        raise SbomError(msg)
-    loaded = importlib.import_module(module)
-    # PEP 517 requires every backend to define the two mandatory hooks
-    return cast("_Backend", reduce(getattr, attribute.split("."), loaded) if attribute else loaded)
 
 
 __all__ = [
