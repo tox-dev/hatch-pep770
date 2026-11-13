@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 _Hint = object  # simplint: ignore[imprecise-annotation] # hints are arbitrary typing objects
 
-_PUBLIC: Final[set[str]] = {
+_PUBLIC: Final[frozenset[str]] = frozenset({
     "BundledWheelInfo",
     "Component",
     "Contact",
@@ -44,7 +44,7 @@ _PUBLIC: Final[set[str]] = {
     "SbomError",
     "Settings",
     "__version__",
-}
+})
 
 
 def test_public_api() -> None:
