@@ -180,35 +180,33 @@ def test_component_without_bom_ref(describe: Describe) -> None:
     assert validate_document(json.dumps(loaded).encode(), None) == ["components lack a bom-ref: ['nameless']"]
 
 
-_WORKFLOW_MUTATIONS: Final[tuple[pytest.ParameterSet, ...]] = (
-    pytest.param(
-        lambda loaded: loaded["formulation"][0]["workflows"][0].pop("resourceReferences"),
-        id="workflow-without-resources",
-    ),
-    pytest.param(
-        lambda loaded: loaded["formulation"][0]["workflows"][0]["resourceReferences"].append({
-            "externalReference": {"type": "other", "url": "https://example.org"}
-        }),
-        id="workflow-external-resource",
-    ),
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(
+            lambda loaded: loaded["formulation"][0]["workflows"][0].pop("resourceReferences"),
+            id="workflow-without-resources",
+        ),
+        pytest.param(
+            lambda loaded: loaded["formulation"][0]["workflows"][0]["resourceReferences"].append({
+                "externalReference": {"type": "other", "url": "https://example.org"}
+            }),
+            id="workflow-external-resource",
+        ),
+        pytest.param(
+            lambda loaded: loaded["metadata"]["properties"].append({"name": "example:extra"}),
+            id="property-without-value",
+        ),
+        pytest.param(
+            lambda loaded: loaded["metadata"]["component"]["properties"].append({"name": "example:extra"}),
+            id="root-property-without-value",
+        ),
+        pytest.param(
+            lambda loaded: loaded["metadata"].update(supplier={"url": ["https://example.org"]}),
+            id="supplier-without-name",
+        ),
+    ],
 )
-_METADATA_MUTATIONS: Final[tuple[pytest.ParameterSet, ...]] = (
-    pytest.param(
-        lambda loaded: loaded["metadata"]["properties"].append({"name": "example:extra"}),
-        id="property-without-value",
-    ),
-    pytest.param(
-        lambda loaded: loaded["metadata"]["component"]["properties"].append({"name": "example:extra"}),
-        id="root-property-without-value",
-    ),
-    pytest.param(
-        lambda loaded: loaded["metadata"].update(supplier={"url": ["https://example.org"]}),
-        id="supplier-without-name",
-    ),
-)
-
-
-@pytest.mark.parametrize("mutate", [*_WORKFLOW_MUTATIONS, *_METADATA_MUTATIONS])
 def test_schema_valid_variations_pass(describe: Describe, mutate: Callable[[dict[str, Json]], None]) -> None:
     loaded = json.loads(dumps(describe()))
     mutate(loaded)
