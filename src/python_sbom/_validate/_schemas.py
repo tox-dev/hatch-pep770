@@ -109,9 +109,9 @@ def _license_problems(
 # references serves the newest; Apache-2.0, see the LICENSE beside them. Format assertion is on, as in CycloneDX's own
 # Draft 7 validation, and offline, so a reference missing from the registry fails instead of reaching the network
 _SCHEMAS: Final[Traversable] = files(__package__) / "schemas"
-_REFERENCED: Final[list[dict[str, Json]]] = [
+_REFERENCED: Final[tuple[dict[str, Json], ...]] = tuple(
     json.loads((_SCHEMAS / name).read_text(encoding="utf-8")) for name in ("spdx.schema.json", "jsf-0.82.schema.json")
-]
+)
 _VALIDATOR: Final[Draft7Validator] = Draft7Validator(
     json.loads((_SCHEMAS / "bom-1.6.schema.json").read_text(encoding="utf-8")),
     validate_formats=True,

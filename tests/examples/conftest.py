@@ -10,6 +10,7 @@ import sysconfig
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, Protocol
 
 import pytest
@@ -23,9 +24,9 @@ _TAGS: Final[re.Pattern[str]] = re.compile(r"-[^-\s/]+-[^-\s/]+-[^-\s/]+\.whl\b"
 _PROMPT: Final[re.Pattern[str]] = re.compile(r"^\$ ", re.MULTILINE)
 # a frontend's isolated environment would install python-sbom from PyPI; the environment the test runs in holds the
 # checkout's
-_ADDED: Final[dict[tuple[str, ...], list[str]]] = {
+_ADDED: Final[MappingProxyType[tuple[str, ...], list[str]]] = MappingProxyType({
     ("python", "-m", "build"): ["--no-isolation", "--skip-dependency-check"]
-}
+})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
