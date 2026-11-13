@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 import importlib
+from collections.abc import Mapping as _Mapping
 from functools import cache, reduce
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Protocol, cast
+from typing import Final, Protocol, cast
+from typing import TypeAlias as _TypeAlias
 
 from ._collect._revision import REVISION_FILE, default_revision, revision_record
 from ._collect._settings import settings_from_pyproject
 from ._errors import SbomError
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
-    #: the settings a frontend passes each hook, such as ``--config-settings`` of pip and build
-    ConfigSettings = Mapping[str, str | list[str]] | None
+#: the settings a frontend passes each hook, such as ``--config-settings`` of pip and build
+ConfigSettings: _TypeAlias = _Mapping[str, str | list[str]] | None
 
 # the hooks PEP 517 and PEP 660 let a backend leave out, which a frontend then replaces with its own default
 _OPTIONAL_HOOKS: Final[frozenset[str]] = frozenset({
