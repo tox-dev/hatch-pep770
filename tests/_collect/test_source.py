@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from pathlib import Path
 
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # test uses internal model
 
 
 @pytest.mark.parametrize(

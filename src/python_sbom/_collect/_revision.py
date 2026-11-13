@@ -10,7 +10,7 @@ import warnings
 from typing import TYPE_CHECKING, Final, Protocol
 
 from python_sbom import SbomError
-from python_sbom._model._inputs import Revision
+from python_sbom._model._inputs import Revision  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
     from pathlib import Path

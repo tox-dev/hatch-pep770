@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from conftest import WriteWheel
 
     from python_sbom import Component
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # test uses internal model
 
 _COMMIT: Final[str] = "c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff"
 _LIBRARY: Final[str] = "__bundled__/distlib-0.4-py3-none-any"

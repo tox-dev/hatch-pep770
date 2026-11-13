@@ -5,7 +5,7 @@ from __future__ import annotations
 import zipfile
 from typing import IO, TYPE_CHECKING, Final
 
-from python_sbom._wheel._zip import CHUNK, open_archive
+from python_sbom._wheel._zip import CHUNK, open_archive  # simplint: ignore[private-import-path]  # avoid root export
 
 from ._document import validate_document
 from ._limits import MAX_COMPONENTS, byte_limit

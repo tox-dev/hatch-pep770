@@ -12,7 +12,10 @@ from typing import IO, TYPE_CHECKING, Final
 from installer.sources import WheelFile
 
 from python_sbom import SbomError
-from python_sbom._model._metadata import CoreMetadata, parse_metadata
+from python_sbom._model._metadata import (  # simplint: ignore[private-import-path]  # avoid root export
+    CoreMetadata,
+    parse_metadata,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator

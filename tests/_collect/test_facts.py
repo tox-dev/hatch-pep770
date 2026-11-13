@@ -18,7 +18,9 @@ if TYPE_CHECKING:
 
     from conftest import Install
 
-    from python_sbom._model._inputs import BuildFacts
+    from python_sbom._model._inputs import (  # simplint: ignore[private-import-path]  # test uses internal model
+        BuildFacts,
+    )
 
 
 def test_epoch_from_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

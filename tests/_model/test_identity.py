@@ -10,7 +10,7 @@ from python_sbom._model._identity import ProjectIdentity, project_identity
 from python_sbom._model._metadata import parse_metadata
 
 if TYPE_CHECKING:
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # test uses internal model
 
 
 @pytest.mark.parametrize(

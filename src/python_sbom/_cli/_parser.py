@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from argparse import ArgumentParser, ArgumentTypeError, _SubParsersAction
+from argparse import (
+    ArgumentParser,
+    ArgumentTypeError,
+    _SubParsersAction,  # simplint: ignore[private-import-path]  # argparse has no public type
+)
 from pathlib import Path
 from typing import Protocol
 
 # the limits module imports nothing, so --help and --version load none of validation
-from python_sbom._validate._limits import MAX_COMPONENTS
+from python_sbom._validate._limits import MAX_COMPONENTS  # simplint: ignore[private-import-path]  # avoid root export
 from python_sbom.version import __version__
 
 

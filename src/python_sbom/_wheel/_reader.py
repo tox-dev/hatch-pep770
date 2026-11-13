@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path, PurePosixPath
 
-    from python_sbom._model._inputs import BundledWheel
+    from python_sbom._model._inputs import BundledWheel  # simplint: ignore[private-import-path]  # avoid root export
 
 # a bundled wheel is read whole, to hash it and open it as a zip, so its size is capped as metadata's is
 _WHEEL_LIMIT: Final[int] = 512 * 1024 * 1024

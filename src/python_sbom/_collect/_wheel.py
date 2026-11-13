@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Final
 
 from python_sbom import SbomError
-from python_sbom._model._inputs import WheelTree
-from python_sbom._model._names import sbom_file_name
-from python_sbom._wheel._zip import read_wheel_metadata
+from python_sbom._model._inputs import WheelTree  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._model._names import sbom_file_name  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._wheel._zip import read_wheel_metadata  # simplint: ignore[private-import-path]  # avoid root export
 
 from ._source import copyright_notice, file_sha256, hash_build_scripts, selected_wheels
 
@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
     from pathlib import Path, PurePosixPath
 
-    from python_sbom._model._inputs import Settings
-    from python_sbom._wheel._reader import ArtifactReader
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # avoid root export
+    from python_sbom._wheel._reader import ArtifactReader  # simplint: ignore[private-import-path]  # avoid root export
 
 
 def read_wheel(

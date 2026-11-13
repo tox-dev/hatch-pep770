@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING
 from setuptools.command.bdist_wheel import bdist_wheel
 from setuptools.command.sdist import sdist
 
-from ._collect._revision import REVISION_FILE, default_revision, revision_record
+from ._collect import REVISION_FILE, default_revision, revision_record
 from ._errors import SbomError
 
 if TYPE_CHECKING:
     from setuptools.dist import Distribution
 
-    from ._model._inputs import Revision
+    from ._model import Revision
 
 
 def finalize_distribution_options(distribution: Distribution) -> None:
@@ -50,7 +50,7 @@ def finalize_distribution_options(distribution: Distribution) -> None:
 
     class SbomWheel(wheel_base):
         def run(self) -> None:
-            from ._generate._embed import embed_built  # ruff: ignore[import-outside-top-level] # wheels only
+            from ._generate import embed_built  # ruff: ignore[import-outside-top-level] # wheels only
 
             # read before this command writes into build/; a checkout that does not ignore build/ or the egg-info
             # directory an earlier step wrote reads as dirty

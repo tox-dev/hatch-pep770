@@ -21,7 +21,7 @@ from python_sbom._wheel._reader import open_artifact
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # test uses internal model
 
 
 class WriteWheel(Protocol):

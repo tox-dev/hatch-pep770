@@ -5,14 +5,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from python_sbom import SbomError
-from python_sbom._formats._json import dumps, is_document, load_json
-from python_sbom._formats._spdx import render_spdx
-from python_sbom._validate._limits import MAX_COMPONENTS, byte_limit
+from python_sbom._formats._json import (  # simplint: ignore[private-import-path]  # avoid root export
+    dumps,
+    is_document,
+    load_json,
+)
+from python_sbom._formats._spdx import render_spdx  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._validate._limits import (  # simplint: ignore[private-import-path]  # avoid root export
+    MAX_COMPONENTS,
+    byte_limit,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # avoid root export
 
 
 class _Options(Protocol):
@@ -58,5 +65,5 @@ def _read(source: Path) -> Document:
 
 
 __all__ = [
-    "run",  # simplint: ignore[SMP402] # the parser names it for pkgutil.resolve_name
+    "run",  # simplint: ignore[unused-export] # the parser names it for pkgutil.resolve_name
 ]

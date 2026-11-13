@@ -9,7 +9,9 @@ from python_sbom._model._metadata import parse_metadata
 from python_sbom._model._tools import script_tool, tool_components
 
 if TYPE_CHECKING:
-    from python_sbom._model._inputs import BuildFacts
+    from python_sbom._model._inputs import (  # simplint: ignore[private-import-path]  # test uses internal model
+        BuildFacts,
+    )
 
 
 def test_tools_list_interpreter_then_distributions_by_name(facts: BuildFacts) -> None:

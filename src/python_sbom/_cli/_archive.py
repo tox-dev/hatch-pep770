@@ -6,7 +6,7 @@ import sys
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
-from python_sbom._generate._archive import archive_sbom
+from python_sbom._generate._archive import archive_sbom  # simplint: ignore[private-import-path]  # avoid root export
 
 from ._parser import BuildOptions
 
@@ -36,5 +36,5 @@ def run(options: _Options) -> bool:
 
 
 __all__ = [
-    "run",  # simplint: ignore[SMP402] # the parser names it for pkgutil.resolve_name
+    "run",  # simplint: ignore[unused-export] # the parser names it for pkgutil.resolve_name
 ]

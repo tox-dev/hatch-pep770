@@ -11,7 +11,7 @@ from python_sbom._cli._main import main
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # test uses internal model
     from tests.conftest import Install
 
 _SBOM: Final[str] = "native-1.0.dist-info/sboms/native.cdx.json"

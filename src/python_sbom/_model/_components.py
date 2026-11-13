@@ -21,6 +21,9 @@ if TYPE_CHECKING:
     from ._metadata import CoreMetadata
     from ._types import Component, Contact, ExternalReference, Identity, Property
 
+_CONTACT_PATTERN: Final[re.Pattern[str]] = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+_PROJECT_REFERENCES_PATTERN: Final[re.Pattern[str]] = re.compile(r"https?:", re.IGNORECASE)
+
 
 def bundled_wheel_component(wheel: BundledWheel, property_prefix: str, info: BundledWheelInfo) -> Component:
     component = component_from_metadata(wheel.metadata)
@@ -89,7 +92,7 @@ def component_from_metadata(metadata: CoreMetadata) -> Component:
 
 
 def _contact(name: str, email: str) -> Contact:
-    if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+    if email and not _CONTACT_PATTERN.fullmatch(email):
         # an address the schema rejects as an email, such as "jane at example.com", is kept as the name
         return {"name": " ".join(part for part in (name, email) if part)}
     contact: Final[Contact] = {}
@@ -106,7 +109,7 @@ def _project_references(metadata: CoreMetadata) -> tuple[list[ExternalReference]
     references: Final[list[ExternalReference]] = []
     unlinked: Final[list[Property]] = []
     # a home page that is not an http(s) URL, such as UNKNOWN, is left out
-    if (home_page := metadata.first("home_page")) and re.match(r"https?:", home_page, re.IGNORECASE):
+    if (home_page := metadata.first("home_page")) and _PROJECT_REFERENCES_PATTERN.match(home_page):
         if (url := iri_reference(home_page)) is not None:
             references.append({"type": "website", "url": url})
         if url != home_page:

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from conftest import BuildWheel
 
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # test uses internal model
     from tests.conftest import Git
 
 _SBOM: Final[str] = "example-1.0.dist-info/sboms/example.cdx.json"

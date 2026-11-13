@@ -10,10 +10,10 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Final
 
 from python_sbom import SbomError
-from python_sbom._model._content import ContentProvider
+from python_sbom._model._content import ContentProvider  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # avoid root export
 
 
 def resolve_provider(

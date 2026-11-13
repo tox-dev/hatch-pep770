@@ -14,15 +14,23 @@ from hatchling.builders.utils import get_reproducible_timestamp
 from hatchling.utils.constants import DEFAULT_BUILD_SCRIPT
 
 from python_sbom import SbomError
-from python_sbom._collect._content import resolve_provider
-from python_sbom._collect._revision import REVISION_FILE, default_revision, revision_record
-from python_sbom._collect._settings import settings_from_table
+from python_sbom._collect._content import resolve_provider  # simplint: ignore[private-import-path]  # avoid root export
+from python_sbom._collect._revision import (  # simplint: ignore[private-import-path]  # avoid root export
+    REVISION_FILE,
+    default_revision,
+    revision_record,
+)
+from python_sbom._collect._settings import (  # simplint: ignore[private-import-path]  # avoid root export
+    settings_from_table,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from python_sbom._model._content import ContentProvider
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._content import (  # simplint: ignore[private-import-path]  # avoid root export
+        ContentProvider,
+    )
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # avoid root export
 
 # options of every hatchling hook table, which hatchling itself reads
 _HATCHLING_OPTIONS: Final[frozenset[str]] = frozenset({
@@ -53,7 +61,7 @@ class SbomBuildHook(BuildHookInterface):
     def initialize(
         self,
         version: str,
-        build_data: dict[str, Any],  # simplint: ignore[SMP602] # hatchling's signature
+        build_data: dict[str, Any],  # simplint: ignore[imprecise-annotation] # hatchling's signature
     ) -> None:
         """
         Read the source revision, and record it in an sdist.
@@ -81,7 +89,7 @@ class SbomBuildHook(BuildHookInterface):
         self,
         version: str,
         build_data: (  # ruff: ignore[unused-method-argument] # hatchling's signature
-            dict[str, Any]  # simplint: ignore[SMP602] # see above
+            dict[str, Any]  # simplint: ignore[imprecise-annotation] # see above
         ),
         artifact_path: str,
     ) -> None:
@@ -98,8 +106,12 @@ class SbomBuildHook(BuildHookInterface):
         if self.target_name != "wheel" or version == "editable":
             return
         # what a wheel needs loads only when one is built, so an sdist build stays light
-        from python_sbom._collect._facts import collect_facts  # ruff: ignore[import-outside-top-level] # see above
-        from python_sbom._generate._embed import embed_into  # ruff: ignore[import-outside-top-level] # see above
+        from python_sbom._collect._facts import (  # ruff: ignore[import-outside-top-level]  # simplint: ignore[private-import-path]  # lazy
+            collect_facts,
+        )
+        from python_sbom._generate._embed import (  # ruff: ignore[import-outside-top-level]  # simplint: ignore[private-import-path]  # lazy
+            embed_into,
+        )
 
         root = Path(self.root)
         # content_provider() may be a subclass's override, so its result goes through resolve_provider again, which

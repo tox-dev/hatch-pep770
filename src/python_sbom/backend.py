@@ -9,8 +9,7 @@ from pathlib import Path
 from typing import Final, Protocol, cast
 from typing import TypeAlias as _TypeAlias
 
-from ._collect._revision import REVISION_FILE, default_revision, revision_record
-from ._collect._settings import settings_from_pyproject
+from ._collect import REVISION_FILE, default_revision, revision_record, settings_from_pyproject
 from ._errors import SbomError
 
 #: the settings a frontend passes each hook, such as ``--config-settings`` of pip and build
@@ -52,7 +51,7 @@ def build_wheel(
     :returns: the wheel's file name
 
     """
-    from ._generate._embed import embed_built  # ruff: ignore[import-outside-top-level] # sdist builds skip it
+    from ._generate import embed_built  # ruff: ignore[import-outside-top-level] # sdist builds skip it
 
     root = Path.cwd()
     # read before the backend writes into the checkout, which may not ignore its build directory
@@ -75,7 +74,7 @@ def build_sdist(sdist_directory: str, config_settings: ConfigSettings = None) ->
     :returns: the sdist's file name
 
     """
-    from ._wheel._sdist import add_to_sdist  # ruff: ignore[import-outside-top-level] # wheel builds skip it
+    from ._wheel import add_to_sdist  # ruff: ignore[import-outside-top-level] # wheel builds skip it
 
     revision = default_revision(Path.cwd())
     name = _wrapped().build_sdist(sdist_directory, config_settings)

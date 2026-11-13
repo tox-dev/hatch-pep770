@@ -20,7 +20,7 @@ from python_sbom._model._metadata import CoreMetadata
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-_Hint = object  # simplint: ignore[SMP602] # hints are arbitrary typing objects
+_Hint = object  # simplint: ignore[imprecise-annotation] # hints are arbitrary typing objects
 
 _PUBLIC: Final[set[str]] = {
     "BundledWheelInfo",

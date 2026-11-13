@@ -10,7 +10,7 @@ from python_sbom import SbomError
 if TYPE_CHECKING:
     from typing import TypeIs  # new in 3.13; annotations here are never evaluated
 
-    from python_sbom._model._types import Document
+    from python_sbom._model._types import Document  # simplint: ignore[private-import-path]  # avoid root export
 
     from ._spdx import Spdx
 

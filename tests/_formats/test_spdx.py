@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Final, TypeAlias
 import pytest
 
 from python_sbom._formats._json import dumps
-from python_sbom._formats._spdx import render_spdx
+from python_sbom._formats._spdx import Spdx, render_spdx
 from python_sbom._validate._schemas import spdx_problems
 from python_sbom.version import __version__
 
@@ -17,11 +17,11 @@ if TYPE_CHECKING:
     from conftest import Describe
 
     from python_sbom import Component
-    from python_sbom._formats._spdx import _Package
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # test uses internal model
 
 # a JSON value, as json.loads hands it over
 _Json: TypeAlias = "str | int | float | bool | list[_Json] | dict[str, _Json] | None"
+_SPDX_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"SPDXRef-[A-Za-z0-9.-]+")
 
 # what auditwheel writes: CycloneDX 1.4 conventions, a legacy tools array, no timestamp and no serial number
 _FOREIGN: Final[str] = json.dumps({
@@ -105,7 +105,7 @@ def test_minimal(describe: Describe) -> None:
 def test_spdx_ids_are_valid_and_tell_similar_refs_apart(describe: Describe) -> None:
     document = describe("Requires-Dist: click; os_name == 'nt'\nRequires-Dist: click; os_name != 'nt'\n")
     ids = [package["SPDXID"] for package in render_spdx(document)["packages"]]
-    assert all(re.fullmatch(r"SPDXRef-[A-Za-z0-9.-]+", spdx_id) for spdx_id in ids)
+    assert all(_SPDX_ID_PATTERN.fullmatch(spdx_id) for spdx_id in ids)
     assert len(set(ids)) == len(ids)
 
 
@@ -280,26 +280,28 @@ def test_supplier_without_name_is_no_creator(describe: Describe) -> None:
     ],
 )
 def test_hash_algorithms_take_spdx_names(algorithm: str, expected: str) -> None:
-    (package,) = packages_of({"hashes": [{"alg": algorithm, "content": "ab" * 32}]})
+    (package,) = spdx_with({"hashes": [{"alg": algorithm, "content": "ab" * 32}]})["packages"]
     assert package.get("checksums") == [{"algorithm": expected, "checksumValue": "ab" * 32}]
 
 
-def packages_of(fields: dict[str, _Json]) -> list[_Package]:
+def spdx_with(fields: dict[str, _Json]) -> Spdx:
     document = json.loads(_FOREIGN)
     document["components"] = [{"type": "library", "bom-ref": "lib", "name": "lib", **fields}]
-    return [package for package in render_spdx(document)["packages"] if package["name"] == "lib"]
+    spdx = render_spdx(document)
+    spdx["packages"] = [package for package in spdx["packages"] if package["name"] == "lib"]
+    return spdx
 
 
 def test_hash_algorithm_spdx_lacks_is_dropped() -> None:
-    (package,) = packages_of({"hashes": [{"alg": "SHA-224", "content": "ab" * 28}]})
+    (package,) = spdx_with({"hashes": [{"alg": "SHA-224", "content": "ab" * 28}]})["packages"]
     assert "checksums" not in package
 
 
 def test_component_supplier_without_name_is_dropped() -> None:
-    (package,) = packages_of({"supplier": {"url": ["https://example.org"]}})
+    (package,) = spdx_with({"supplier": {"url": ["https://example.org"]}})["packages"]
     assert "supplier" not in package
 
 
 def test_property_without_value() -> None:
-    (package,) = packages_of({"properties": [{"name": "plain:extra"}]})
+    (package,) = spdx_with({"properties": [{"name": "plain:extra"}]})["packages"]
     assert package["comment"] == "plain:extra: "

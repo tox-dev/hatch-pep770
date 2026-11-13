@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, Protocol
 
-from python_sbom._validate._artifact import validate
+from python_sbom._validate._artifact import validate  # simplint: ignore[private-import-path]  # avoid root export
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -38,5 +38,5 @@ def run(options: _Options) -> bool:
 
 
 __all__ = [
-    "run",  # simplint: ignore[SMP402] # the parser names it for pkgutil.resolve_name
+    "run",  # simplint: ignore[unused-export] # the parser names it for pkgutil.resolve_name
 ]

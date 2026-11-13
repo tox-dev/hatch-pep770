@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from conftest import Describe
 
-    from python_sbom._model._inputs import Settings
+    from python_sbom._model._inputs import Settings  # simplint: ignore[private-import-path]  # test uses internal model
 
 
 def test_declared_dependency(describe: Describe) -> None:
