@@ -36,7 +36,10 @@ Field: TypeAlias = Literal[
 # the empty line that ends the headers, as the email parser ends them; a line of whitespace continues a header
 _BODY: Final[re.Pattern[str]] = re.compile(r"^\r?\n", re.MULTILINE)
 # unparsed keys a field by its header name, lowercased, which is the RawMetadata key with dashes except for these
-_HEADERS: Final[MappingProxyType[str, str]] = MappingProxyType({"classifiers": "classifier", "license_files": "license-file"})
+_HEADERS: Final[MappingProxyType[str, str]] = MappingProxyType({
+    "classifiers": "classifier",
+    "license_files": "license-file",
+})
 
 
 def parse_metadata(text: str) -> CoreMetadata:
