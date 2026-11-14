@@ -311,11 +311,7 @@ supplier = { name = "tox-dev", url = [ "https://github.com/tox-dev" ] }
 [tool.simplint]
 docstring-style = "rst"
 # the fixture mirrors virtualenv's seed/wheels/embed/__init__.py, which holds the bundle table
-per-file-ignores."tests/_seeder/src/**/__init__.py" = [
-  "init-module-content",
-  "missing-final",
-  "module-variable-prefix"
-]
+per-file-ignores."tests/_seeder/src/**/__init__.py" = [ "missing-final", "module-variable-prefix" ]
 
 [tool.nab]
 mode = "universal"
